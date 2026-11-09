@@ -273,17 +273,17 @@ export const DEMO_GARAGE = [
   },
   {
     id: "bike_tvs_apache160",
-    odometer: 9400,
+    odometer: 0,
     hojaDeVida: {
       documentos: {
-        placa: "APC16F",
+        placa: "OFU22I",
         vinChasis: "MD625CF5X91234567",
         engineNumber: "MTR-RTR160-889900",
-        soatVencimiento: "2027-04-20",
-        tecnoVencimiento: "2027-05-15",
-        seguroNombre: "Seguro Todo Riesgo SURA",
-        seguroPoliza: "440019283",
-        seguroVencimiento: "2027-08-30",
+        soatVencimiento: "2027-02-15",
+        tecnoVencimiento: "2027-03-20",
+        seguroNombre: "Seguro Todo Riesgo SURA (Plan Motos)",
+        seguroPoliza: "900001688138",
+        seguroVencimiento: "2027-09-10",
         impuestoVencimiento: "2027-06-30"
       },
       garantia: {
@@ -294,36 +294,15 @@ export const DEMO_GARAGE = [
         kmGarantia: 36000,
         toleranciaKm: 100,
         ritmoKmDia: 65,
-        completadas: [1, 2]
+        completadas: []
       },
-      servicios: [
-        {
-          id: "srv_apache_2",
-          fecha: "2026-08-14",
-          km: 5000,
-          servicio: "2ª Revisión Obligatoria de Garantía (5.000 KM)",
-          marcaRepuesto: "TVS TRU4 Premium 10W-30",
-          taller: "Auteco Dismerca Autorizado",
-          costo: 0,
-          notas: "Mano de obra gratis. Cambio de aceite, limpieza de bujía y filtro de aire."
-        },
-        {
-          id: "srv_apache_1",
-          fecha: "2026-06-10",
-          km: 1000,
-          servicio: "1ª Revisión Obligatoria de Garantía (1.000 KM)",
-          marcaRepuesto: "TVS TRU4 Synthetic Blend 10W-30",
-          taller: "Auteco Dismerca Autorizado",
-          costo: 0,
-          notas: "Rodaje inicial asentado, cambio filtro aceite y calibración de válvulas."
-        }
-      ]
+      servicios: []
     },
     config: {
       bikeIdentity: {
         brand: "TVS",
-        model: "APACHE RTR 160 4V FI",
-        shortModel: "APACHE 160",
+        model: "APACHE RTR 160 4V FI NG",
+        shortModel: "APACHE 160 FI NG",
         year: 2025,
         colorHex: "#DC2626",
         accentGlow: "rgba(220, 38, 38, 0.4)",
@@ -343,5 +322,14 @@ export const DEMO_GARAGE = [
       ]
     }
   }
+];
+
+export const ANDERSON_OFFICIAL_APACHE = DEMO_GARAGE[5];
+export const DEMO_PREVIEW_IDS = [
+  "bike_yamaha_mt09", 
+  "bike_ktm_duke390", 
+  "bike_kawasaki_zx6r", 
+  "bike_ducati_panigale", 
+  "bike_bmw_s1000rr"
 ];
 

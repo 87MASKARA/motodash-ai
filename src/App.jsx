@@ -17,7 +17,7 @@ import LoginModal, { isFounderVipEmail } from './components/Auth/LoginModal';
 import ProfileModal from './components/Profile/ProfileModal';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
-import { DEMO_GARAGE } from './services/demoGarage';
+import { DEMO_GARAGE, ANDERSON_OFFICIAL_APACHE, DEMO_PREVIEW_IDS } from './services/demoGarage';
 import { sanitizeHexColor, computeAccentGlow } from './services/aiGenerator';
 
 function isValidBike(bike) {
@@ -80,9 +80,20 @@ export default function App() {
     return null;
   });
 
-  // Garaje protegido contra corrupción de datos y sincronizado con el catálogo Demo
+  // Garaje protegido contra corrupción de datos (sin auto-inyección forzada de demos)
   const [garage, setGarage] = useState(() => {
     const saved = localStorage.getItem("motodash_garage");
+    const savedProfile = localStorage.getItem("motodash_user_profile");
+    let isAnderson = false;
+    if (savedProfile) {
+      try {
+        const parsedP = JSON.parse(savedProfile);
+        if (parsedP && isFounderVipEmail(parsedP.email)) {
+          isAnderson = true;
+        }
+      } catch (e) {}
+    }
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -90,19 +101,43 @@ export default function App() {
           ? parsed.map(sanitizeBikeEntry).filter(Boolean)
           : [];
         if (validBikes.length > 0) {
-          const existingIds = new Set(validBikes.map((b) => b.id));
-          const missingDemos = DEMO_GARAGE.filter((d) => !existingIds.has(d.id));
-          return [...validBikes, ...missingDemos];
+          if (isAnderson) {
+            // Garaje personal de Anderson: limpiar demos de prueba forzados y asegurar su Apache 160 FI NG
+            const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+            const userBikes = validBikes.filter((b) => !demoIdSet.has(b.id));
+            const hasApache = userBikes.some((b) =>
+              b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+              b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
+              b?.hojaDeVida?.documentos?.placa === "OFU22I"
+            );
+            return hasApache ? userBikes : [ANDERSON_OFFICIAL_APACHE, ...userBikes];
+          }
+          return validBikes;
         }
       } catch (e) {
         console.error("Error cargando garaje de localStorage:", e);
       }
     }
+    if (isAnderson) {
+      return [ANDERSON_OFFICIAL_APACHE];
+    }
     return DEMO_GARAGE;
   });
 
   const [activeBikeId, setActiveBikeId] = useState(() => {
-    return localStorage.getItem("motodash_active_bike_id") || DEMO_GARAGE[0].id;
+    const savedId = localStorage.getItem("motodash_active_bike_id");
+    const savedProfile = localStorage.getItem("motodash_user_profile");
+    if (savedProfile) {
+      try {
+        const p = JSON.parse(savedProfile);
+        if (p && isFounderVipEmail(p.email)) {
+          if (!savedId || DEMO_PREVIEW_IDS.includes(savedId)) {
+            return ANDERSON_OFFICIAL_APACHE.id;
+          }
+        }
+      } catch (e) {}
+    }
+    return savedId || ANDERSON_OFFICIAL_APACHE.id;
   });
 
   // Modales
@@ -164,6 +199,32 @@ export default function App() {
     }
   }, [userProfile]);
 
+  // Sincronización garantizada del Garaje Oficial cuando el fundador Anderson inicia sesión
+  useEffect(() => {
+    if (userProfile && isFounderVipEmail(userProfile.email)) {
+      setGarage((prev) => {
+        const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+        const userBikes = prev.filter((b) => !demoIdSet.has(b.id));
+        const hasApache = userBikes.some((b) =>
+          b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+          b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
+          b?.hojaDeVida?.documentos?.placa === "OFU22I"
+        );
+        let finalGarage = userBikes;
+        if (!hasApache) {
+          finalGarage = [ANDERSON_OFFICIAL_APACHE, ...userBikes];
+        }
+        return finalGarage;
+      });
+      setActiveBikeId((prevActive) => {
+        if (!prevActive || DEMO_PREVIEW_IDS.includes(prevActive)) {
+          return ANDERSON_OFFICIAL_APACHE.id;
+        }
+        return prevActive;
+      });
+    }
+  }, [userProfile]);
+
   // Finalizar Onboarding y arrancar en Cockpit
   const handleCompleteOnboarding = (profile, newBike) => {
     const cleanBike = sanitizeBikeEntry(newBike) || newBike;
@@ -206,6 +267,13 @@ export default function App() {
   // Entrar al Demo en vivo desde Landing: activa simulación inmediatamente
   const handleEnterDemo = (bikeId = "bike_yamaha_mt09") => {
     const targetId = typeof bikeId === "string" ? bikeId : "bike_yamaha_mt09";
+    const demoBike = DEMO_GARAGE.find((d) => d.id === targetId);
+    if (demoBike) {
+      setGarage((prev) => {
+        if (prev.some((b) => b.id === targetId)) return prev;
+        return [...prev, demoBike];
+      });
+    }
     setActiveBikeId(targetId);
     setCurrentView("cockpit");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -630,10 +698,28 @@ export default function App() {
           }}
           onAddNewBike={handleOpenAddBike}
           onDeleteBike={(id) => {
-            if (garage.length <= 1) return alert("Debes tener al menos 1 moto.");
+            if (garage.length <= 1) return alert("Debes tener al menos 1 moto en tu garaje.");
             const filtered = garage.filter((b) => b.id !== id);
             setGarage(filtered);
-            if (activeBike.id === id) setActiveBikeId(filtered[0].id);
+            if (activeBike.id === id) {
+              setActiveBikeId(filtered[0]?.id || ANDERSON_OFFICIAL_APACHE.id);
+            }
+          }}
+          onCleanDemoBikes={() => {
+            const demoSet = new Set(DEMO_PREVIEW_IDS);
+            const cleaned = garage.filter((b) => !demoSet.has(b.id));
+            const hasApache = cleaned.some((b) =>
+              b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+              b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
+              b?.hojaDeVida?.documentos?.placa === "OFU22I"
+            );
+            const finalBikes = hasApache
+              ? cleaned
+              : [ANDERSON_OFFICIAL_APACHE, ...cleaned];
+            setGarage(finalBikes);
+            if (!finalBikes.some((b) => b.id === activeBikeId)) {
+              setActiveBikeId(finalBikes[0].id);
+            }
           }}
           onClose={() => setIsGarageOpen(false)}
         />
@@ -674,6 +760,19 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={(profile) => {
           setUserProfile(profile);
+          if (profile && isFounderVipEmail(profile.email)) {
+            const demoSet = new Set(DEMO_PREVIEW_IDS);
+            setGarage((prev) => {
+              const cleaned = prev.filter((b) => !demoSet.has(b.id));
+              const hasApache = cleaned.some((b) =>
+                b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+                b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
+                b?.hojaDeVida?.documentos?.placa === "OFU22I"
+              );
+              return hasApache ? cleaned : [ANDERSON_OFFICIAL_APACHE, ...cleaned];
+            });
+            setActiveBikeId(ANDERSON_OFFICIAL_APACHE.id);
+          }
           setCurrentView("cockpit");
           if (telemetry.startSimulation) telemetry.startSimulation();
         }}
