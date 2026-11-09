@@ -1,5 +1,105 @@
-// Catálogo Demo Oficial con 5 Marcas Mundiales para Probar Inmediatamente
+// Catálogo Demo Oficial con 6 Marcas Mundiales para Probar Inmediatamente
+// La moto insignia #1 es la TVS Apache RTR 160 4V FI NG (OFU22I) de Anderson
 export const DEMO_GARAGE = [
+  {
+    id: "bike_tvs_apache160",
+    odometer: 0,
+    hojaDeVida: {
+      documentos: {
+        placa: "OFU22I",
+        modelo: 2027,
+        linea: "APACHE RTR 160 4V FI - MT 160CC ABS (NG)",
+        vinChasis: "9FL37GE57VKH23086",
+        engineNumber: "HE5AV26A2047",
+        codigoFasecolda: "29517027",
+        valorFasecolda: 11499999,
+        propietario: "ANDERSON ARLES ACEVEDO OSPINA",
+        cedulaPropietario: "1128416305",
+        telefonoContacto: "3215357042",
+        ciudadCirculacion: "MEDELLIN",
+        soatVencimiento: "2027-02-15",
+        tecnoVencimiento: "2027-03-20",
+        seguroNombre: "Seguros SURA • Plan Motos Todo Riesgo",
+        seguroPoliza: "900001688138",
+        seguroVencimiento: "2027-09-10",
+        seguroCuotas: "11 cuotas mensuales de $74.478 COP (Total $819.253 COP)",
+        seguroCoberturas: "RCE $840M ($0 Deducible) | Hurto/Daños 10% PT | Asistencia Motos SURA",
+        impuestoVencimiento: "2027-06-30"
+      },
+      garantia: {
+        enabled: true,
+        distribuidor: "AUTECO / DISMERCA",
+        distribuidorCorto: "Dismerca",
+        mesesGarantia: 36,
+        kmGarantia: 36000,
+        toleranciaKm: 100,
+        ritmoKmDia: 65,
+        completadas: [1, 2]
+      },
+      servicios: [
+        {
+          id: "srv_apache_2",
+          fecha: "2026-08-14",
+          km: 5000,
+          servicio: "2ª Revisión Obligatoria de Garantía (5.000 KM)",
+          marcaRepuesto: "TVS TRU4 Synthetic 10W-30 (1.200 ml)",
+          taller: "Auteco Dismerca Autorizado",
+          costo: 0,
+          notas: "Mano de obra GRATIS. Cambio de aceite, filtro de papel, limpieza de tamiz, calibración de válvulas y tensión de cadena (20-25 mm).",
+          esRevisionGarantia: true,
+          revisionNumero: 2
+        },
+        {
+          id: "srv_apache_1",
+          fecha: "2026-06-10",
+          km: 1000,
+          servicio: "1ª Revisión Obligatoria de Garantía (1.000 KM)",
+          marcaRepuesto: "TVS TRU4 Synthetic Blend 10W-30",
+          taller: "Auteco Dismerca Autorizado",
+          costo: 0,
+          notas: "Fin período de despegue. Mano de obra GRATIS. Cambio aceite y filtro, holgura válvulas, inspección bujía (0.8 mm) y reinicio llave de servicio en TFT.",
+          esRevisionGarantia: true,
+          revisionNumero: 1
+        },
+        {
+          id: "srv_apache_sura",
+          fecha: "2026-09-10",
+          km: 6800,
+          servicio: "Expedición Póliza Todo Riesgo SURA Nº 900001688138",
+          marcaRepuesto: "Seguros Generales Suramericana S.A.",
+          taller: "SURA Plan Motos",
+          costo: 74478,
+          notas: "Póliza Todo Riesgo vinculada a OFU22I. RCE $840M sin deducible, amparo patrimonial y asistencia grúa 24/7."
+        }
+      ]
+    },
+    config: {
+      bikeIdentity: {
+        brand: "TVS",
+        model: "APACHE RTR 160 4V FI NG",
+        shortModel: "APACHE 160 FI NG",
+        year: 2025,
+        colorHex: "#DC2626",
+        accentGlow: "rgba(220, 38, 38, 0.4)",
+        category: "naked"
+      },
+      telemetrySpecs: {
+        maxRpm: 11500,
+        redlineRpm: 10500,
+        speedUnit: "km/h",
+        engineCc: 160,
+        tankCapacityLiters: 12
+      },
+      maintenanceSchedule: [
+        { id: "oil", service: "Aceite TVS Tru4 SYNTHETIC 10W-30 (1.2L)", intervalKm: 2500 },
+        { id: "chain", service: "Limpieza y Tensión Cadena (holgura 20-25mm)", intervalKm: 800 },
+        { id: "brakes", service: "Pastillas de Freno Roto Petal", intervalKm: 6000 },
+        { id: "spark", service: "Bujía BOSCH UR4KE / RG8MC5 (0.7-0.9mm)", intervalKm: 10000 },
+        { id: "air_filter", service: "Filtro de Aire Oficial", intervalKm: 10000 },
+        { id: "sprocket_rubber", service: "Cauchos Sprocket Rueda Trasera", intervalKm: 10000 }
+      ]
+    }
+  },
   {
     id: "bike_yamaha_mt09",
     odometer: 14250,
@@ -270,109 +370,10 @@ export const DEMO_GARAGE = [
         { id: "brakes", service: "Pastillas M Caliper Nissin", intervalKm: 7500 }
       ]
     }
-  },
-  {
-    id: "bike_tvs_apache160",
-    odometer: 0,
-    hojaDeVida: {
-      documentos: {
-        placa: "OFU22I",
-        modelo: 2027,
-        linea: "APACHE RTR 160 4V FI - MT 160CC ABS (NG)",
-        vinChasis: "9FL37GE57VKH23086",
-        engineNumber: "HE5AV26A2047",
-        codigoFasecolda: "29517027",
-        valorFasecolda: 11499999,
-        propietario: "ANDERSON ARLES ACEVEDO OSPINA",
-        cedulaPropietario: "1128416305",
-        telefonoContacto: "3215357042",
-        ciudadCirculacion: "MEDELLIN",
-        soatVencimiento: "2027-02-15",
-        tecnoVencimiento: "2027-03-20",
-        seguroNombre: "Seguros SURA • Plan Motos Todo Riesgo",
-        seguroPoliza: "900001688138",
-        seguroVencimiento: "2027-09-10",
-        seguroCuotas: "11 cuotas mensuales de $74.478 COP (Total $819.253 COP)",
-        seguroCoberturas: "RCE $840M ($0 Deducible) | Hurto/Daños 10% PT | Asistencia Motos SURA",
-        impuestoVencimiento: "2027-06-30"
-      },
-      garantia: {
-        enabled: true,
-        distribuidor: "AUTECO / DISMERCA",
-        distribuidorCorto: "Dismerca",
-        mesesGarantia: 36,
-        kmGarantia: 36000,
-        toleranciaKm: 100,
-        ritmoKmDia: 65,
-        completadas: [1, 2]
-      },
-      servicios: [
-        {
-          id: "srv_apache_2",
-          fecha: "2026-08-14",
-          km: 5000,
-          servicio: "2ª Revisión Obligatoria de Garantía (5.000 KM)",
-          marcaRepuesto: "TVS TRU4 Synthetic 10W-30 (1.200 ml)",
-          taller: "Auteco Dismerca Autorizado",
-          costo: 0,
-          notas: "Mano de obra GRATIS. Cambio de aceite, filtro de papel, limpieza de tamiz, calibración de válvulas y tensión de cadena (20-25 mm).",
-          esRevisionGarantia: true,
-          revisionNumero: 2
-        },
-        {
-          id: "srv_apache_1",
-          fecha: "2026-06-10",
-          km: 1000,
-          servicio: "1ª Revisión Obligatoria de Garantía (1.000 KM)",
-          marcaRepuesto: "TVS TRU4 Synthetic Blend 10W-30",
-          taller: "Auteco Dismerca Autorizado",
-          costo: 0,
-          notas: "Fin período de despegue. Mano de obra GRATIS. Cambio aceite y filtro, holgura válvulas, inspección bujía (0.8 mm) y reinicio llave de servicio en TFT.",
-          esRevisionGarantia: true,
-          revisionNumero: 1
-        },
-        {
-          id: "srv_apache_sura",
-          fecha: "2026-09-10",
-          km: 6800,
-          servicio: "Expedición Póliza Todo Riesgo SURA Nº 900001688138",
-          marcaRepuesto: "Seguros Generales Suramericana S.A.",
-          taller: "SURA Plan Motos",
-          costo: 74478,
-          notas: "Póliza Todo Riesgo vinculada a OFU22I. RCE $840M sin deducible, amparo patrimonial y asistencia grúa 24/7."
-        }
-      ]
-    },
-    config: {
-      bikeIdentity: {
-        brand: "TVS",
-        model: "APACHE RTR 160 4V FI NG",
-        shortModel: "APACHE 160 FI NG",
-        year: 2025,
-        colorHex: "#DC2626",
-        accentGlow: "rgba(220, 38, 38, 0.4)",
-        category: "naked"
-      },
-      telemetrySpecs: {
-        maxRpm: 11500,
-        redlineRpm: 10500,
-        speedUnit: "km/h",
-        engineCc: 160,
-        tankCapacityLiters: 12
-      },
-      maintenanceSchedule: [
-        { id: "oil", service: "Aceite TVS Tru4 SYNTHETIC 10W-30 (1.2L)", intervalKm: 2500 },
-        { id: "chain", service: "Limpieza y Tensión Cadena (holgura 20-25mm)", intervalKm: 800 },
-        { id: "brakes", service: "Pastillas de Freno Roto Petal", intervalKm: 6000 },
-        { id: "spark", service: "Bujía BOSCH UR4KE / RG8MC5 (0.7-0.9mm)", intervalKm: 10000 },
-        { id: "air_filter", service: "Filtro de Aire Oficial", intervalKm: 10000 },
-        { id: "sprocket_rubber", service: "Cauchos Sprocket Rueda Trasera", intervalKm: 10000 }
-      ]
-    }
   }
 ];
 
-export const ANDERSON_OFFICIAL_APACHE = DEMO_GARAGE[5];
+export const ANDERSON_OFFICIAL_APACHE = DEMO_GARAGE[0];
 export const DEMO_PREVIEW_IDS = [
   "bike_yamaha_mt09", 
   "bike_ktm_duke390", 

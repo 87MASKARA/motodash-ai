@@ -48,7 +48,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             </button>
 
             <button
-              onClick={() => onEnterDemo("bike_yamaha_mt09")}
+              onClick={() => onEnterDemo("bike_tvs_apache160")}
               className="flex px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-racing font-bold text-amber-400 hover:text-white bg-neutral-900 border border-amber-500/40 hover:border-amber-400 items-center gap-1 sm:gap-1.5 transition shadow-sm whitespace-nowrap"
             >
               <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 fill-amber-400/20" />
@@ -97,7 +97,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
           </button>
 
           <button
-            onClick={() => onEnterDemo("bike_yamaha_mt09")}
+            onClick={() => onEnterDemo("bike_tvs_apache160")}
             className="w-full sm:w-auto py-3.5 px-6 rounded-2xl font-bold font-racing uppercase tracking-wider text-sm bg-neutral-900 hover:bg-neutral-800 text-white border border-amber-500/40 hover:border-amber-400 shadow-lg shadow-amber-500/10 flex items-center justify-center gap-2 transition active:scale-95"
           >
             <Play className="w-4 h-4 text-amber-400 fill-amber-400/30" />

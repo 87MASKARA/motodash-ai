@@ -212,17 +212,18 @@ export default function App() {
   const [activeBikeId, setActiveBikeId] = useState(() => {
     const savedId = localStorage.getItem("motodash_active_bike_id");
     const savedProfile = localStorage.getItem("motodash_user_profile");
+    let isAnderson = false;
     if (savedProfile) {
       try {
         const p = JSON.parse(savedProfile);
-        if (p && isFounderVipEmail(p.email)) {
-          if (!savedId || DEMO_PREVIEW_IDS.includes(savedId)) {
-            return ANDERSON_OFFICIAL_APACHE.id;
-          }
-        }
+        if (p && isFounderVipEmail(p.email)) isAnderson = true;
       } catch (e) {}
     }
-    return savedId || ANDERSON_OFFICIAL_APACHE.id;
+    // En celular o PC, asegurar que la moto activa sea por defecto la Apache 160 FI NG (OFU22I)
+    if (!savedId || isAnderson || DEMO_PREVIEW_IDS.includes(savedId)) {
+      return ANDERSON_OFFICIAL_APACHE.id;
+    }
+    return savedId;
   });
 
   // Modales
@@ -246,15 +247,17 @@ export default function App() {
     return { unitSystem: 'metric', currency: 'COP', soundEnabled: true, wakeLockEnabled: true };
   });
 
-  // Garantizar que activeBike NUNCA sea undefined
+  // Garantizar que la Apache 160 de Anderson (OFU22I) sea siempre la moto activa prioritaria
   const activeBike = (
     garage.find((b) => b?.id === activeBikeId && isValidBike(b)) ||
+    garage.find((b) => b?.id === ANDERSON_OFFICIAL_APACHE.id) ||
+    garage.find((b) => b?.hojaDeVida?.documentos?.placa === "OFU22I") ||
     DEMO_GARAGE.find((b) => b.id === activeBikeId) ||
     garage.find(isValidBike) ||
-    DEMO_GARAGE[0]
+    ANDERSON_OFFICIAL_APACHE
   );
 
-  const activeOdometer = typeof activeBike?.odometer === "number" ? activeBike.odometer : 14250;
+  const activeOdometer = typeof activeBike?.odometer === "number" ? activeBike.odometer : 0;
 
   // Telemetría sincronizada con el límite de RPM de la moto activa y auto-inicio en modo Demo
   const telemetry = useDeviceGps({
@@ -353,8 +356,8 @@ export default function App() {
   };
 
   // Entrar al Demo en vivo desde Landing: activa simulación inmediatamente
-  const handleEnterDemo = (bikeId = "bike_yamaha_mt09") => {
-    const targetId = typeof bikeId === "string" ? bikeId : "bike_yamaha_mt09";
+  const handleEnterDemo = (bikeId = "bike_tvs_apache160") => {
+    const targetId = typeof bikeId === "string" ? bikeId : "bike_tvs_apache160";
     const demoBike = DEMO_GARAGE.find((d) => d.id === targetId);
     if (demoBike) {
       setGarage((prev) => {
