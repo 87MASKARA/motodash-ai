@@ -293,3 +293,4 @@ export async function verifyTrafficFinesBackend({ countryCode = "CO", plate, doc
     fines: []
   };
 }
+

@@ -9,7 +9,13 @@ const PLANS = [
     monthly: '1.99',
     annualMonthly: '1.25',
     annualTotal: '14.99',
-    features: ['landing.planBasicF1', 'landing.planBasicF2', 'landing.planBasicF3', 'landing.planBasicF4']
+    features: [
+      'landing.planBasicF1', 
+      'landing.planBasicF2', 
+      'landing.planBasicF3', 
+      'landing.planBasicF4',
+      'landing.planBasicF5'
+    ]
   },
   {
     id: 'pro_monthly',
@@ -23,7 +29,9 @@ const PLANS = [
       'landing.planProF2',
       'landing.planProF3',
       'landing.planProF4',
-      'landing.planProF5'
+      'landing.planProF5',
+      'landing.planProF6',
+      'landing.planProF7'
     ]
   },
   {
@@ -36,7 +44,9 @@ const PLANS = [
       'landing.planGarageF1',
       'landing.planGarageF2',
       'landing.planGarageF3',
-      'landing.planGarageF4'
+      'landing.planGarageF4',
+      'landing.planGarageF5',
+      'landing.planGarageF6'
     ]
   }
 ];

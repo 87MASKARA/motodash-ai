@@ -3,7 +3,7 @@ import AppLogo from '../Common/AppLogo';
 import LanguageSwitcher from '../Common/LanguageSwitcher';
 import { 
   Sparkles, Crown, Gauge, ArrowRight, CheckCircle2, 
-  FileText, Wrench, Play, LogIn, ShieldCheck
+  FileText, Wrench, Play, LogIn, ShieldCheck, Radar, Scale
 } from 'lucide-react';
 import { BRAND_LOGOS, BrandLogo } from '../Common/BrandLogos';
 import { MOTO_CATALOG } from '../../services/motoCatalog';
@@ -136,15 +136,21 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
         </div>
 
         {/* Píldoras de Confianza */}
-        <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs font-mono text-neutral-400">
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trust1')}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 mt-8 text-xs font-mono text-neutral-400">
+          <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" /> {t('landing.trust1')}
           </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trust2')}
+          <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" /> {t('landing.trust2')}
           </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trust3')}
+          <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" /> {t('landing.trust3')}
+          </span>
+          <span className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-xl font-bold">
+            <Radar className="w-4 h-4 text-amber-400 flex-shrink-0 animate-pulse" /> {t('landing.trust4')}
+          </span>
+          <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 px-3 py-1.5 rounded-xl font-bold">
+            <ShieldCheck className="w-4 h-4 text-blue-400 flex-shrink-0" /> {t('landing.trust5')}
           </span>
         </div>
       </section>
@@ -180,9 +186,9 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Card 1: Tacómetro */}
+          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden hover:border-neutral-700 transition">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4 border border-amber-500/20">
               <Gauge className="w-6 h-6" />
             </div>
@@ -194,8 +200,8 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             </p>
           </div>
 
-          {/* Card 2 */}
-          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden">
+          {/* Card 2: Hoja de Vida */}
+          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden hover:border-neutral-700 transition">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/20">
               <FileText className="w-6 h-6" />
             </div>
@@ -207,8 +213,8 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             </p>
           </div>
 
-          {/* Card 3 */}
-          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden">
+          {/* Card 3: 17 Componentes */}
+          <div className="p-6 rounded-3xl bg-neutral-900/60 border border-neutral-800 relative overflow-hidden hover:border-neutral-700 transition">
             <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-4 border border-cyan-500/20">
               <Wrench className="w-6 h-6" />
             </div>
@@ -218,6 +224,77 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             <p className="text-xs text-neutral-400 leading-relaxed font-sans">
               {t('landing.feat3Desc')}
             </p>
+          </div>
+        </div>
+
+        {/* Fila 2 Destacada: Radar Legal & Guardián de Garantía */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 4: Radar de Fotomultas & SIMIT Global */}
+          <div className="p-7 rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-amber-950/20 border-2 border-amber-500/40 hover:border-amber-500 transition shadow-xl relative overflow-hidden group">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-300">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <span>AHORRO 50% DESCUENTO</span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4 border border-amber-500/30">
+              <Radar className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold font-racing uppercase text-white mb-2 flex items-center gap-2">
+              <span>{t('landing.feat4Title')}</span>
+            </h3>
+            <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-4">
+              {t('landing.feat4Desc')}
+            </p>
+            <div className="flex flex-wrap gap-2 text-[10px] font-mono text-neutral-400">
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇨🇴 SIMIT / FCFM
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇪🇸 DGT España
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇲🇽 CDMX / Gob
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇺🇸 DMV Violations
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-emerald-400">
+                ⚖️ Sentencias C-038 & C-321
+              </span>
+            </div>
+          </div>
+
+          {/* Card 5: Guardián de Garantía Oficial */}
+          <div className="p-7 rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-blue-950/20 border-2 border-blue-500/40 hover:border-blue-500 transition shadow-xl relative overflow-hidden group">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/20 border border-blue-500/40 text-[10px] font-mono font-bold text-blue-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>TOLERANCIA ESTRICTA +/- 100 KM</span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-4 border border-blue-500/30">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold font-racing uppercase text-white mb-2 flex items-center gap-2">
+              <span>{t('landing.feat5Title')}</span>
+            </h3>
+            <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-4">
+              {t('landing.feat5Desc')}
+            </p>
+            <div className="flex flex-wrap gap-2 text-[10px] font-mono text-neutral-400">
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-blue-400">
+                Auteco / Dismerca
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-blue-400">
+                Yamaha Incolmotos
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-blue-400">
+                Bajaj / UMA
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-blue-400">
+                Honda / Suzuki / KTM
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-emerald-400">
+                🛡️ Roadmap 8 Revisiones
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -291,6 +368,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planBasicF2')}</li>
                 <li>{t('landing.planBasicF3')}</li>
                 <li>{t('landing.planBasicF4')}</li>
+                <li className="text-amber-400 font-bold">{t('landing.planBasicF5')}</li>
               </ul>
             </div>
             <button
@@ -333,6 +411,8 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planProF3')}</li>
                 <li>{t('landing.planProF4')}</li>
                 <li>{t('landing.planProF5')}</li>
+                <li className="text-amber-300 font-bold">{t('landing.planProF6')}</li>
+                <li className="text-blue-300 font-bold">{t('landing.planProF7')}</li>
               </ul>
             </div>
             <button
@@ -371,6 +451,8 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planGarageF2')}</li>
                 <li>{t('landing.planGarageF3')}</li>
                 <li>{t('landing.planGarageF4')}</li>
+                <li className="text-cyan-300 font-bold">{t('landing.planGarageF5')}</li>
+                <li className="text-cyan-300 font-bold">{t('landing.planGarageF6')}</li>
               </ul>
             </div>
             <button
