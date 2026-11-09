@@ -160,54 +160,59 @@ export default function HojaDeVidaModal({
           </div>
         </div>
 
-        {/* Pestañas de Navegación */}
-        <div className="flex border-b border-neutral-800 bg-neutral-950/40 p-2 gap-2 overflow-x-auto">
+        {/* Pestañas de Navegación con Scroll Suave en Móvil */}
+        <div className="flex border-b border-neutral-800 bg-neutral-950/40 p-2 gap-1.5 overflow-x-auto">
           <button
             onClick={() => setActiveTab('servicios')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
               activeTab === 'servicios'
                 ? "bg-amber-500 text-black shadow-md"
-                : "text-neutral-400 hover:text-white"
+                : "text-neutral-400 hover:text-white bg-neutral-900/50"
             }`}
           >
             <Wrench className="w-3.5 h-3.5" />
-            <span>Mantenimiento & Taller ({servicios.length})</span>
+            <span className="hidden sm:inline">Mantenimiento & Taller</span>
+            <span className="sm:hidden">Taller</span>
+            <span>({servicios.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('documentos')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
               activeTab === 'documentos'
                 ? "bg-amber-500 text-black shadow-md"
-                : "text-neutral-400 hover:text-white"
+                : "text-neutral-400 hover:text-white bg-neutral-900/50"
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
-            <span>Documentos & Vencimientos</span>
+            <span className="hidden sm:inline">Documentos & Vencimientos</span>
+            <span className="sm:hidden">Documentos</span>
           </button>
 
           <button
             onClick={() => setActiveTab('ficha')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
               activeTab === 'ficha'
                 ? "bg-amber-500 text-black shadow-md"
-                : "text-neutral-400 hover:text-white"
+                : "text-neutral-400 hover:text-white bg-neutral-900/50"
             }`}
           >
             <Gauge className="w-3.5 h-3.5" />
-            <span>Ficha Técnica Oficial</span>
+            <span className="hidden sm:inline">Ficha Técnica Oficial</span>
+            <span className="sm:hidden">Ficha Técnica</span>
           </button>
 
           <button
             onClick={() => setActiveTab('fotomultas')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+            className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
               activeTab === 'fotomultas'
                 ? "bg-amber-500 text-black shadow-md"
-                : "text-neutral-400 hover:text-white"
+                : "text-neutral-400 hover:text-white bg-neutral-900/50"
             }`}
           >
             <Radar className="w-3.5 h-3.5" />
-            <span>Radar de Multas & Tránsito</span>
+            <span className="hidden sm:inline">Radar de Multas & Tránsito</span>
+            <span className="sm:hidden">Multas</span>
             {pendingFinesCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black">
                 {pendingFinesCount}

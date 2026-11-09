@@ -71,10 +71,10 @@ export const DEMO_GARAGE = [
         category: "naked"
       },
       telemetrySpecs: {
-        maxRpm: 11500,
-        redlineRpm: 10500,
+        maxRpm: 10000,
+        redlineRpm: 9000,
         speedUnit: "km/h",
-        engineCc: 160,
+        engineCc: 159.7,
         tankCapacityLiters: 12
       },
       maintenanceSchedule: [

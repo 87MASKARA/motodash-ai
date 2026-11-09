@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Plus, ArrowLeft } from 'lucide-react';
 import AppLogo from './components/Common/AppLogo';
 import LanguageSwitcher from './components/Common/LanguageSwitcher';
@@ -166,6 +166,9 @@ export default function App() {
     }
   }, [userProfile]);
 
+  // Bandera de sincronización: impide que el estado inicial local sobreescriba Supabase por accidente
+  const hasLoadedRemoteRef = useRef(false);
+
   // 1. Cargar garaje y perfil desde Supabase en la nube (Sincronización PC <-> Celular)
   useEffect(() => {
     const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
@@ -190,6 +193,7 @@ export default function App() {
 
     // Cargar garaje remoto del usuario desde Supabase
     loadPilotGarage(effectiveUserId).then((remoteData) => {
+      hasLoadedRemoteRef.current = true;
       if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
         const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
         if (cleanBikes.length > 0) {
@@ -224,17 +228,19 @@ export default function App() {
   // 2. Guardar en Supabase en la nube con debounce para persistir automáticamente cualquier cambio
   useEffect(() => {
     const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
-    if (!effectiveUserId || !Array.isArray(garage) || garage.length === 0) return;
+    // IMPORTANTE: Solo guardar si el garaje remoto oficial ya fue cargado previamente (evita que demos o estado local desactualizado pisen la base de datos)
+    if (!effectiveUserId || !hasLoadedRemoteRef.current || !Array.isArray(garage) || garage.length === 0) return;
 
     const timer = setTimeout(() => {
       savePilotGarage(effectiveUserId, garage, activeBikeId);
-    }, 1000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [garage, activeBikeId, userProfile?.id, userProfile?.email]);
 
   // Finalizar Onboarding y arrancar en Cockpit
   const handleCompleteOnboarding = (profile, newBike) => {
+    hasLoadedRemoteRef.current = true;
     const cleanBike = sanitizeBikeEntry(newBike) || newBike;
     setUserProfile(profile);
     setGarage((prev) => [cleanBike, ...prev]);
@@ -795,6 +801,7 @@ export default function App() {
           setIsPaywallOpen(true);
         }}
         onLogout={() => {
+          hasLoadedRemoteRef.current = false;
           if (telemetry.stopSimulation) telemetry.stopSimulation();
           supabase.auth.signOut().catch(() => {});
           setUserProfile(null);
