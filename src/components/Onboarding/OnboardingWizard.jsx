@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { BRAND_LOGOS } from '../Common/BrandLogos';
 import { MOTO_CATALOG } from '../../services/motoCatalog';
+import { isFounderVipEmail } from '../Auth/LoginModal';
 
 export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initialPlan = 'pro_monthly' }) {
   const [step, setStep] = useState(1); // 1: Plan, 2: Piloto, 3: Moto & Hoja de Vida, 4: Calibrando IA
@@ -133,11 +134,15 @@ export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initi
         }
       };
 
+      const isVip = isFounderVipEmail(pilotData.email);
       const userProfile = {
         ...pilotData,
-        plan: selectedPlan,
-        isPro: selectedPlan !== 'solo',
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        plan: isVip ? 'founder_vip' : selectedPlan,
+        isPro: isVip ? true : selectedPlan !== 'solo',
+        isLifetimeVip: isVip,
+        trialEndsAt: isVip
+          ? '2099-12-31T23:59:59.000Z'
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         registrationDate: new Date().toISOString()
       };
 

@@ -363,10 +363,11 @@ export default function App() {
           phone: String(importedData.userProfile.phone || "").slice(0, 30),
           city: String(importedData.userProfile.city || "").slice(0, 50),
           country: String(importedData.userProfile.country || "").slice(0, 50),
-          plan: ["solo", "pro_monthly", "garage"].includes(importedData.userProfile.plan)
+          plan: ["solo", "pro_monthly", "garage", "founder_vip"].includes(importedData.userProfile.plan)
             ? importedData.userProfile.plan
             : "solo",
-          isPro: Boolean(importedData.userProfile.isPro)
+          isPro: Boolean(importedData.userProfile.isPro),
+          isLifetimeVip: Boolean(importedData.userProfile.isLifetimeVip || importedData.userProfile.plan === "founder_vip")
         });
       }
       if (importedData.globalSettings && typeof importedData.globalSettings === "object") {
@@ -584,8 +585,9 @@ export default function App() {
             setIsGarageOpen(false);
             const demoIds = new Set(DEMO_GARAGE.map((d) => d.id));
             const customBikesCount = garage.filter((b) => !demoIds.has(b.id)).length;
-            const maxAllowed = userProfile?.plan === "garage" ? 15 : userProfile?.plan === "pro_monthly" ? 3 : 1;
-            if (userProfile && customBikesCount >= maxAllowed) {
+            const isVip = userProfile?.plan === "founder_vip" || userProfile?.isLifetimeVip;
+            const maxAllowed = isVip ? 999 : userProfile?.plan === "garage" ? 15 : userProfile?.plan === "pro_monthly" ? 3 : 1;
+            if (userProfile && !isVip && customBikesCount >= maxAllowed) {
               setIsPaywallOpen(true);
               return;
             }

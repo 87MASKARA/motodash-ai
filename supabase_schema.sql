@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     city TEXT,
     country TEXT,
     is_pro BOOLEAN DEFAULT false NOT NULL,
-    subscription_plan TEXT DEFAULT 'solo' NOT NULL CHECK (subscription_plan IN ('solo', 'pro_monthly', 'garage')),
+    subscription_plan TEXT DEFAULT 'solo' NOT NULL CHECK (subscription_plan IN ('solo', 'pro_monthly', 'garage', 'founder_vip')),
     trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (timezone('utc'::text, now()) + interval '7 days') NOT NULL,
     lemonsqueezy_customer_id TEXT,
     lemonsqueezy_subscription_id TEXT,
@@ -110,19 +110,29 @@ CREATE TRIGGER trg_protect_profile_billing
     EXECUTE FUNCTION public.protect_profile_billing_columns();
 
 -- 8. Trigger Automático: Crear perfil cuando un usuario se registra en Supabase Auth
+--    (Otorga automáticamente Membresía Fundador VIP Vitalicia a anderson1125@gmail.com)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
+DECLARE
+    is_founder BOOLEAN;
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name)
+    is_founder := LOWER(COALESCE(NEW.email, '')) = 'anderson1125@gmail.com';
+
+    INSERT INTO public.profiles (id, email, full_name, is_pro, subscription_plan, trial_ends_at)
     VALUES (
         NEW.id,
         COALESCE(NEW.email, ''),
-        COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')
+        COALESCE(NEW.raw_user_meta_data ->> 'full_name', CASE WHEN is_founder THEN 'Anderson • Fundador VIP' ELSE '' END),
+        is_founder,
+        CASE WHEN is_founder THEN 'founder_vip' ELSE 'solo' END,
+        CASE WHEN is_founder THEN '2099-12-31 23:59:59+00'::timestamptz ELSE (timezone('utc'::text, now()) + interval '7 days') END
     )
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO UPDATE SET
+        is_pro = CASE WHEN EXCLUDED.subscription_plan = 'founder_vip' THEN true ELSE public.profiles.is_pro END,
+        subscription_plan = CASE WHEN EXCLUDED.subscription_plan = 'founder_vip' THEN 'founder_vip' ELSE public.profiles.subscription_plan END;
     RETURN NEW;
 END;
 $$;
@@ -132,6 +142,16 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
+
+-- 8b. Garantizar que el usuario Fundador VIP (anderson1125@gmail.com) ya creado en auth.users tenga su perfil Vitalicio activo
+INSERT INTO public.profiles (id, email, full_name, is_pro, subscription_plan, trial_ends_at)
+SELECT id, email, 'Anderson • Fundador VIP', true, 'founder_vip', '2099-12-31 23:59:59+00'::timestamptz
+FROM auth.users
+WHERE LOWER(email) = 'anderson1125@gmail.com'
+ON CONFLICT (id) DO UPDATE SET
+    is_pro = true,
+    subscription_plan = 'founder_vip',
+    trial_ends_at = '2099-12-31 23:59:59+00'::timestamptz;
 
 -- 9. Políticas RLS con validación USING y WITH CHECK
 CREATE POLICY "Users can view own profile"

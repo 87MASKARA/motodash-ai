@@ -33,7 +33,11 @@ export default function ProfileModal({
     setIsEditing(false);
   };
 
-  const planName = userProfile?.plan === 'garage' 
+  const isVip = userProfile?.plan === 'founder_vip' || userProfile?.isLifetimeVip;
+
+  const planName = isVip
+    ? '👑 Fundador VIP Vitalicio (Motos Ilimitadas)'
+    : userProfile?.plan === 'garage' 
     ? 'Garaje / Taller Pro ($9.99 USD • Hasta 15 Motos)' 
     : userProfile?.plan === 'pro_monthly' || userProfile?.isPro 
     ? 'Rider Pro ($4.99 USD • Hasta 3 Motos)' 
@@ -74,7 +78,9 @@ export default function ProfileModal({
             </span>
             <div className="text-sm font-bold text-white mt-0.5">{planName}</div>
             <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-1">
-              ● Estado: Suscripción Vigente
+              {isVip
+                ? '● Estado: Membresía Vitalicia (Sin Cobros Nunca)'
+                : '● Estado: Suscripción Vigente'}
             </span>
           </div>
 
