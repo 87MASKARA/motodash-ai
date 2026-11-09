@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, X, ArrowRight, Sparkles, Crown, AlertCircle } from 'lucide-react';
 import AppLogo from '../Common/AppLogo';
+import { supabase } from '../../services/supabaseClient';
 
 export const FOUNDER_VIP_EMAILS = [
   'anderson1125@gmail.com'
@@ -25,29 +26,24 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
 
     const cleanEmail = email.trim().toLowerCase();
     const isVip = isFounderVipEmail(cleanEmail);
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     try {
       let authUser = null;
 
-      if (supabaseUrl && supabaseKey) {
-        const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: supabaseKey
-          },
-          body: JSON.stringify({ email: cleanEmail, password })
+      // Autenticación oficial con Supabase Auth (persistencia automática en móvil y PC)
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
         });
 
-        if (res.ok) {
-          const data = await res.json();
+        if (data?.user) {
           authUser = data.user;
-        } else if (!isVip) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error_description || errData.msg || 'Credenciales inválidas');
+        } else if (!isVip && error) {
+          throw new Error(error.message || 'Credenciales inválidas');
         }
+      } catch (authErr) {
+        if (!isVip) throw authErr;
       }
 
       const pilotProfile = {
@@ -56,7 +52,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
           authUser?.user_metadata?.full_name ||
           (isVip ? 'Anderson • Fundador VIP' : cleanEmail.split('@')[0] || 'Piloto Rider'),
         email: cleanEmail,
-        phone: '+57 300 000 0000',
+        phone: '+57 321 535 7042',
         city: 'Medellín',
         country: 'Colombia',
         plan: isVip ? 'founder_vip' : authUser?.user_metadata?.plan || 'pro_monthly',

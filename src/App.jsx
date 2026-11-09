@@ -19,6 +19,7 @@ import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
 import { DEMO_GARAGE, ANDERSON_OFFICIAL_APACHE, DEMO_PREVIEW_IDS } from './services/demoGarage';
 import { sanitizeHexColor, computeAccentGlow } from './services/aiGenerator';
+import { loadPilotGarage, savePilotGarage, subscribeToGarageChanges, supabase } from './services/supabaseClient';
 
 function isValidBike(bike) {
   return Boolean(
@@ -176,16 +177,16 @@ export default function App() {
           ? parsed.map(sanitizeBikeEntry).filter(Boolean)
           : [];
         if (validBikes.length > 0) {
-          if (isAnderson) {
-            // Identificar si existe la Apache o cualquier moto con placa OFU22I
-            const userOfuBike = validBikes.find(
-              (b) =>
-                b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
-                b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-                b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
-            );
+          // Identificar si existe la Apache o cualquier moto con placa OFU22I
+          const userOfuBike = validBikes.find(
+            (b) =>
+              b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
+              b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+              b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
+          );
 
-            // Filtrar demos genéricas descartables, preservando motos reales
+          // Si el usuario es Anderson O si tiene su Apache en el garaje guardado
+          if (isAnderson || userOfuBike) {
             const demoIdSet = new Set(DEMO_PREVIEW_IDS);
             const otherUserBikes = validBikes.filter((b) => {
               if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
@@ -197,6 +198,18 @@ export default function App() {
             const officialHydratedBike = hydrateAndersonApache(userOfuBike);
             return [officialHydratedBike, ...otherUserBikes];
           }
+
+          // Si en el celular había guardada una Apache antigua (ej. placa demo diferente), actualizarla a OFU22I
+          const hasApacheOld = validBikes.some((b) => b.config?.bikeIdentity?.model?.toUpperCase().includes("160"));
+          if (hasApacheOld) {
+            const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+            const otherUserBikes = validBikes.filter((b) => {
+              if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
+              return !demoIdSet.has(b.id);
+            });
+            return [ANDERSON_OFFICIAL_APACHE, ...otherUserBikes];
+          }
+
           return validBikes;
         }
       } catch (e) {
@@ -287,34 +300,72 @@ export default function App() {
     }
   }, [userProfile]);
 
-  // Sincronización garantizada del Garaje Oficial cuando el fundador Anderson inicia sesión
+  // 1. Cargar garaje y perfil desde Supabase en la nube (Sincronización PC <-> Celular)
   useEffect(() => {
-    if (userProfile && isFounderVipEmail(userProfile.email)) {
-      setGarage((prev) => {
-        const userOfuBike = prev.find(
-          (b) =>
-            b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
-            b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-            b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
-        );
-        const demoIdSet = new Set(DEMO_PREVIEW_IDS);
-        const otherUserBikes = prev.filter((b) => {
-          if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
-          if (b?.id === ANDERSON_OFFICIAL_APACHE.id) return false;
-          if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
-          return !demoIdSet.has(b.id);
-        });
-        const officialHydratedBike = hydrateAndersonApache(userOfuBike);
-        return [officialHydratedBike, ...otherUserBikes];
-      });
-      setActiveBikeId((prevActive) => {
-        if (!prevActive || DEMO_PREVIEW_IDS.includes(prevActive)) {
-          return ANDERSON_OFFICIAL_APACHE.id;
+    const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
+
+    // Si no hay perfil en memoria, buscar si hay una sesión activa de Supabase
+    if (!effectiveUserId) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const isVip = isFounderVipEmail(session.user.email);
+          setUserProfile({
+            id: session.user.id,
+            email: session.user.email,
+            fullName: session.user.user_metadata?.full_name || (isVip ? 'Anderson • Fundador VIP' : 'Piloto'),
+            plan: isVip ? 'founder_vip' : session.user.user_metadata?.plan || 'pro_monthly',
+            isPro: true,
+            isLifetimeVip: isVip
+          });
         }
-        return prevActive;
       });
+      return;
     }
-  }, [userProfile]);
+
+    // Cargar garaje remoto del usuario desde Supabase
+    loadPilotGarage(effectiveUserId).then((remoteData) => {
+      if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
+        const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
+        if (cleanBikes.length > 0) {
+          setGarage(cleanBikes);
+          if (remoteData.activeBikeId && cleanBikes.some((b) => b.id === remoteData.activeBikeId)) {
+            setActiveBikeId(remoteData.activeBikeId);
+          } else {
+            setActiveBikeId(cleanBikes[0].id);
+          }
+        }
+      }
+    });
+
+    // Suscripción en tiempo real: cualquier cambio en PC se refleja en el celular al instante
+    const unsubscribe = subscribeToGarageChanges(effectiveUserId, (remoteData) => {
+      if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
+        const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
+        if (cleanBikes.length > 0) {
+          setGarage(cleanBikes);
+          if (remoteData.activeBikeId) {
+            setActiveBikeId(remoteData.activeBikeId);
+          }
+        }
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [userProfile?.id, userProfile?.email]);
+
+  // 2. Guardar en Supabase en la nube con debounce para persistir automáticamente cualquier cambio
+  useEffect(() => {
+    const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
+    if (!effectiveUserId || !Array.isArray(garage) || garage.length === 0) return;
+
+    const timer = setTimeout(() => {
+      savePilotGarage(effectiveUserId, garage, activeBikeId);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [garage, activeBikeId, userProfile?.id, userProfile?.email]);
 
   // Finalizar Onboarding y arrancar en Cockpit
   const handleCompleteOnboarding = (profile, newBike) => {
@@ -893,6 +944,7 @@ export default function App() {
         }}
         onLogout={() => {
           if (telemetry.stopSimulation) telemetry.stopSimulation();
+          supabase.auth.signOut().catch(() => {});
           setUserProfile(null);
           setIsProfileModalOpen(false);
           setCurrentView("landing");
