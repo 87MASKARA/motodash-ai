@@ -10,6 +10,7 @@ import { MOTO_CATALOG } from '../../services/motoCatalog';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 const QUICK_DEMO_BIKES = [
+  { id: "bike_tvs_apache160", brand: "TVS", model: "APACHE 160", spec: "160cc • 10.0k RPM", color: "#DC2626" },
   { id: "bike_yamaha_mt09", brand: "YAMAHA", model: "MT-09 SP", spec: "890cc • 11.5k RPM", color: "#00D2D3" },
   { id: "bike_ktm_duke390", brand: "KTM", model: "390 DUKE", spec: "399cc • 10.5k RPM", color: "#FF6600" },
   { id: "bike_kawasaki_zx6r", brand: "KAWASAKI", model: "ZX-6R 636", spec: "636cc • 16.0k RPM", color: "#52C41A" },

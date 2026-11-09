@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
-  Warehouse, Eye, FileText, Gauge, Settings
+  Warehouse, Eye, FileText, Gauge, Settings, Shield
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -12,12 +12,17 @@ import RouteWidget from './Widgets/RouteWidget';
 import SprintTimerWidget from './Widgets/SprintTimerWidget';
 import FuelTelemetryWidget from './Widgets/FuelTelemetryWidget';
 import CriticalAlertBanner from './Widgets/CriticalAlertBanner';
+import WarrantyGuardianWidget from './Widgets/WarrantyGuardianWidget';
+import WarrantyRulesModal from '../Modals/WarrantyRulesModal';
+import RegisterWarrantyRevisionModal from '../Modals/RegisterWarrantyRevisionModal';
+import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { isFounderVipEmail } from '../Auth/LoginModal';
 
 export default function DynamicDashboard({
+  bike = null,
   config = {},
   telemetry = {},
   odometer = 0,
@@ -35,7 +40,8 @@ export default function DynamicDashboard({
   onOpenOdometerModal,
   onOpenHojaDeVida,
   onOpenEditComponentModal,
-  onOpenSettings
+  onOpenSettings,
+  onUpdateHojaDeVida
 }) {
   const { t } = useLanguage();
   const isVip = Boolean(
@@ -48,6 +54,72 @@ export default function DynamicDashboard({
     userProfile?.plan === 'pro_monthly' ||
     userProfile?.plan === 'garage'
   );
+
+  const effectiveBike = bike || { config, hojaDeVida, odometer };
+  const warrantyState = computeWarrantyState(effectiveBike, odometer);
+
+  const [isWarrantyRulesOpen, setIsWarrantyRulesOpen] = useState(false);
+  const [isRegisterWarrantyModalOpen, setIsRegisterWarrantyModalOpen] = useState(false);
+  const [selectedRevisionForRegister, setSelectedRevisionForRegister] = useState(null);
+
+  const handleOpenWarrantyRules = (revNum = null) => {
+    setIsWarrantyRulesOpen(true);
+  };
+
+  const handleOpenRegisterRevision = (rev) => {
+    setSelectedRevisionForRegister(rev || warrantyState.nextRev);
+    setIsRegisterWarrantyModalOpen(true);
+  };
+
+  const handleConfirmRevision = (data) => {
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], garantia: {} };
+    const currentGarantia = currentHoja.garantia || {};
+    const existingCompletadas = new Set(currentGarantia.completadas || []);
+    existingCompletadas.add(data.revisionNumero);
+
+    const newServiceRecord = {
+      id: `srv_garantia_${data.revisionNumero}_${Date.now()}`,
+      fecha: data.fecha,
+      km: data.kmReal,
+      servicio: data.servicioTitulo,
+      marcaRepuesto: data.repuestos,
+      taller: data.taller,
+      costo: data.costo,
+      notas: data.notas,
+      esRevisionGarantia: true,
+      revisionNumero: data.revisionNumero
+    };
+
+    const nextHoja = {
+      ...currentHoja,
+      servicios: [newServiceRecord, ...(currentHoja.servicios || [])],
+      garantia: {
+        ...currentGarantia,
+        completadas: Array.from(existingCompletadas)
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
+
+  const handleSaveCustomWarranty = (customSettings) => {
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], garantia: {} };
+    const currentGarantia = currentHoja.garantia || {};
+
+    const nextHoja = {
+      ...currentHoja,
+      garantia: {
+        ...currentGarantia,
+        ...customSettings
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
   const bikeIdentity = config.bikeIdentity || {
     brand: "YAMAHA",
     model: "MT-09 SP",
@@ -224,6 +296,20 @@ export default function DynamicDashboard({
               </span>
             </button>
 
+            {/* Pill de Garantía Oficial en el Header */}
+            {warrantyState.isEnabled && (
+              <button
+                type="button"
+                onClick={() => handleOpenWarrantyRules(warrantyState.nextRev?.numero)}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-blue-300 flex items-center gap-1.5 transition shadow-sm"
+                title={`Guardián de Garantía ${warrantyState.distribuidorCorto}`}
+              >
+                <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Garantía</span>
+                <span className="text-cyan-300">{warrantyState.nextRev ? `${warrantyState.nextRev.numero}ª` : '100%'}</span>
+              </button>
+            )}
+
             {/* Ajustes Globales */}
             <button
               onClick={onOpenSettings}
@@ -275,6 +361,17 @@ export default function DynamicDashboard({
       {/* Grid Principal de Widgets */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+          
+          {/* MÓDULO GUARDIÁN DE GARANTÍA OFICIAL */}
+          <div className="lg:col-span-2">
+            <WarrantyGuardianWidget
+              bike={effectiveBike}
+              currentOdometer={odometer}
+              onOpenRulesModal={handleOpenWarrantyRules}
+              onOpenRegisterRevisionModal={handleOpenRegisterRevision}
+            />
+          </div>
+
           {/* Fila 1: Velocímetro & Tacómetro */}
           <SpeedometerWidget 
             speed={displaySpeed}
@@ -341,6 +438,29 @@ export default function DynamicDashboard({
       <footer className="border-t border-neutral-900 py-4 px-6 text-center text-xs text-neutral-600 font-mono">
         {t('dashboard.footer')} • <a href="https://motodashai.com" target="_blank" rel="noreferrer" className="text-neutral-500 hover:text-neutral-400">motodashai.com</a>
       </footer>
+
+      {/* MODAL REGLAS & MANUAL DE GARANTÍA */}
+      <WarrantyRulesModal
+        isOpen={isWarrantyRulesOpen}
+        onClose={() => setIsWarrantyRulesOpen(false)}
+        warrantyState={warrantyState}
+        onSaveCustomWarranty={handleSaveCustomWarranty}
+        bikeName={`${bikeIdentity.brand} ${bikeIdentity.model}`}
+      />
+
+      {/* MODAL REGISTRAR REVISIÓN DE GARANTÍA */}
+      <RegisterWarrantyRevisionModal
+        isOpen={isRegisterWarrantyModalOpen}
+        onClose={() => {
+          setIsRegisterWarrantyModalOpen(false);
+          setSelectedRevisionForRegister(null);
+        }}
+        revision={selectedRevisionForRegister || warrantyState.nextRev}
+        currentOdometer={odometer}
+        distribuidor={warrantyState.distribuidor}
+        currency={globalSettings.currency || 'COP'}
+        onConfirmRevision={handleConfirmRevision}
+      />
     </div>
   );
 }

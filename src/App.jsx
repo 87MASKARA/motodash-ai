@@ -540,6 +540,7 @@ export default function App() {
           </div>
 
           <DynamicDashboard
+            bike={activeBike}
             config={activeBike.config}
             telemetry={telemetry}
             odometer={activeOdometer}
@@ -558,6 +559,7 @@ export default function App() {
             onOpenHojaDeVida={() => setIsHojaDeVidaOpen(true)}
             onOpenEditComponentModal={handleOpenEditComponentModal}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onUpdateHojaDeVida={handleUpdateHojaDeVida}
           />
         </div>
       )}
