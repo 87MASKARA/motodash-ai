@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Wrench, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Wrench, ShieldAlert, Radar, DollarSign } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES } from '../../../services/maintenanceCatalog';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -7,8 +7,10 @@ export default function CriticalAlertBanner({
   currentOdometer = 0, 
   customComponents = {},
   docs = {},
+  urgentFine = null,
   onOpenOdometerModal,
-  onOpenHojaDeVida
+  onOpenHojaDeVida,
+  onOpenFinesModal
 }) {
   const { t } = useLanguage();
   const allComponents = {
@@ -49,7 +51,7 @@ export default function CriticalAlertBanner({
     { name: "Seguro Todo Riesgo", days: getDaysRemaining(docs.seguroVencimiento) }
   ].filter(d => d.days !== null && d.days <= 20);
 
-  if (urgentComponents.length === 0 && urgentDocs.length === 0) {
+  if (urgentComponents.length === 0 && urgentDocs.length === 0 && !urgentFine) {
     return null; // Todo en orden
   }
 
@@ -72,11 +74,15 @@ export default function CriticalAlertBanner({
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-black uppercase tracking-widest text-red-300 flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
-                  {t('alert.urgentTitle')}
+                  {urgentFine ? "🚨 ALERTA FOTOMULTA ACTIVA" : t('alert.urgentTitle')}
                 </span>
               </div>
 
-              {primaryComp ? (
+              {urgentFine ? (
+                <h3 className="text-sm font-bold text-white leading-tight mt-0.5">
+                  Infracción {urgentFine.codigoInfraccion}: Quedan <strong className="text-amber-300 font-mono">{urgentFine.diasRestantesDescuento} días</strong> para pagar con 50% de descuento (${urgentFine.valorConDescuento?.toLocaleString()} COP)
+                </h3>
+              ) : primaryComp ? (
                 <h3 className="text-sm font-bold text-white leading-tight mt-0.5">
                   {primaryComp.label} • {t('alert.onlyRemaining')} <strong className="text-amber-300 font-mono">{primaryComp.kmRestantes.toLocaleString()} km</strong>
                 </h3>
@@ -89,7 +95,15 @@ export default function CriticalAlertBanner({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {primaryComp ? (
+            {urgentFine ? (
+              <button
+                onClick={onOpenFinesModal}
+                className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black text-xs font-bold font-racing uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-1.5"
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>Pagar con 50% Descuento</span>
+              </button>
+            ) : primaryComp ? (
               <button
                 onClick={() => onOpenOdometerModal(primaryComp.id)}
                 className="w-full sm:w-auto py-2 px-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-black text-xs font-bold font-racing uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-1.5"

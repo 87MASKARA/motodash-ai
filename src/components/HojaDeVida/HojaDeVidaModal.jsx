@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import PrintReportModal from './PrintReportModal';
 import { BrandLogo } from '../Common/BrandLogos';
 import { 
-  Wrench, Shield, Plus, Gauge, X, Edit3, Check, Trash2
+  Wrench, Shield, Plus, Gauge, X, Edit3, Check, Trash2, Radar
 } from 'lucide-react';
+import TrafficFinesRadarCard from '../Dashboard/Widgets/TrafficFinesRadarCard';
+import TrafficFinesModal from '../Modals/TrafficFinesModal';
+import { computeFinesRadarState } from '../../services/trafficFinesService';
 
 export default function HojaDeVidaModal({
   isOpen,
@@ -14,11 +17,16 @@ export default function HojaDeVidaModal({
   currency = 'COP',
   onUpdateHojaDeVida,
   onDeleteService,
-  onOpenOdometerModal
+  onOpenOdometerModal,
+  userProfile = null,
+  bike = null,
+  onOpenFinesModal = null
 }) {
-  const [activeTab, setActiveTab] = useState('servicios'); // 'servicios' | 'documentos' | 'ficha'
+  const [activeTab, setActiveTab] = useState('servicios'); // 'servicios' | 'documentos' | 'ficha' | 'fotomultas'
   const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [isFinesModalOpen, setIsFinesModalOpen] = useState(false);
+  const [finesModalTab, setFinesModalTab] = useState('multas');
 
   const defaultDocs = {
     placa: "OFU22I",
@@ -70,6 +78,38 @@ export default function HojaDeVidaModal({
       });
     }
     setIsEditingDocs(false);
+  };
+
+  const currentBike = bike || { config: bikeConfig, hojaDeVida, odometer };
+  const finesRadarState = computeFinesRadarState(currentBike, userProfile);
+  const pendingFinesCount = finesRadarState.multasPendientes?.length || 0;
+
+  const handleSaveTrafficSettings = (newSettings) => {
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida({
+        ...hojaDeVida,
+        multas: {
+          ...(hojaDeVida.multas || {}),
+          ...newSettings
+        }
+      });
+    }
+  };
+
+  const handleClearFine = (fineId) => {
+    const currentMultas = hojaDeVida.multas || {};
+    const currentList = Array.isArray(currentMultas.registros) ? currentMultas.registros : [];
+    const updatedList = currentList.filter(f => f.id !== fineId);
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida({
+        ...hojaDeVida,
+        multas: {
+          ...currentMultas,
+          registros: updatedList,
+          lastChecked: new Date().toISOString()
+        }
+      });
+    }
   };
 
   return (
@@ -156,6 +196,23 @@ export default function HojaDeVidaModal({
           >
             <Gauge className="w-3.5 h-3.5" />
             <span>Ficha Técnica Oficial</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('fotomultas')}
+            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+              activeTab === 'fotomultas'
+                ? "bg-amber-500 text-black shadow-md"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            <Radar className="w-3.5 h-3.5" />
+            <span>Radar de Multas & Tránsito</span>
+            {pendingFinesCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black">
+                {pendingFinesCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -484,6 +541,21 @@ export default function HojaDeVidaModal({
               </div>
             </div>
           )}
+
+          {/* TAB 4: RADAR DE FOTOMULTAS & TRÁNSITO */}
+          {activeTab === 'fotomultas' && (
+            <div className="space-y-4">
+              <TrafficFinesRadarCard
+                bike={currentBike}
+                userProfile={userProfile}
+                onOpenFinesModal={(tab = 'multas') => {
+                  setFinesModalTab(tab);
+                  setIsFinesModalOpen(true);
+                }}
+                onUpdateHojaDeVida={onUpdateHojaDeVida}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -507,6 +579,17 @@ export default function HojaDeVidaModal({
           hojaDeVida={hojaDeVida}
           odometer={odometer}
           currency={currency}
+        />
+
+        {/* Modal Detallado de Radar de Fotomultas & Tránsito */}
+        <TrafficFinesModal
+          isOpen={isFinesModalOpen}
+          onClose={() => setIsFinesModalOpen(false)}
+          bike={currentBike}
+          userProfile={userProfile}
+          initialTab={finesModalTab}
+          onUpdateTrafficSettings={handleSaveTrafficSettings}
+          onClearFine={handleClearFine}
         />
       </div>
     </div>

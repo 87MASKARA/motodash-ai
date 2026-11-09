@@ -606,6 +606,8 @@ export default function App() {
         isOpen={isHojaDeVidaOpen}
         onClose={() => setIsHojaDeVidaOpen(false)}
         bikeConfig={activeBike?.config}
+        bike={activeBike}
+        userProfile={userProfile}
         hojaDeVida={activeBike?.hojaDeVida || {}}
         odometer={activeOdometer}
         currency={globalSettings.currency || 'COP'}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
-  Warehouse, Eye, FileText, Gauge, Settings, Shield
+  Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -13,9 +13,12 @@ import SprintTimerWidget from './Widgets/SprintTimerWidget';
 import FuelTelemetryWidget from './Widgets/FuelTelemetryWidget';
 import CriticalAlertBanner from './Widgets/CriticalAlertBanner';
 import WarrantyGuardianWidget from './Widgets/WarrantyGuardianWidget';
+import TrafficFinesRadarCard from './Widgets/TrafficFinesRadarCard';
 import WarrantyRulesModal from '../Modals/WarrantyRulesModal';
 import RegisterWarrantyRevisionModal from '../Modals/RegisterWarrantyRevisionModal';
+import TrafficFinesModal from '../Modals/TrafficFinesModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
+import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -113,6 +116,50 @@ export default function DynamicDashboard({
       garantia: {
         ...currentGarantia,
         ...customSettings
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
+
+  // Estado del Radar de Multas y Comparendos (Opción A + C)
+  const finesRadarState = computeFinesRadarState(effectiveBike, userProfile);
+  const [isFinesModalOpen, setIsFinesModalOpen] = useState(false);
+  const [finesModalTab, setFinesModalTab] = useState('multas');
+
+  const handleOpenFinesModal = (tab = 'multas') => {
+    setFinesModalTab(typeof tab === 'string' ? tab : 'multas');
+    setIsFinesModalOpen(true);
+  };
+
+  const handleSaveTrafficSettings = (settings) => {
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], multas: {} };
+    const currentMultas = currentHoja.multas || {};
+
+    const nextHoja = {
+      ...currentHoja,
+      multas: {
+        ...currentMultas,
+        ...settings
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
+
+  const handleClearFine = () => {
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], multas: {} };
+    const currentMultas = currentHoja.multas || {};
+
+    const nextHoja = {
+      ...currentHoja,
+      multas: {
+        ...currentMultas,
+        alertasActivas: []
       }
     };
 
@@ -310,6 +357,24 @@ export default function DynamicDashboard({
               </button>
             )}
 
+            {/* Pill Radar de Fotomultas en el Header */}
+            <button
+              type="button"
+              onClick={() => handleOpenFinesModal('multas')}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border ${
+                finesRadarState.tieneMultas
+                  ? "bg-red-950/80 hover:bg-red-900 border-red-500/60 text-red-300 animate-pulse shadow-md shadow-red-500/20"
+                  : "bg-neutral-900/80 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
+              }`}
+              title={`Radar de Tránsito ${finesRadarState.portal.entidadCorta}`}
+            >
+              <Radar className={`w-3.5 h-3.5 ${finesRadarState.tieneMultas ? "text-red-400" : "text-emerald-400"}`} />
+              <span className="hidden sm:inline">{finesRadarState.portal.entidadCorta}</span>
+              <span className={finesRadarState.tieneMultas ? "text-red-300 font-bold" : "text-emerald-400"}>
+                {finesRadarState.tieneMultas ? `${finesRadarState.totalMultas} Multa` : 'Al Día'}
+              </span>
+            </button>
+
             {/* Ajustes Globales */}
             <button
               onClick={onOpenSettings}
@@ -349,13 +414,15 @@ export default function DynamicDashboard({
         </div>
       </header>
 
-      {/* Banner de Alerta Crítica (si hay mantenimiento urgente o documento por vencer) */}
+      {/* Banner de Alerta Crítica (si hay fotomulta con descuento, mantenimiento urgente o documento por vencer) */}
       <CriticalAlertBanner 
         currentOdometer={odometer}
         customComponents={customComponents}
         docs={hojaDeVida.documentos || {}}
+        urgentFine={finesRadarState.multaUrgente}
         onOpenOdometerModal={onOpenOdometerModal}
         onOpenHojaDeVida={onOpenHojaDeVida}
+        onOpenFinesModal={() => handleOpenFinesModal('multas')}
       />
 
       {/* Grid Principal de Widgets */}
@@ -369,6 +436,16 @@ export default function DynamicDashboard({
               currentOdometer={odometer}
               onOpenRulesModal={handleOpenWarrantyRules}
               onOpenRegisterRevisionModal={handleOpenRegisterRevision}
+            />
+          </div>
+
+          {/* MÓDULO RADAR DE FOTOMULTAS & COMPARENDOS MULTIPAÍS */}
+          <div className="lg:col-span-2">
+            <TrafficFinesRadarCard
+              bike={effectiveBike}
+              userProfile={userProfile}
+              onOpenFinesModal={handleOpenFinesModal}
+              onUpdateHojaDeVida={onUpdateHojaDeVida}
             />
           </div>
 
@@ -460,6 +537,17 @@ export default function DynamicDashboard({
         distribuidor={warrantyState.distribuidor}
         currency={globalSettings.currency || 'COP'}
         onConfirmRevision={handleConfirmRevision}
+      />
+
+      {/* MODAL RADAR DE FOTOMULTAS & TRÁNSITO */}
+      <TrafficFinesModal
+        isOpen={isFinesModalOpen}
+        onClose={() => setIsFinesModalOpen(false)}
+        radarState={finesRadarState}
+        initialTab={finesModalTab}
+        onSaveTrafficSettings={handleSaveTrafficSettings}
+        onClearFine={handleClearFine}
+        bikeName={`${bikeIdentity.brand} ${bikeIdentity.model}`}
       />
     </div>
   );
