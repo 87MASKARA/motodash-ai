@@ -62,10 +62,12 @@ export default function DynamicDashboard({
   const warrantyState = computeWarrantyState(effectiveBike, odometer);
 
   const [isWarrantyRulesOpen, setIsWarrantyRulesOpen] = useState(false);
+  const [selectedRevisionForRules, setSelectedRevisionForRules] = useState(null);
   const [isRegisterWarrantyModalOpen, setIsRegisterWarrantyModalOpen] = useState(false);
   const [selectedRevisionForRegister, setSelectedRevisionForRegister] = useState(null);
 
   const handleOpenWarrantyRules = (revNum = null) => {
+    setSelectedRevisionForRules(revNum);
     setIsWarrantyRulesOpen(true);
   };
 
@@ -99,6 +101,58 @@ export default function DynamicDashboard({
       garantia: {
         ...currentGarantia,
         completadas: Array.from(existingCompletadas)
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
+
+  const handleUnmarkRevision = (revisionNumero) => {
+    const revNum = Number(revisionNumero);
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], garantia: {} };
+    const currentGarantia = currentHoja.garantia || {};
+    const existingCompletadas = new Set(
+      Array.isArray(currentGarantia.completadas) ? currentGarantia.completadas.map(Number) : []
+    );
+    existingCompletadas.delete(revNum);
+
+    // Remover también el registro de servicio automático de la bitácora si existe
+    const updatedServicios = Array.isArray(currentHoja.servicios)
+      ? currentHoja.servicios.filter(
+          (s) => !(s.esRevisionGarantia && Number(s.revisionNumero) === revNum)
+        )
+      : [];
+
+    const nextHoja = {
+      ...currentHoja,
+      servicios: updatedServicios,
+      garantia: {
+        ...currentGarantia,
+        completadas: Array.from(existingCompletadas).sort((a, b) => a - b)
+      }
+    };
+
+    if (onUpdateHojaDeVida) {
+      onUpdateHojaDeVida(nextHoja);
+    }
+  };
+
+  const handleResetAllRevisions = () => {
+    const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], garantia: {} };
+    const currentGarantia = currentHoja.garantia || {};
+
+    const updatedServicios = Array.isArray(currentHoja.servicios)
+      ? currentHoja.servicios.filter((s) => !s.esRevisionGarantia)
+      : [];
+
+    const nextHoja = {
+      ...currentHoja,
+      servicios: updatedServicios,
+      garantia: {
+        ...currentGarantia,
+        completadas: []
       }
     };
 
@@ -436,6 +490,7 @@ export default function DynamicDashboard({
               currentOdometer={odometer}
               onOpenRulesModal={handleOpenWarrantyRules}
               onOpenRegisterRevisionModal={handleOpenRegisterRevision}
+              onUnmarkRevision={handleUnmarkRevision}
             />
           </div>
 
@@ -519,9 +574,16 @@ export default function DynamicDashboard({
       {/* MODAL REGLAS & MANUAL DE GARANTÍA */}
       <WarrantyRulesModal
         isOpen={isWarrantyRulesOpen}
-        onClose={() => setIsWarrantyRulesOpen(false)}
+        onClose={() => {
+          setIsWarrantyRulesOpen(false);
+          setSelectedRevisionForRules(null);
+        }}
         warrantyState={warrantyState}
+        initialRevisionNumero={selectedRevisionForRules}
         onSaveCustomWarranty={handleSaveCustomWarranty}
+        onUnmarkRevision={handleUnmarkRevision}
+        onRegisterRevision={handleOpenRegisterRevision}
+        onResetAllRevisions={handleResetAllRevisions}
         bikeName={`${bikeIdentity.brand} ${bikeIdentity.model}`}
       />
 

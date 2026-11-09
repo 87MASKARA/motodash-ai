@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ShieldAlert, 
@@ -30,12 +30,24 @@ export default function WarrantyRulesModal({
   onClose,
   warrantyState,
   onSaveCustomWarranty,
+  onUnmarkRevision,
+  onRegisterRevision,
+  onResetAllRevisions,
+  initialRevisionNumero = null,
   bikeName = "Moto"
 }) {
   const [activeTab, setActiveTab] = useState('cronograma'); // 'cronograma' | 'reglas' | 'checklist' | 'settings'
   const [expandedRevision, setExpandedRevision] = useState(
-    warrantyState?.nextRev?.numero || 1
+    initialRevisionNumero || warrantyState?.nextRev?.numero || 1
   );
+
+  useEffect(() => {
+    if (initialRevisionNumero) {
+      setExpandedRevision(initialRevisionNumero);
+    } else if (warrantyState?.nextRev?.numero) {
+      setExpandedRevision(warrantyState.nextRev.numero);
+    }
+  }, [initialRevisionNumero, isOpen, warrantyState?.nextRev?.numero]);
 
   // Checklist diario local
   const [dailyChecks, setDailyChecks] = useState(() => {
@@ -234,17 +246,49 @@ export default function WarrantyRulesModal({
                         </div>
 
                         {/* Status / Countdown */}
-                        <div className="text-right shrink-0">
+                        <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                           {isDone ? (
-                            <span className="text-[11px] font-mono text-emerald-400 font-bold block">
-                              Realizada
-                            </span>
+                            <>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5" /> Realizada
+                              </span>
+                              {onUnmarkRevision && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`¿Deseas desmarcar la ${rev.numero}ª Revisión (${rev.km.toLocaleString()} KM) para volver a dejarla pendiente?`)) {
+                                      onUnmarkRevision(rev.numero);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                                  title="Desmarcar revisión"
+                                >
+                                  <RotateCcw className="w-2.5 h-2.5" />
+                                  <span>Desmarcar</span>
+                                </button>
+                              )}
+                            </>
                           ) : (
-                            <div>
+                            <>
                               <span className="text-xs font-mono font-bold text-slate-200 block">
                                 Meta: {rev.km.toLocaleString()} km
                               </span>
-                            </div>
+                              {onRegisterRevision && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose();
+                                    onRegisterRevision(rev);
+                                  }}
+                                  className="px-2 py-0.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 text-[10px] font-mono font-bold flex items-center gap-1 transition active:scale-95"
+                                >
+                                  <Wrench className="w-2.5 h-2.5" />
+                                  <span>Registrar</span>
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -501,6 +545,65 @@ export default function WarrantyRulesModal({
                     max="500"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:border-cyan-500 focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* Control Rápido de Revisiones Realizadas */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <span className="text-amber-400 font-bold block text-xs">Desmarcar / Modificar Revisiones</span>
+                    <span className="text-[10px] text-slate-400">Haz clic en cualquier revisión para marcarla o desmarcarla fácilmente</span>
+                  </div>
+                  {onResetAllRevisions && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("¿Seguro que deseas reiniciar todas las revisiones a pendientes (0 completadas)?")) {
+                          onResetAllRevisions();
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-mono font-bold transition flex items-center gap-1 active:scale-95"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reiniciar todas a 0</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  {warrantyState?.revisiones?.map((rev) => {
+                    const isDone = warrantyState.completedNumbers.includes(rev.numero);
+                    return (
+                      <button
+                        key={rev.numero}
+                        type="button"
+                        onClick={() => {
+                          if (isDone && onUnmarkRevision) {
+                            onUnmarkRevision(rev.numero);
+                          } else if (!isDone && onRegisterRevision) {
+                            onClose();
+                            onRegisterRevision(rev);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition active:scale-95 cursor-pointer ${
+                          isDone
+                            ? "bg-emerald-950/40 border-emerald-500/50 text-white hover:border-amber-400"
+                            : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                        }`}
+                        title={isDone ? `Click para desmarcar ${rev.numero}ª` : `Click para registrar ${rev.numero}ª`}
+                      >
+                        <span className="text-[11px] font-mono font-bold">
+                          {rev.numero}ª ({rev.km >= 1000 ? `${rev.km / 1000}k` : rev.km})
+                        </span>
+                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-black ${
+                          isDone ? "bg-emerald-500 text-black" : "bg-slate-800 text-slate-500"
+                        }`}>
+                          {isDone ? "HECHA" : "PEND"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

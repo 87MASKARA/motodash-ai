@@ -691,13 +691,9 @@ export function computeWarrantyState(bike, currentOdometer = 0) {
     ? customGarantia.revisiones
     : defaultPolicy.revisiones;
 
-  const completedNumbers = new Set(customGarantia.completadas || []);
-
-  revisionesConfig.forEach((rev) => {
-    if (currentOdometer >= rev.km + toleranciaKm) {
-      completedNumbers.add(rev.numero);
-    }
-  });
+  const completedNumbers = new Set(
+    Array.isArray(customGarantia.completadas) ? customGarantia.completadas.map(Number) : []
+  );
 
   const totalRevisiones = revisionesConfig.length;
   const completadasCount = completedNumbers.size;

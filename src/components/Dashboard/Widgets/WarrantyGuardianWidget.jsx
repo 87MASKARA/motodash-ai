@@ -8,7 +8,8 @@ import {
   BookOpen, 
   ChevronRight,
   Award,
-  Sparkles
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { computeWarrantyState } from '../../../services/warrantyCatalog';
 
@@ -16,7 +17,8 @@ export default function WarrantyGuardianWidget({
   bike = {},
   currentOdometer = 0,
   onOpenRulesModal,
-  onOpenRegisterRevisionModal
+  onOpenRegisterRevisionModal,
+  onUnmarkRevision
 }) {
   const warranty = computeWarrantyState(bike, currentOdometer);
 
@@ -270,9 +272,27 @@ export default function WarrantyGuardianWidget({
 
       {/* 3. Mini Roadmap Visual: Stepper Cuadriculado Exacto */}
       <div className="mb-3.5">
-        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5 px-1">
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5 px-1 flex-wrap gap-1">
           <span>ROADMAP DE {totalRevisiones} REVISIONES OBLIGATORIAS:</span>
-          <span className="text-cyan-400 font-bold">{completadasCount} / {totalRevisiones} COMPLETADAS</span>
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-400 font-bold">{completadasCount} / {totalRevisiones} COMPLETADAS</span>
+            {completadasCount > 0 && onUnmarkRevision && (
+              <button
+                type="button"
+                onClick={() => {
+                  const lastRevNumber = Math.max(...completedNumbers);
+                  if (window.confirm(`¿Deseas desmarcar la ${lastRevNumber}ª Revisión y volver a dejarla pendiente?`)) {
+                    onUnmarkRevision(lastRevNumber);
+                  }
+                }}
+                className="px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1 transition shadow-sm active:scale-95"
+                title="Deshacer última revisión completada"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+                <span>Deshacer {Math.max(...completedNumbers)}ª</span>
+              </button>
+            )}
+          </div>
         </div>
         
         <div className={`grid gap-1.5 ${
@@ -290,11 +310,23 @@ export default function WarrantyGuardianWidget({
               <button
                 key={rev.numero}
                 type="button"
-                onClick={() => onOpenRulesModal(rev.numero)}
-                title={`${rev.numero}ª Rev (${rev.km.toLocaleString()} KM) - ${rev.manoDeObra === 'GRATIS' ? 'M.O Gratis' : 'Pagada'}`}
-                className={`p-1.5 sm:p-2 rounded-xl text-center border transition-all flex flex-col items-center justify-center ${
+                onClick={() => {
+                  if (isDone && onUnmarkRevision) {
+                    if (window.confirm(`¿Deseas desmarcar la ${rev.numero}ª Revisión (${rev.km.toLocaleString()} KM) para volver a dejarla pendiente?`)) {
+                      onUnmarkRevision(rev.numero);
+                      return;
+                    }
+                  }
+                  onOpenRulesModal(rev.numero);
+                }}
+                title={
+                  isDone 
+                    ? `Click para desmarcar o consultar ${rev.numero}ª Revisión` 
+                    : `${rev.numero}ª Rev (${rev.km.toLocaleString()} KM) - ${rev.manoDeObra === 'GRATIS' ? 'M.O Gratis' : 'Pagada'}`
+                }
+                className={`p-1.5 sm:p-2 rounded-xl text-center border transition-all flex flex-col items-center justify-center cursor-pointer ${
                   isDone
-                    ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-400"
+                    ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-400 hover:border-amber-400 hover:text-amber-300"
                     : isCurrent
                     ? isPeligroVencida
                       ? "bg-red-950 border-red-500 text-red-300 animate-pulse ring-1 ring-red-400"
