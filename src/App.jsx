@@ -51,6 +51,81 @@ function sanitizeBikeEntry(bike) {
   };
 }
 
+// Hidrata y preserva los datos reales de la TVS Apache 160 FI NG (OFU22I) de Anderson sin perder bitácora
+function hydrateAndersonApache(existingBike) {
+  if (!existingBike) return ANDERSON_OFFICIAL_APACHE;
+
+  const existingServicios = Array.isArray(existingBike.hojaDeVida?.servicios) && existingBike.hojaDeVida.servicios.length > 0
+    ? existingBike.hojaDeVida.servicios
+    : ANDERSON_OFFICIAL_APACHE.hojaDeVida.servicios;
+
+  const existingCompletadas = Array.isArray(existingBike.hojaDeVida?.garantia?.completadas) && existingBike.hojaDeVida.garantia.completadas.length > 0
+    ? existingBike.hojaDeVida.garantia.completadas
+    : ANDERSON_OFFICIAL_APACHE.hojaDeVida.garantia.completadas;
+
+  return {
+    ...ANDERSON_OFFICIAL_APACHE,
+    ...existingBike,
+    id: ANDERSON_OFFICIAL_APACHE.id,
+    odometer: typeof existingBike.odometer === "number" ? existingBike.odometer : ANDERSON_OFFICIAL_APACHE.odometer,
+    customComponents: existingBike.customComponents || ANDERSON_OFFICIAL_APACHE.customComponents || {},
+    hojaDeVida: {
+      ...ANDERSON_OFFICIAL_APACHE.hojaDeVida,
+      ...(existingBike.hojaDeVida || {}),
+      documentos: {
+        ...ANDERSON_OFFICIAL_APACHE.hojaDeVida.documentos,
+        ...(existingBike.hojaDeVida?.documentos || {}),
+        placa: "OFU22I",
+        modelo: 2027,
+        linea: "APACHE RTR 160 4V FI - MT 160CC ABS (NG)",
+        vinChasis: existingBike.hojaDeVida?.documentos?.vinChasis && !existingBike.hojaDeVida.documentos.vinChasis.includes("MD625") && existingBike.hojaDeVida.documentos.vinChasis !== "NO REGISTRADO"
+          ? existingBike.hojaDeVida.documentos.vinChasis
+          : ANDERSON_OFFICIAL_APACHE.hojaDeVida.documentos.vinChasis,
+        engineNumber: existingBike.hojaDeVida?.documentos?.engineNumber && !existingBike.hojaDeVida.documentos.engineNumber.includes("MTR-RTR") && existingBike.hojaDeVida.documentos.engineNumber !== "NO REGISTRADO"
+          ? existingBike.hojaDeVida.documentos.engineNumber
+          : ANDERSON_OFFICIAL_APACHE.hojaDeVida.documentos.engineNumber,
+        codigoFasecolda: "29517027",
+        propietario: "ANDERSON ARLES ACEVEDO OSPINA",
+        cedulaPropietario: "1128416305",
+        telefonoContacto: "3215357042",
+        ciudadCirculacion: "MEDELLIN",
+        seguroNombre: "Seguros SURA • Plan Motos Todo Riesgo",
+        seguroPoliza: "900001688138",
+        seguroVencimiento: "2027-09-10",
+        soatVencimiento: existingBike.hojaDeVida?.documentos?.soatVencimiento || "2027-02-15",
+        tecnoVencimiento: existingBike.hojaDeVida?.documentos?.tecnoVencimiento || "2027-03-20",
+        impuestoVencimiento: existingBike.hojaDeVida?.documentos?.impuestoVencimiento || "2027-06-30"
+      },
+      garantia: {
+        ...ANDERSON_OFFICIAL_APACHE.hojaDeVida.garantia,
+        ...(existingBike.hojaDeVida?.garantia || {}),
+        enabled: true,
+        distribuidor: "AUTECO / DISMERCA",
+        distribuidorCorto: "Dismerca",
+        mesesGarantia: 36,
+        kmGarantia: 36000,
+        toleranciaKm: 100,
+        ritmoKmDia: 65,
+        completadas: existingCompletadas
+      },
+      servicios: existingServicios,
+      tanqueos: existingBike.hojaDeVida?.tanqueos || []
+    },
+    config: {
+      ...ANDERSON_OFFICIAL_APACHE.config,
+      ...(existingBike.config || {}),
+      bikeIdentity: {
+        ...ANDERSON_OFFICIAL_APACHE.config.bikeIdentity,
+        ...(existingBike.config?.bikeIdentity || {}),
+        brand: "TVS",
+        model: "APACHE RTR 160 4V FI NG",
+        shortModel: "APACHE 160 FI NG",
+        colorHex: "#DC2626"
+      }
+    }
+  };
+}
+
 export default function App() {
   const { t } = useLanguage();
   const [currentView, setCurrentView] = useState(() => {
@@ -102,15 +177,25 @@ export default function App() {
           : [];
         if (validBikes.length > 0) {
           if (isAnderson) {
-            // Garaje personal de Anderson: limpiar demos de prueba forzados y asegurar su Apache 160 FI NG
-            const demoIdSet = new Set(DEMO_PREVIEW_IDS);
-            const userBikes = validBikes.filter((b) => !demoIdSet.has(b.id));
-            const hasApache = userBikes.some((b) =>
-              b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-              b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
-              b?.hojaDeVida?.documentos?.placa === "OFU22I"
+            // Identificar si existe la Apache o cualquier moto con placa OFU22I
+            const userOfuBike = validBikes.find(
+              (b) =>
+                b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
+                b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+                b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
             );
-            return hasApache ? userBikes : [ANDERSON_OFFICIAL_APACHE, ...userBikes];
+
+            // Filtrar demos genéricas descartables, preservando motos reales
+            const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+            const otherUserBikes = validBikes.filter((b) => {
+              if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
+              if (b?.id === ANDERSON_OFFICIAL_APACHE.id) return false;
+              if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
+              return !demoIdSet.has(b.id);
+            });
+
+            const officialHydratedBike = hydrateAndersonApache(userOfuBike);
+            return [officialHydratedBike, ...otherUserBikes];
           }
           return validBikes;
         }
@@ -203,18 +288,21 @@ export default function App() {
   useEffect(() => {
     if (userProfile && isFounderVipEmail(userProfile.email)) {
       setGarage((prev) => {
-        const demoIdSet = new Set(DEMO_PREVIEW_IDS);
-        const userBikes = prev.filter((b) => !demoIdSet.has(b.id));
-        const hasApache = userBikes.some((b) =>
-          b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-          b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
-          b?.hojaDeVida?.documentos?.placa === "OFU22I"
+        const userOfuBike = prev.find(
+          (b) =>
+            b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
+            b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+            b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
         );
-        let finalGarage = userBikes;
-        if (!hasApache) {
-          finalGarage = [ANDERSON_OFFICIAL_APACHE, ...userBikes];
-        }
-        return finalGarage;
+        const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+        const otherUserBikes = prev.filter((b) => {
+          if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
+          if (b?.id === ANDERSON_OFFICIAL_APACHE.id) return false;
+          if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
+          return !demoIdSet.has(b.id);
+        });
+        const officialHydratedBike = hydrateAndersonApache(userOfuBike);
+        return [officialHydratedBike, ...otherUserBikes];
       });
       setActiveBikeId((prevActive) => {
         if (!prevActive || DEMO_PREVIEW_IDS.includes(prevActive)) {
@@ -706,20 +794,24 @@ export default function App() {
             }
           }}
           onCleanDemoBikes={() => {
-            const demoSet = new Set(DEMO_PREVIEW_IDS);
-            const cleaned = garage.filter((b) => !demoSet.has(b.id));
-            const hasApache = cleaned.some((b) =>
-              b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-              b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
-              b?.hojaDeVida?.documentos?.placa === "OFU22I"
-            );
-            const finalBikes = hasApache
-              ? cleaned
-              : [ANDERSON_OFFICIAL_APACHE, ...cleaned];
-            setGarage(finalBikes);
-            if (!finalBikes.some((b) => b.id === activeBikeId)) {
-              setActiveBikeId(finalBikes[0].id);
-            }
+            setGarage((prev) => {
+              const userOfuBike = prev.find(
+                (b) =>
+                  b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
+                  b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+                  b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
+              );
+              const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+              const otherUserBikes = prev.filter((b) => {
+                if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
+                if (b?.id === ANDERSON_OFFICIAL_APACHE.id) return false;
+                if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
+                return !demoIdSet.has(b.id);
+              });
+              const officialHydratedBike = hydrateAndersonApache(userOfuBike);
+              return [officialHydratedBike, ...otherUserBikes];
+            });
+            setActiveBikeId(ANDERSON_OFFICIAL_APACHE.id);
           }}
           onClose={() => setIsGarageOpen(false)}
         />
@@ -761,15 +853,22 @@ export default function App() {
         onLoginSuccess={(profile) => {
           setUserProfile(profile);
           if (profile && isFounderVipEmail(profile.email)) {
-            const demoSet = new Set(DEMO_PREVIEW_IDS);
             setGarage((prev) => {
-              const cleaned = prev.filter((b) => !demoSet.has(b.id));
-              const hasApache = cleaned.some((b) =>
-                b?.id === ANDERSON_OFFICIAL_APACHE.id ||
-                b?.config?.bikeIdentity?.model?.toUpperCase().includes("160") ||
-                b?.hojaDeVida?.documentos?.placa === "OFU22I"
+              const userOfuBike = prev.find(
+                (b) =>
+                  b?.hojaDeVida?.documentos?.placa === "OFU22I" ||
+                  b?.id === ANDERSON_OFFICIAL_APACHE.id ||
+                  b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")
               );
-              return hasApache ? cleaned : [ANDERSON_OFFICIAL_APACHE, ...cleaned];
+              const demoIdSet = new Set(DEMO_PREVIEW_IDS);
+              const otherUserBikes = prev.filter((b) => {
+                if (b?.hojaDeVida?.documentos?.placa === "OFU22I") return false;
+                if (b?.id === ANDERSON_OFFICIAL_APACHE.id) return false;
+                if (b?.config?.bikeIdentity?.model?.toUpperCase().includes("160")) return false;
+                return !demoIdSet.has(b.id);
+              });
+              const officialHydratedBike = hydrateAndersonApache(userOfuBike);
+              return [officialHydratedBike, ...otherUserBikes];
             });
             setActiveBikeId(ANDERSON_OFFICIAL_APACHE.id);
           }

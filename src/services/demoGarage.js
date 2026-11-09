@@ -5,7 +5,7 @@ export const DEMO_GARAGE = [
     odometer: 14250,
     hojaDeVida: {
       documentos: {
-        placa: "OFU22I",
+        placa: "MT09-SP",
         vinChasis: "9FJYAM09X5K123456",
         engineNumber: "MTR-MT09-987654",
         soatVencimiento: "2027-02-15",
@@ -277,13 +277,23 @@ export const DEMO_GARAGE = [
     hojaDeVida: {
       documentos: {
         placa: "OFU22I",
-        vinChasis: "MD625CF5X91234567",
-        engineNumber: "MTR-RTR160-889900",
+        modelo: 2027,
+        linea: "APACHE RTR 160 4V FI - MT 160CC ABS (NG)",
+        vinChasis: "9FL37GE57VKH23086",
+        engineNumber: "HE5AV26A2047",
+        codigoFasecolda: "29517027",
+        valorFasecolda: 11499999,
+        propietario: "ANDERSON ARLES ACEVEDO OSPINA",
+        cedulaPropietario: "1128416305",
+        telefonoContacto: "3215357042",
+        ciudadCirculacion: "MEDELLIN",
         soatVencimiento: "2027-02-15",
         tecnoVencimiento: "2027-03-20",
-        seguroNombre: "Seguro Todo Riesgo SURA (Plan Motos)",
+        seguroNombre: "Seguros SURA • Plan Motos Todo Riesgo",
         seguroPoliza: "900001688138",
         seguroVencimiento: "2027-09-10",
+        seguroCuotas: "11 cuotas mensuales de $74.478 COP (Total $819.253 COP)",
+        seguroCoberturas: "RCE $840M ($0 Deducible) | Hurto/Daños 10% PT | Asistencia Motos SURA",
         impuestoVencimiento: "2027-06-30"
       },
       garantia: {
@@ -294,9 +304,44 @@ export const DEMO_GARAGE = [
         kmGarantia: 36000,
         toleranciaKm: 100,
         ritmoKmDia: 65,
-        completadas: []
+        completadas: [1, 2]
       },
-      servicios: []
+      servicios: [
+        {
+          id: "srv_apache_2",
+          fecha: "2026-08-14",
+          km: 5000,
+          servicio: "2ª Revisión Obligatoria de Garantía (5.000 KM)",
+          marcaRepuesto: "TVS TRU4 Synthetic 10W-30 (1.200 ml)",
+          taller: "Auteco Dismerca Autorizado",
+          costo: 0,
+          notas: "Mano de obra GRATIS. Cambio de aceite, filtro de papel, limpieza de tamiz, calibración de válvulas y tensión de cadena (20-25 mm).",
+          esRevisionGarantia: true,
+          revisionNumero: 2
+        },
+        {
+          id: "srv_apache_1",
+          fecha: "2026-06-10",
+          km: 1000,
+          servicio: "1ª Revisión Obligatoria de Garantía (1.000 KM)",
+          marcaRepuesto: "TVS TRU4 Synthetic Blend 10W-30",
+          taller: "Auteco Dismerca Autorizado",
+          costo: 0,
+          notas: "Fin período de despegue. Mano de obra GRATIS. Cambio aceite y filtro, holgura válvulas, inspección bujía (0.8 mm) y reinicio llave de servicio en TFT.",
+          esRevisionGarantia: true,
+          revisionNumero: 1
+        },
+        {
+          id: "srv_apache_sura",
+          fecha: "2026-09-10",
+          km: 6800,
+          servicio: "Expedición Póliza Todo Riesgo SURA Nº 900001688138",
+          marcaRepuesto: "Seguros Generales Suramericana S.A.",
+          taller: "SURA Plan Motos",
+          costo: 74478,
+          notas: "Póliza Todo Riesgo vinculada a OFU22I. RCE $840M sin deducible, amparo patrimonial y asistencia grúa 24/7."
+        }
+      ]
     },
     config: {
       bikeIdentity: {
@@ -309,16 +354,19 @@ export const DEMO_GARAGE = [
         category: "naked"
       },
       telemetrySpecs: {
-        maxRpm: 10000,
-        redlineRpm: 9000,
+        maxRpm: 11500,
+        redlineRpm: 10500,
         speedUnit: "km/h",
         engineCc: 160,
         tankCapacityLiters: 12
       },
       maintenanceSchedule: [
-        { id: "oil", service: "Aceite TVS TRU4 10W-30 & Filtro", intervalKm: 3000 },
-        { id: "chain", service: "Tensión y Limpieza Cadena O-Ring", intervalKm: 800 },
-        { id: "brakes", service: "Pastillas de Freno Roto Petal", intervalKm: 6000 }
+        { id: "oil", service: "Aceite TVS Tru4 SYNTHETIC 10W-30 (1.2L)", intervalKm: 2500 },
+        { id: "chain", service: "Limpieza y Tensión Cadena (holgura 20-25mm)", intervalKm: 800 },
+        { id: "brakes", service: "Pastillas de Freno Roto Petal", intervalKm: 6000 },
+        { id: "spark", service: "Bujía BOSCH UR4KE / RG8MC5 (0.7-0.9mm)", intervalKm: 10000 },
+        { id: "air_filter", service: "Filtro de Aire Oficial", intervalKm: 10000 },
+        { id: "sprocket_rubber", service: "Cauchos Sprocket Rueda Trasera", intervalKm: 10000 }
       ]
     }
   }
