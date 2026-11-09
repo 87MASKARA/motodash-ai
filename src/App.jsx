@@ -464,35 +464,37 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
               <button
                 type="button"
                 onClick={() => setIsOnboardingOpen(true)}
                 className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 font-racing font-bold text-[10px] flex items-center gap-1 transition whitespace-nowrap"
               >
                 <Plus className="w-3 h-3" />
-                <span>{t('nav.registerBike')}</span>
+                <span className="hidden sm:inline">{t('nav.registerBike')}</span>
+                <span className="sm:hidden">+ Mi Moto</span>
               </button>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5 sm:gap-2.5">
                 <LanguageSwitcher compact />
 
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="text-neutral-400 hover:text-white transition flex items-center gap-1.5 text-[11px]"
+                  className="text-neutral-400 hover:text-white transition flex items-center gap-1 text-[11px] max-w-[100px] sm:max-w-none truncate"
+                  title={userProfile ? userProfile.fullName : t('nav.demoMode')}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{userProfile ? userProfile.fullName : t('nav.demoMode')}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                  <span className="truncate">{userProfile ? userProfile.fullName : t('nav.demoMode')}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleExitToLanding}
-                  className="text-neutral-300 hover:text-amber-400 font-bold flex items-center gap-1 text-[11px] transition"
+                  className="text-neutral-300 hover:text-amber-400 font-bold flex items-center gap-1 text-[11px] transition whitespace-nowrap"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>{t('nav.backHome')}</span>
+                  <span className="hidden sm:inline">{t('nav.backHome')}</span>
                 </button>
               </div>
             </div>

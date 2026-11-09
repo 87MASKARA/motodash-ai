@@ -27,19 +27,20 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
       {/* Luz Ambiental de Fondo Neón */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-amber-600/20 via-orange-600/10 to-transparent blur-[140px] pointer-events-none" />
 
-      {/* 1. Header / Barra de Navegación Superior */}
-      <nav className="border-b border-neutral-800/80 bg-neutral-950/70 backdrop-blur-xl sticky top-0 z-50 px-4 sm:px-8 py-3.5">
+      {/* 1. Header / Barra de Navegación Superior Responsiva para Móvil y Desktop */}
+      <nav className="border-b border-neutral-800/80 bg-neutral-950/80 backdrop-blur-xl sticky top-0 z-50 px-3 sm:px-8 py-2.5 sm:py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* Logo Central de la App */}
           <AppLogo size="md" />
 
           {/* Botones de Acción + Selector Global de Idioma */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            <LanguageSwitcher />
+          <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+            <LanguageSwitcher compact />
 
             <button
               onClick={onOpenLogin}
-              className="px-2.5 sm:px-3 py-2 rounded-xl text-xs font-racing font-bold text-neutral-300 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800 flex items-center gap-1.5 transition"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-racing font-bold text-neutral-300 hover:text-white bg-neutral-900/60 hover:bg-neutral-900 border border-neutral-800 flex items-center gap-1.5 transition"
+              title={t('nav.login')}
             >
               <LogIn className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">{t('nav.login')}</span>
@@ -47,16 +48,16 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
 
             <button
               onClick={() => onEnterDemo("bike_yamaha_mt09")}
-              className="flex px-3 sm:px-3.5 py-2 rounded-xl text-xs font-racing font-bold text-amber-400 hover:text-white bg-neutral-900 border border-amber-500/40 hover:border-amber-400 items-center gap-1.5 transition"
+              className="flex px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-racing font-bold text-amber-400 hover:text-white bg-neutral-900 border border-amber-500/40 hover:border-amber-400 items-center gap-1 sm:gap-1.5 transition shadow-sm whitespace-nowrap"
             >
-              <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+              <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 fill-amber-400/20" />
               <span className="sm:hidden">{t('nav.demoShort')}</span>
               <span className="hidden sm:inline">{t('nav.demoLive')}</span>
             </button>
 
             <button
               onClick={() => onStartOnboarding('pro_monthly')}
-              className="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition active:scale-95"
+              className="hidden sm:flex px-3.5 sm:px-4 py-2 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20 items-center gap-1.5 transition active:scale-95 whitespace-nowrap"
             >
               <span>{t('nav.start')}</span>
               <ArrowRight className="w-4 h-4" />

@@ -25,20 +25,20 @@ export default function LanguageSwitcher({ compact = false }) {
   }, []);
 
   return (
-    <div ref={dropdownRef} className="relative inline-block text-left">
+    <div ref={dropdownRef} className="relative inline-block text-left flex-shrink-0">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`rounded-xl font-racing font-bold bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 border border-neutral-700/80 hover:border-amber-500/50 flex items-center gap-1.5 transition shadow-sm ${
-          compact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-xs'
+        className={`rounded-xl font-racing font-bold bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 border border-neutral-700/80 hover:border-amber-500/50 flex items-center gap-1 sm:gap-1.5 transition shadow-sm ${
+          compact ? 'px-2 py-1.5 text-[10px] sm:text-[11px]' : 'px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs'
         }`}
         title="Cambiar idioma / Change language"
       >
-        <Globe className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-        <span className="text-sm leading-none">{currentLangInfo.flag}</span>
+        <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 flex-shrink-0 hidden sm:inline" />
+        <span className="text-xs sm:text-sm leading-none">{currentLangInfo.flag}</span>
         <span className="font-mono font-bold tracking-wider">{currentLangInfo.short}</span>
         <ChevronDown
-          className={`w-3 h-3 text-neutral-400 transition-transform duration-200 ${
+          className={`w-2.5 h-2.5 sm:w-3 sm:h-3 text-neutral-400 transition-transform duration-200 ${
             isOpen ? 'rotate-180 text-amber-400' : ''
           }`}
         />

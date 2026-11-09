@@ -32,19 +32,19 @@ export default function AppLogo({
   }
 
   const emblemSizes = {
-    sm: "h-8",
-    md: "h-10 sm:h-11",
-    lg: "h-14"
+    sm: "h-7 sm:h-8",
+    md: "h-8 sm:h-10",
+    lg: "h-12 sm:h-14"
   };
 
   const titleSizes = {
-    sm: "text-sm",
-    md: "text-base sm:text-lg",
-    lg: "text-xl"
+    sm: "text-xs sm:text-sm",
+    md: "text-sm sm:text-base",
+    lg: "text-lg sm:text-xl"
   };
 
   return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`}>
+    <div className={`flex items-center gap-2 sm:gap-2.5 select-none flex-shrink-0 ${className}`}>
       <img 
         src={customImgSrc || "/logo-emblem.png"} 
         alt="MotoDash AI Logo" 
@@ -52,9 +52,9 @@ export default function AppLogo({
       />
 
       {showText && (
-        <div>
-          <div className="flex items-center gap-1.5 leading-none">
-            <span className={`font-black font-racing italic tracking-wide ${titleSizes[size] || titleSizes.md}`}>
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-1 leading-none whitespace-nowrap">
+            <span className={`font-black font-racing italic tracking-wide whitespace-nowrap ${titleSizes[size] || titleSizes.md}`}>
               <span className="bg-gradient-to-b from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
                 MotoDash
               </span>{' '}
@@ -63,7 +63,7 @@ export default function AppLogo({
               </span>
             </span>
           </div>
-          <span className="text-[9px] sm:text-[10px] font-mono text-neutral-400 block mt-0.5 tracking-widest uppercase">
+          <span className="text-[8px] sm:text-[10px] font-mono text-neutral-400 hidden sm:block mt-0.5 tracking-widest uppercase whitespace-nowrap">
             INTELLIGENT COCKPIT
           </span>
         </div>
