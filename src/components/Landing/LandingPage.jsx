@@ -369,6 +369,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planBasicF3')}</li>
                 <li>{t('landing.planBasicF4')}</li>
                 <li className="text-amber-400 font-bold">{t('landing.planBasicF5')}</li>
+                <li className="text-emerald-400 font-bold">{t('landing.planBasicF6')}</li>
               </ul>
             </div>
             <button
@@ -413,6 +414,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planProF5')}</li>
                 <li className="text-amber-300 font-bold">{t('landing.planProF6')}</li>
                 <li className="text-blue-300 font-bold">{t('landing.planProF7')}</li>
+                <li className="text-cyan-300 font-bold">{t('landing.planProF8')}</li>
               </ul>
             </div>
             <button
@@ -453,6 +455,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <li>{t('landing.planGarageF4')}</li>
                 <li className="text-cyan-300 font-bold">{t('landing.planGarageF5')}</li>
                 <li className="text-cyan-300 font-bold">{t('landing.planGarageF6')}</li>
+                <li className="text-amber-300 font-bold">{t('landing.planGarageF7')}</li>
               </ul>
             </div>
             <button

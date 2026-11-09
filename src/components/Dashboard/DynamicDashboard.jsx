@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
-  Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar
+  Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -17,6 +17,7 @@ import TrafficFinesRadarCard from './Widgets/TrafficFinesRadarCard';
 import WarrantyRulesModal from '../Modals/WarrantyRulesModal';
 import RegisterWarrantyRevisionModal from '../Modals/RegisterWarrantyRevisionModal';
 import TrafficFinesModal from '../Modals/TrafficFinesModal';
+import HardwareBridgeModal from '../Modals/HardwareBridgeModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -44,9 +45,11 @@ export default function DynamicDashboard({
   onOpenHojaDeVida,
   onOpenEditComponentModal,
   onOpenSettings,
-  onUpdateHojaDeVida
+  onUpdateHojaDeVida,
+  onSyncHardwareOdometer
 }) {
   const { t } = useLanguage();
+  const [isHardwareBridgeOpen, setIsHardwareBridgeOpen] = useState(false);
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
     userProfile?.isLifetimeVip ||
@@ -429,6 +432,21 @@ export default function DynamicDashboard({
               </span>
             </button>
 
+            {/* Pill Conectar Tablero TFT (BLE) o Cable OBD-II */}
+            <button
+              type="button"
+              onClick={() => setIsHardwareBridgeOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
+              title="Vincular Tablero TFT SmartXonnect (Gratis) o Escáner OBD-II (PRO)"
+            >
+              <Bluetooth className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Vincular</span>
+              <span className="sm:hidden">TFT</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
+                TFT/OBD
+              </span>
+            </button>
+
             {/* Ajustes Globales */}
             <button
               onClick={onOpenSettings}
@@ -610,6 +628,20 @@ export default function DynamicDashboard({
         onSaveTrafficSettings={handleSaveTrafficSettings}
         onClearFine={handleClearFine}
         bikeName={`${bikeIdentity.brand} ${bikeIdentity.model}`}
+      />
+
+      {/* MODAL VINCULAR HARDWARE: CLÚSTER TFT O CABLE OBD-II */}
+      <HardwareBridgeModal
+        isOpen={isHardwareBridgeOpen}
+        onClose={() => setIsHardwareBridgeOpen(false)}
+        bike={effectiveBike}
+        userProfile={userProfile}
+        onSyncOdometer={(km, source) => {
+          if (onSyncHardwareOdometer) {
+            onSyncHardwareOdometer(km, source);
+          }
+        }}
+        onOpenPaywall={onOpenPaywall}
       />
     </div>
   );

@@ -443,6 +443,18 @@ export default function App() {
     );
   };
 
+  const handleSyncHardwareOdometer = (newKm, sourceName = 'Hardware Link') => {
+    setGarage((prev) =>
+      prev.map((bike) => {
+        if (bike.id !== activeBike.id) return bike;
+        return {
+          ...bike,
+          odometer: Number(newKm) || bike.odometer
+        };
+      })
+    );
+  };
+
   const handleSaveSettings = (newSettings) => {
     setGlobalSettings(newSettings);
     localStorage.setItem("motodash_settings", JSON.stringify(newSettings));
@@ -642,6 +654,7 @@ export default function App() {
             onOpenEditComponentModal={handleOpenEditComponentModal}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onUpdateHojaDeVida={handleUpdateHojaDeVida}
+            onSyncHardwareOdometer={handleSyncHardwareOdometer}
           />
         </div>
       )}

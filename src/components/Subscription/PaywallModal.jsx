@@ -14,7 +14,8 @@ const PLANS = [
       'landing.planBasicF2', 
       'landing.planBasicF3', 
       'landing.planBasicF4',
-      'landing.planBasicF5'
+      'landing.planBasicF5',
+      'landing.planBasicF6'
     ]
   },
   {
@@ -31,7 +32,8 @@ const PLANS = [
       'landing.planProF4',
       'landing.planProF5',
       'landing.planProF6',
-      'landing.planProF7'
+      'landing.planProF7',
+      'landing.planProF8'
     ]
   },
   {
@@ -46,7 +48,8 @@ const PLANS = [
       'landing.planGarageF3',
       'landing.planGarageF4',
       'landing.planGarageF5',
-      'landing.planGarageF6'
+      'landing.planGarageF6',
+      'landing.planGarageF7'
     ]
   }
 ];
