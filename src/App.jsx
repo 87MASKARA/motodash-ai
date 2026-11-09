@@ -13,7 +13,7 @@ import OdometerModal from './components/Modals/OdometerModal';
 import HojaDeVidaModal from './components/HojaDeVida/HojaDeVidaModal';
 import EditComponentModal from './components/Modals/EditComponentModal';
 import SettingsModal from './components/Modals/SettingsModal';
-import LoginModal from './components/Auth/LoginModal';
+import LoginModal, { isFounderVipEmail } from './components/Auth/LoginModal';
 import ProfileModal from './components/Profile/ProfileModal';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
@@ -64,7 +64,18 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem("motodash_user_profile");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && isFounderVipEmail(parsed.email)) {
+          return {
+            ...parsed,
+            plan: 'founder_vip',
+            isPro: true,
+            isLifetimeVip: true
+          };
+        }
+        return parsed;
+      } catch (e) {}
     }
     return null;
   });
@@ -162,6 +173,34 @@ export default function App() {
     setIsOnboardingOpen(false);
     setCurrentView("cockpit");
     if (telemetry.startSimulation) telemetry.startSimulation();
+  };
+
+  // Abrir asistente para agregar o calibrar nueva moto (respetando cupo de membresía o ilimitado para VIP)
+  const handleOpenAddBike = () => {
+    setIsGarageOpen(false);
+    const demoIds = new Set(DEMO_GARAGE.map((d) => d.id));
+    const customBikesCount = garage.filter((b) => !demoIds.has(b.id)).length;
+    const isVip = Boolean(
+      userProfile?.plan === "founder_vip" || 
+      userProfile?.isLifetimeVip || 
+      isFounderVipEmail(userProfile?.email)
+    );
+    const maxAllowed = isVip
+      ? 999
+      : userProfile?.plan === "garage"
+      ? 15
+      : (userProfile?.plan === "pro_monthly" || userProfile?.isPro)
+      ? 3
+      : 1;
+
+    // Solo si el usuario está registrado, NO es VIP y ya alcanzó o superó el cupo de motos de su plan
+    if (userProfile && !isVip && customBikesCount >= maxAllowed) {
+      setIsPaywallOpen(true);
+      return;
+    }
+
+    setOnboardingInitialPlan(userProfile?.plan || "pro_monthly");
+    setIsOnboardingOpen(true);
   };
 
   // Entrar al Demo en vivo desde Landing: activa simulación inmediatamente
@@ -467,7 +506,7 @@ export default function App() {
             <div className="flex items-center gap-1.5 sm:gap-2.5 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
               <button
                 type="button"
-                onClick={() => setIsOnboardingOpen(true)}
+                onClick={handleOpenAddBike}
                 className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 font-racing font-bold text-[10px] flex items-center gap-1 transition whitespace-nowrap"
               >
                 <Plus className="w-3 h-3" />
@@ -510,8 +549,9 @@ export default function App() {
             onChangeRidingCondition={handleChangeRidingCondition}
             garageCount={garage.length}
             globalSettings={globalSettings}
+            userProfile={userProfile}
             onToggleSound={handleToggleSound}
-            onOpenSelector={() => setIsOnboardingOpen(true)}
+            onOpenSelector={handleOpenAddBike}
             onOpenGarage={() => setIsGarageOpen(true)}
             onOpenPaywall={() => setIsPaywallOpen(true)}
             onOpenOdometerModal={handleOpenOdometerModal}
@@ -525,6 +565,7 @@ export default function App() {
       {/* MODAL DE REGISTRO & ONBOARDING MULTI-PASO */}
       {isOnboardingOpen && (
         <OnboardingWizard
+          userProfile={userProfile}
           initialPlan={onboardingInitialPlan}
           onCompleteOnboarding={handleCompleteOnboarding}
           onCancel={() => setIsOnboardingOpen(false)}
@@ -583,18 +624,7 @@ export default function App() {
             setActiveBikeId(id);
             setIsGarageOpen(false);
           }}
-          onAddNewBike={() => {
-            setIsGarageOpen(false);
-            const demoIds = new Set(DEMO_GARAGE.map((d) => d.id));
-            const customBikesCount = garage.filter((b) => !demoIds.has(b.id)).length;
-            const isVip = userProfile?.plan === "founder_vip" || userProfile?.isLifetimeVip;
-            const maxAllowed = isVip ? 999 : userProfile?.plan === "garage" ? 15 : userProfile?.plan === "pro_monthly" ? 3 : 1;
-            if (userProfile && !isVip && customBikesCount >= maxAllowed) {
-              setIsPaywallOpen(true);
-              return;
-            }
-            setIsOnboardingOpen(true);
-          }}
+          onAddNewBike={handleOpenAddBike}
           onDeleteBike={(id) => {
             if (garage.length <= 1) return alert("Debes tener al menos 1 moto.");
             const filtered = garage.filter((b) => b.id !== id);

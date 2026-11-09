@@ -3,6 +3,7 @@ import {
   User, Mail, Phone, MapPin, Crown, Shield, Calendar, 
   LogOut, X, Check, Bike, DollarSign, Wrench
 } from 'lucide-react';
+import { isFounderVipEmail } from '../Auth/LoginModal';
 
 export default function ProfileModal({
   isOpen,
@@ -33,7 +34,11 @@ export default function ProfileModal({
     setIsEditing(false);
   };
 
-  const isVip = userProfile?.plan === 'founder_vip' || userProfile?.isLifetimeVip;
+  const isVip = Boolean(
+    userProfile?.plan === 'founder_vip' || 
+    userProfile?.isLifetimeVip || 
+    isFounderVipEmail(userProfile?.email)
+  );
 
   const planName = isVip
     ? '👑 Fundador VIP Vitalicio (Motos Ilimitadas)'
@@ -84,12 +89,18 @@ export default function ProfileModal({
             </span>
           </div>
 
-          <button
-            onClick={onOpenPaywall}
-            className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-racing font-bold transition"
-          >
-            Gestionar Plan
-          </button>
+          {isVip ? (
+            <div className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 text-amber-300 text-xs font-racing font-bold">
+              👑 Vitalicio
+            </div>
+          ) : (
+            <button
+              onClick={onOpenPaywall}
+              className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-racing font-bold transition"
+            >
+              Gestionar Plan
+            </button>
+          )}
         </div>
 
         {/* Formulario de Datos Personales */}

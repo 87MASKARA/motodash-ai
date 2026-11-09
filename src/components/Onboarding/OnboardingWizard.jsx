@@ -7,21 +7,34 @@ import { BRAND_LOGOS } from '../Common/BrandLogos';
 import { MOTO_CATALOG } from '../../services/motoCatalog';
 import { isFounderVipEmail } from '../Auth/LoginModal';
 
-export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initialPlan = 'pro_monthly' }) {
-  const [step, setStep] = useState(1); // 1: Plan, 2: Piloto, 3: Moto & Hoja de Vida, 4: Calibrando IA
+export default function OnboardingWizard({ 
+  userProfile = null,
+  onCompleteOnboarding, 
+  onCancel, 
+  initialPlan = 'pro_monthly' 
+}) {
+  const hasExistingProfile = Boolean(userProfile && (userProfile.email || userProfile.fullName));
+  const isVip = Boolean(
+    userProfile?.plan === 'founder_vip' || 
+    userProfile?.isLifetimeVip || 
+    isFounderVipEmail(userProfile?.email)
+  );
+
+  // Si el usuario ya tiene cuenta (Founder VIP, Pro, etc.), arranca directo en el Paso 3 (Ficha Técnica de la Moto)
+  const [step, setStep] = useState(hasExistingProfile ? 3 : 1);
 
   // Paso 1: Plan de Suscripción (Todos con 7 días de prueba gratis)
   const [selectedPlan, setSelectedPlan] = useState(
-    ['solo', 'pro_monthly', 'garage'].includes(initialPlan) ? initialPlan : 'pro_monthly'
-  ); // 'solo' | 'pro_monthly' | 'garage'
+    userProfile?.plan || (['solo', 'pro_monthly', 'garage', 'founder_vip'].includes(initialPlan) ? initialPlan : 'pro_monthly')
+  );
 
   // Paso 2: Datos del Piloto
   const [pilotData, setPilotData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    city: "Medellín",
-    country: "Colombia"
+    fullName: userProfile?.fullName || "",
+    email: userProfile?.email || "",
+    phone: userProfile?.phone || "",
+    city: userProfile?.city || "Medellín",
+    country: userProfile?.country || "Colombia"
   });
 
   // Paso 3: Datos de la Moto (Hoja de Vida Completa)
@@ -134,19 +147,29 @@ export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initi
         }
       };
 
-      const isVip = isFounderVipEmail(pilotData.email);
-      const userProfile = {
-        ...pilotData,
-        plan: isVip ? 'founder_vip' : selectedPlan,
-        isPro: isVip ? true : selectedPlan !== 'solo',
-        isLifetimeVip: isVip,
-        trialEndsAt: isVip
-          ? '2099-12-31T23:59:59.000Z'
-          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        registrationDate: new Date().toISOString()
-      };
+      const effectiveEmail = pilotData.email || userProfile?.email || "";
+      const isAccountVip = isVip || isFounderVipEmail(effectiveEmail);
 
-      onCompleteOnboarding(userProfile, newBikeEntry);
+      const finalProfile = hasExistingProfile
+        ? {
+            ...userProfile,
+            ...pilotData,
+            plan: isAccountVip ? 'founder_vip' : userProfile.plan || selectedPlan,
+            isPro: isAccountVip ? true : userProfile.isPro !== false,
+            isLifetimeVip: isAccountVip
+          }
+        : {
+            ...pilotData,
+            plan: isAccountVip ? 'founder_vip' : selectedPlan,
+            isPro: isAccountVip ? true : selectedPlan !== 'solo',
+            isLifetimeVip: isAccountVip,
+            trialEndsAt: isAccountVip
+              ? '2099-12-31T23:59:59.000Z'
+              : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            registrationDate: new Date().toISOString()
+          };
+
+      onCompleteOnboarding(finalProfile, newBikeEntry);
     }, 2400);
   };
 
@@ -169,14 +192,16 @@ export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initi
               <h2 className="text-base sm:text-lg font-black font-racing uppercase tracking-wider text-white">
                 {step === 1 && "Paso 1: Elige tu Membresía"}
                 {step === 2 && "Paso 2: Datos del Piloto"}
-                {step === 3 && "Paso 3: Ficha Técnica & Hoja de Vida"}
+                {step === 3 && (hasExistingProfile ? "Calibrar Nueva Moto para tu Garaje" : "Paso 3: Ficha Técnica & Hoja de Vida")}
                 {step === 4 && "Sintonizando Cockpit..."}
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-neutral-400">Paso {step} de 3</span>
+            <span className="font-mono text-xs text-neutral-400">
+              {hasExistingProfile ? "Nueva Moto" : `Paso ${step} de 3`}
+            </span>
             {onCancel && (
               <button 
                 type="button" 
@@ -622,11 +647,17 @@ export default function OnboardingWizard({ onCompleteOnboarding, onCancel, initi
             <div className="pt-4 flex justify-between">
               <button
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => {
+                  if (hasExistingProfile) {
+                    if (onCancel) onCancel();
+                  } else {
+                    setStep(2);
+                  }
+                }}
                 className="py-3 px-5 rounded-xl font-bold font-racing uppercase tracking-wider text-xs bg-neutral-800 text-neutral-300 hover:bg-neutral-700 flex items-center gap-1.5 transition"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Volver</span>
+                <span>{hasExistingProfile ? "Cancelar" : "Volver"}</span>
               </button>
 
               <button

@@ -15,6 +15,7 @@ import CriticalAlertBanner from './Widgets/CriticalAlertBanner';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { isFounderVipEmail } from '../Auth/LoginModal';
 
 export default function DynamicDashboard({
   config = {},
@@ -26,6 +27,7 @@ export default function DynamicDashboard({
   onChangeRidingCondition,
   garageCount = 1,
   globalSettings = {},
+  userProfile = null,
   onToggleSound,
   onOpenSelector,
   onOpenGarage,
@@ -36,6 +38,16 @@ export default function DynamicDashboard({
   onOpenSettings
 }) {
   const { t } = useLanguage();
+  const isVip = Boolean(
+    userProfile?.plan === 'founder_vip' ||
+    userProfile?.isLifetimeVip ||
+    isFounderVipEmail(userProfile?.email)
+  );
+  const isProOrGarage = Boolean(
+    userProfile?.isPro ||
+    userProfile?.plan === 'pro_monthly' ||
+    userProfile?.plan === 'garage'
+  );
   const bikeIdentity = config.bikeIdentity || {
     brand: "YAMAHA",
     model: "MT-09 SP",
@@ -221,14 +233,32 @@ export default function DynamicDashboard({
               <Settings className="w-4 h-4 text-neutral-400 hover:text-white" />
             </button>
 
-            {/* Suscripción Pro */}
-            <button
-              onClick={onOpenPaywall}
-              className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:opacity-90 flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition"
-            >
-              <Crown className="w-3.5 h-3.5" />
-              <span>Pro</span>
-            </button>
+            {/* Suscripción Pro / VIP */}
+            {isVip ? (
+              <div
+                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black flex items-center gap-1.5 shadow-md shadow-amber-500/30 border border-yellow-300/40 select-none cursor-default"
+                title="Cuenta Fundador VIP Oficial • Acceso Ilimitado De Por Vida"
+              >
+                <Crown className="w-3.5 h-3.5 fill-black" />
+                <span>VIP</span>
+              </div>
+            ) : isProOrGarage ? (
+              <div
+                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 select-none cursor-default"
+                title={userProfile?.plan === 'garage' ? 'Plan Garaje Activo (hasta 15 motos)' : 'Plan Pro Activo (hasta 3 motos)'}
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <span>{userProfile?.plan === 'garage' ? 'Garaje' : 'Pro'}</span>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenPaywall}
+                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:opacity-90 flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>Pro</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
