@@ -88,3 +88,4 @@ export function subscribeToGarageChanges(userId, onRemoteUpdate) {
     supabase.removeChannel(channel);
   };
 }
+

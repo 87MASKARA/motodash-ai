@@ -44,7 +44,7 @@ export default function OnboardingWizard({
   const [customModel, setCustomModel] = useState("");
   const [isCustomModel, setIsCustomModel] = useState(false);
   const [year, setYear] = useState(2025);
-  const [plate, setPlate] = useState("OFU22I");
+  const [plate, setPlate] = useState("");
   const [vinChasis, setVinChasis] = useState("");
   const [engineNumber, setEngineNumber] = useState("");
   const [odometerKm, setOdometerKm] = useState(12500);
@@ -106,7 +106,7 @@ export default function OnboardingWizard({
             soatVencimiento: soatDate,
             tecnoVencimiento: tecnoDate,
             seguroNombre: insuranceName,
-            seguroPoliza: "900001688138",
+            seguroPoliza: "NO REGISTRADO",
             seguroVencimiento: "2027-09-10",
             impuestoVencimiento: "2027-06-30"
           },
@@ -542,7 +542,7 @@ export default function OnboardingWizard({
                 <label className="text-[11px] font-mono text-neutral-400 block mb-1">Placa / Matrícula</label>
                 <input
                   type="text"
-                  placeholder="OFU22I"
+                  placeholder="ABC-12D"
                   value={plate}
                   onChange={(e) => setPlate(e.target.value.toUpperCase())}
                   className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white font-mono font-bold uppercase focus:outline-none focus:border-amber-500"

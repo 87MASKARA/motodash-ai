@@ -186,7 +186,7 @@ export function getCountryTrafficPortal(countryCode = "CO") {
 export function computeFinesRadarState(bike, userProfile = null) {
   const countryCode = userProfile?.countryCode || bike?.hojaDeVida?.multas?.pais || "CO";
   const portal = getCountryTrafficPortal(countryCode);
-  const placa = bike?.hojaDeVida?.documentos?.placa || "OFU22I";
+  const placa = bike?.hojaDeVida?.documentos?.placa || "APC-4V";
   const docTitular = bike?.hojaDeVida?.multas?.documentoTitular || userProfile?.documentId || "1020405060";
 
   const multasData = bike?.hojaDeVida?.multas || {};

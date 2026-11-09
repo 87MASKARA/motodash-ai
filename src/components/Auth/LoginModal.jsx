@@ -52,7 +52,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
           authUser?.user_metadata?.full_name ||
           (isVip ? 'Anderson • Fundador VIP' : cleanEmail.split('@')[0] || 'Piloto Rider'),
         email: cleanEmail,
-        phone: '+57 321 535 7042',
+        phone: authUser?.user_metadata?.phone || '',
         city: 'Medellín',
         country: 'Colombia',
         plan: isVip ? 'founder_vip' : authUser?.user_metadata?.plan || 'pro_monthly',

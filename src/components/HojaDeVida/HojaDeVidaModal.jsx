@@ -29,13 +29,13 @@ export default function HojaDeVidaModal({
   const [finesModalTab, setFinesModalTab] = useState('multas');
 
   const defaultDocs = {
-    placa: "OFU22I",
+    placa: "APC-4V",
     vinChasis: "NO REGISTRADO",
     engineNumber: "NO REGISTRADO",
     soatVencimiento: "2027-02-15",
     tecnoVencimiento: "2027-03-20",
-    seguroNombre: "Seguro Todo Riesgo SURA",
-    seguroPoliza: "900001688138",
+    seguroNombre: "Seguro Todo Riesgo SURA (Demo)",
+    seguroPoliza: "900000000000",
     seguroVencimiento: "2027-09-10",
     impuestoVencimiento: "2027-06-30"
   };
