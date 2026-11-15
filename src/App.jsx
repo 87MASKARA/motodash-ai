@@ -169,29 +169,29 @@ export default function App() {
   // Bandera de sincronización: impide que el estado inicial local sobreescriba Supabase por accidente
   const hasLoadedRemoteRef = useRef(false);
 
-  // 1. Cargar garaje y perfil desde Supabase en la nube (Sincronización PC <-> Celular)
+  // 1. Cargar garaje y perfil desde Supabase en la nube (Sincronización PC <-> Celular bajo RLS auth.uid())
   useEffect(() => {
-    const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
+    const effectiveUserId = userProfile?.id || null;
 
-    // Si no hay perfil en memoria, buscar si hay una sesión activa de Supabase
-    if (!effectiveUserId) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const isVip = isFounderVipEmail(session.user.email);
-          setUserProfile({
-            id: session.user.id,
-            email: session.user.email,
-            fullName: session.user.user_metadata?.full_name || (isVip ? 'Anderson • Fundador VIP' : 'Piloto'),
-            plan: isVip ? 'founder_vip' : session.user.user_metadata?.plan || 'pro_monthly',
-            isPro: true,
-            isLifetimeVip: isVip
-          });
-        }
-      });
-      return;
-    }
+    // Verificar sesión autenticada activa en Supabase Auth
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && session.user.id !== userProfile?.id) {
+        const isVip = isFounderVipEmail(session.user.email);
+        setUserProfile((prev) => ({
+          ...(prev || {}),
+          id: session.user.id,
+          email: session.user.email,
+          fullName: prev?.fullName || session.user.user_metadata?.full_name || (isVip ? 'Anderson • Fundador VIP' : 'Piloto'),
+          plan: isVip ? 'founder_vip' : (prev?.plan || session.user.user_metadata?.plan || 'solo'),
+          isPro: isVip || Boolean(prev?.isPro || session.user.user_metadata?.is_pro),
+          isLifetimeVip: isVip
+        }));
+      }
+    });
 
-    // Cargar garaje remoto del usuario desde Supabase
+    if (!effectiveUserId) return;
+
+    // Cargar garaje remoto del usuario autenticado desde Supabase
     loadPilotGarage(effectiveUserId).then((remoteData) => {
       hasLoadedRemoteRef.current = true;
       if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
@@ -227,7 +227,7 @@ export default function App() {
 
   // 2. Guardar en Supabase en la nube con debounce para persistir automáticamente cualquier cambio
   useEffect(() => {
-    const effectiveUserId = userProfile?.id || (isFounderVipEmail(userProfile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
+    const effectiveUserId = userProfile?.id || null;
     // IMPORTANTE: Solo guardar si el garaje remoto oficial ya fue cargado previamente (evita que demos o estado local desactualizado pisen la base de datos)
     if (!effectiveUserId || !hasLoadedRemoteRef.current || !Array.isArray(garage) || garage.length === 0) return;
 
@@ -236,7 +236,7 @@ export default function App() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [garage, activeBikeId, userProfile?.id, userProfile?.email]);
+  }, [garage, activeBikeId, userProfile?.id]);
 
   // Finalizar Onboarding y arrancar en Cockpit
   const handleCompleteOnboarding = (profile, newBike) => {
@@ -781,7 +781,7 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={(profile) => {
           setUserProfile(profile);
-          const effectiveUserId = profile?.id || (isFounderVipEmail(profile?.email) ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : null);
+          const effectiveUserId = profile?.id || null;
           if (effectiveUserId) {
             loadPilotGarage(effectiveUserId).then((remoteData) => {
               if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {

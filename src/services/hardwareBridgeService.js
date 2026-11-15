@@ -195,3 +195,4 @@ export async function connectObd2Scanner(userProfile, options = {}) {
     };
   }
 }
+

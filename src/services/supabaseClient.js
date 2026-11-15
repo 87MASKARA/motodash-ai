@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://sbjsqvxtddhrpaootdrh.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_HPbwOP9-C2BdVT_o1sKQ7Q_6AMTW3Lm';
+// Solo llaves públicas anónimas (anon/publishable). NUNCA usar SERVICE_ROLE_KEY en el frontend.
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://sbjsqvxtddhrpaootdrh.supabase.co';
+
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'sb_publishable_HPbwOP9-C2BdVT_o1sKQ7Q_6AMTW3Lm';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -12,17 +20,32 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
- * Carga el garaje y perfil del piloto directamente desde Supabase en la nube
+ * Obtiene el ID del usuario autenticado actualmente mediante sesión JWT válida de Supabase Auth
+ */
+export async function getAuthenticatedUserId() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Carga el garaje y perfil del piloto directamente desde Supabase bajo políticas RLS (auth.uid() = user_id)
  */
 export async function loadPilotGarage(userId) {
-  if (!userId) return null;
+  const authUid = await getAuthenticatedUserId();
+  const targetUid = authUid || userId;
+  if (!targetUid || !authUid) return null;
+
   try {
     const { data, error } = await supabase.rpc('get_pilot_garage', {
-      p_user_id: userId
+      p_user_id: authUid
     });
 
     if (error) {
-      console.warn('[Supabase] Error al cargar garaje remoto:', error.message);
+      console.warn('[Supabase RLS] Error al cargar garaje remoto:', error.message);
       return null;
     }
 
@@ -34,19 +57,21 @@ export async function loadPilotGarage(userId) {
 }
 
 /**
- * Sincroniza y guarda el garaje completo y moto activa en Supabase en la nube
+ * Sincroniza y guarda el garaje completo y moto activa en Supabase bajo políticas RLS (auth.uid() = user_id)
  */
 export async function savePilotGarage(userId, garage, activeBikeId) {
-  if (!userId || !Array.isArray(garage) || garage.length === 0) return false;
+  const authUid = await getAuthenticatedUserId();
+  if (!authUid || !Array.isArray(garage) || garage.length === 0) return false;
+
   try {
     const { data, error } = await supabase.rpc('save_pilot_garage', {
-      p_user_id: userId,
+      p_user_id: authUid,
       p_bikes: garage,
       p_active_bike_id: activeBikeId || null
     });
 
     if (error) {
-      console.warn('[Supabase] Error al sincronizar garaje remoto:', error.message);
+      console.warn('[Supabase RLS] Error al sincronizar garaje remoto:', error.message);
       return false;
     }
 
@@ -74,7 +99,6 @@ export function subscribeToGarageChanges(userId, onRemoteUpdate) {
         filter: `user_id=eq.${userId}`
       },
       () => {
-        // Al detectar un cambio en la nube, recargar garaje
         loadPilotGarage(userId).then((data) => {
           if (data && Array.isArray(data.bikes) && data.bikes.length > 0) {
             onRemoteUpdate(data);
@@ -89,3 +113,44 @@ export function subscribeToGarageChanges(userId, onRemoteUpdate) {
   };
 }
 
+/**
+ * Sube un documento privado (SOAT, factura, foto) al bucket protegido 'moto-documents'
+ * Cumple la política RLS de Storage: la carpeta raíz debe coincidir exactamente con auth.uid()
+ */
+export async function uploadMotoDocument(file, category = 'documento') {
+  const authUid = await getAuthenticatedUserId();
+  if (!authUid || !file) {
+    throw new Error('Debes iniciar sesión para subir documentos de tu moto.');
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const filePath = `${authUid}/${category}_${Date.now()}_${safeName}`;
+
+  const { data, error } = await supabase.storage
+    .from('moto-documents')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (error) throw error;
+  return data.path;
+}
+
+/**
+ * Genera una URL firmada temporal (60 min) para visualizar un documento privado del usuario autenticado
+ */
+export async function getMotoDocumentSignedUrl(filePath) {
+  const authUid = await getAuthenticatedUserId();
+  if (!authUid || !filePath) return null;
+
+  const { data, error } = await supabase.storage
+    .from('moto-documents')
+    .createSignedUrl(filePath, 3600);
+
+  if (error) {
+    console.warn('[Supabase Storage RLS] No se pudo obtener URL firmada:', error.message);
+    return null;
+  }
+  return data?.signedUrl || null;
+}

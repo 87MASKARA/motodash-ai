@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, X, ArrowRight, Sparkles, Crown, AlertCircle } from 'lucide-react';
+import { Mail, Lock, X, ArrowRight, Sparkles, Crown, AlertCircle, UserPlus } from 'lucide-react';
 import AppLogo from '../Common/AppLogo';
 import { supabase } from '../../services/supabaseClient';
 
@@ -14,6 +14,7 @@ export function isFounderVipEmail(email = '') {
 export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -30,33 +31,47 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
     try {
       let authUser = null;
 
-      // Autenticación oficial con Supabase Auth (persistencia automática en móvil y PC)
-      try {
+      if (isRegisterMode) {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: {
+              full_name: cleanEmail.split('@')[0] || 'Piloto Rider',
+              plan: 'solo'
+            }
+          }
+        });
+        if (error) throw new Error(error.message || 'No se pudo registrar la cuenta.');
+        authUser = data?.user;
+      } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password: password
         });
-
-        if (data?.user) {
-          authUser = data.user;
-        } else if (!isVip && error) {
-          throw new Error(error.message || 'Credenciales inválidas');
+        if (error || !data?.user) {
+          throw new Error(error?.message === 'Invalid login credentials'
+            ? 'Correo o contraseña incorrectos. Verifica tus credenciales.'
+            : (error?.message || 'Credenciales inválidas'));
         }
-      } catch (authErr) {
-        if (!isVip) throw authErr;
+        authUser = data.user;
+      }
+
+      if (!authUser?.id) {
+        throw new Error('Autenticación incompleta. Revisa tu correo o intenta nuevamente.');
       }
 
       const pilotProfile = {
-        id: authUser?.id || (isVip ? 'b07e75b9-f107-4919-9ced-301d6cf0adc9' : `usr_${Date.now()}`),
+        id: authUser.id,
         fullName:
-          authUser?.user_metadata?.full_name ||
+          authUser.user_metadata?.full_name ||
           (isVip ? 'Anderson • Fundador VIP' : cleanEmail.split('@')[0] || 'Piloto Rider'),
         email: cleanEmail,
-        phone: authUser?.user_metadata?.phone || '',
+        phone: authUser.user_metadata?.phone || '',
         city: 'Medellín',
         country: 'Colombia',
-        plan: isVip ? 'founder_vip' : authUser?.user_metadata?.plan || 'pro_monthly',
-        isPro: true,
+        plan: isVip ? 'founder_vip' : authUser.user_metadata?.plan || 'solo',
+        isPro: isVip || Boolean(authUser.user_metadata?.is_pro),
         isLifetimeVip: isVip
       };
 
@@ -97,10 +112,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
         <div className="text-center mb-6">
           <AppLogo variant="full" size="lg" className="justify-center mb-2" />
           <h2 className="text-lg font-black font-racing uppercase tracking-wider text-white">
-            Iniciar Sesión
+            {isRegisterMode ? 'Crear Cuenta de Piloto' : 'Iniciar Sesión'}
           </h2>
           <p className="text-xs text-neutral-400 mt-1 font-mono">
-            Accede a tu garaje y telemetría sincronizada con Supabase
+            Garaje blindado con Row Level Security (RLS) en Supabase
           </p>
         </div>
 
@@ -118,7 +133,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
                 type="email"
-                placeholder="anderson1125@gmail.com"
+                placeholder="piloto@correo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
@@ -127,7 +142,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
             </div>
             {isFounderVipEmail(email) && (
               <span className="text-[10px] font-mono text-amber-400 mt-1 flex items-center gap-1">
-                <Crown className="w-3 h-3" /> Cuenta Fundador VIP detectada (Membresía Vitalicia Sin Cobros)
+                <Crown className="w-3 h-3" /> Cuenta Fundador VIP detectada (Requiere contraseña autenticada)
               </span>
             )}
           </div>
@@ -142,6 +157,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                minLength={6}
                 required
               />
             </div>
@@ -152,12 +168,25 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
             disabled={loading}
             className="w-full py-3 px-4 rounded-xl font-bold font-racing uppercase tracking-wider text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-lg shadow-amber-500/20 hover:opacity-90 flex items-center justify-center gap-1.5 transition active:scale-[0.99] disabled:opacity-50"
           >
-            {loading ? 'Autenticando...' : 'Ingresar a Mi Garaje'}
-            {!loading && <ArrowRight className="w-4 h-4" />}
+            {loading ? 'Autenticando...' : isRegisterMode ? 'Registrar Cuenta Segura' : 'Ingresar a Mi Garaje'}
+            {!loading && (isRegisterMode ? <UserPlus className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />)}
           </button>
         </form>
 
-        <div className="mt-5 pt-4 border-t border-neutral-800 text-center">
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode(!isRegisterMode);
+              setErrorMsg('');
+            }}
+            className="text-xs font-mono text-amber-400 hover:underline"
+          >
+            {isRegisterMode ? '¿Ya tienes cuenta? Inicia sesión aquí' : '¿Nuevo piloto? Crea tu cuenta gratis'}
+          </button>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-neutral-800 text-center">
           <span className="text-xs text-neutral-500 block mb-2 font-mono">¿Quieres explorar en modo visitante?</span>
           <button
             type="button"
