@@ -5,6 +5,7 @@ import LanguageSwitcher from './components/Common/LanguageSwitcher';
 import { BrandLogo } from './components/Common/BrandLogos';
 import { useLanguage } from './i18n/LanguageContext';
 import LandingPage from './components/Landing/LandingPage';
+import VideoIntroSplash from './components/Landing/VideoIntroSplash';
 import OnboardingWizard from './components/Onboarding/OnboardingWizard';
 import DynamicDashboard from './components/Dashboard/DynamicDashboard';
 import GarageDrawer from './components/Garage/GarageDrawer';
@@ -55,6 +56,7 @@ function sanitizeBikeEntry(bike) {
 
 export default function App() {
   const { t } = useLanguage();
+  const [showIntroSplash, setShowIntroSplash] = useState(true);
   const [currentView, setCurrentView] = useState(() => {
     const savedView = localStorage.getItem("motodash_active_view");
     return savedView === "cockpit" ? "cockpit" : "landing";
@@ -561,6 +563,11 @@ export default function App() {
 
   return (
     <>
+      {/* 0. VIDEO INTRO CINEMATOGRÁFICO DE 10 SEGUNDOS AL INICIAR LA APP */}
+      {showIntroSplash && (
+        <VideoIntroSplash onFinish={() => setShowIntroSplash(false)} />
+      )}
+
       {/* 1. VISTA DE INICIO / LANDING PAGE */}
       {currentView === "landing" && (
         <LandingPage
@@ -570,6 +577,7 @@ export default function App() {
           }}
           onEnterDemo={handleEnterDemo}
           onOpenLogin={() => setIsLoginModalOpen(true)}
+          onReplayIntro={() => setShowIntroSplash(true)}
         />
       )}
 
