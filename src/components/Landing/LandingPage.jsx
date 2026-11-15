@@ -19,7 +19,7 @@ const QUICK_DEMO_BIKES = [
   { id: "bike_bmw_s1000rr", brand: "BMW", model: "S 1000 RR", spec: "999cc • 15.0k RPM", color: "#2563EB" }
 ];
 
-export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogin, onReplayIntro }) {
+export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogin, onReplayIntro, onOpenLegal }) {
   const { t, language } = useLanguage();
   const isEn = language === 'en';
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'annual'
@@ -648,15 +648,52 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
         </div>
       </section>
 
-      {/* 6. Footer */}
-      <footer className="border-t border-neutral-900 py-8 px-4 text-center text-xs text-neutral-500 font-mono">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <AppLogo size="sm" showText={false} />
-            <span>{t('landing.footerTagline')}</span>
+      {/* 6. Footer con Enlaces Legales Oficiales (Política de Privacidad, Habeas Data y Términos) */}
+      <footer className="border-t border-neutral-900 py-8 px-4 text-center text-xs text-neutral-500 font-mono bg-neutral-950">
+        <div className="max-w-6xl mx-auto flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <AppLogo size="sm" showText={false} />
+              <span>{t('landing.footerTagline')}</span>
+            </div>
+            <div>
+              Yamaha • KTM • Kawasaki • Ducati • Honda • BMW • Suzuki • Bajaj • TVS
+            </div>
           </div>
-          <div>
-            Yamaha • KTM • Kawasaki • Ducati • Honda • BMW • Suzuki • Bajaj • TVS
+
+          <div className="pt-4 border-t border-neutral-900/90 flex flex-wrap items-center justify-center sm:justify-between gap-3 text-[11px]">
+            <span className="text-neutral-500">
+              © {new Date().getFullYear()} MotoDash AI • {isEn ? 'All Rights Reserved' : 'Todos los derechos reservados'}
+            </span>
+
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => onOpenLegal && onOpenLegal('privacy')}
+                className="text-neutral-400 hover:text-amber-400 underline underline-offset-4 transition flex items-center gap-1"
+              >
+                <Lock className="w-3 h-3 text-emerald-400" />
+                <span>{isEn ? 'Privacy Policy (Habeas Data)' : 'Política de Privacidad (Habeas Data)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenLegal && onOpenLegal('terms')}
+                className="text-neutral-400 hover:text-amber-400 underline underline-offset-4 transition flex items-center gap-1"
+              >
+                <Scale className="w-3 h-3 text-amber-400" />
+                <span>{isEn ? 'Terms & Conditions' : 'Términos y Condiciones'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenLegal && onOpenLegal('clans')}
+                className="text-neutral-400 hover:text-amber-400 underline underline-offset-4 transition flex items-center gap-1"
+              >
+                <ShieldCheck className="w-3 h-3 text-cyan-400" />
+                <span>{isEn ? 'Clan & AI Governance' : 'Política de Clanes e IA'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </footer>

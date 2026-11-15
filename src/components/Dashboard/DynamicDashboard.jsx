@@ -54,7 +54,8 @@ export default function DynamicDashboard({
   onOpenEditComponentModal,
   onOpenSettings,
   onUpdateHojaDeVida,
-  onSyncHardwareOdometer
+  onSyncHardwareOdometer,
+  onOpenLegal
 }) {
   const { t, lang, setLang } = useLanguage();
   const isEn = lang === 'en';
@@ -748,9 +749,27 @@ export default function DynamicDashboard({
         </div>
       </main>
 
-      {/* Footer Minimalista */}
-      <footer className="border-t border-neutral-900 py-4 px-6 text-center text-xs text-neutral-600 font-mono">
-        {t('dashboard.footer')} • <a href="https://motodashai.com" target="_blank" rel="noreferrer" className="text-neutral-500 hover:text-neutral-400">motodashai.com</a>
+      {/* Footer Minimalista con Enlaces Legales */}
+      <footer className="border-t border-neutral-900 py-4 px-6 pb-20 sm:pb-5 text-center text-xs text-neutral-600 font-mono flex flex-col sm:flex-row items-center justify-between max-w-7xl w-full mx-auto gap-2">
+        <div>
+          {t('dashboard.footer')} • <a href="https://motodashai.com" target="_blank" rel="noreferrer" className="text-neutral-500 hover:text-neutral-400">motodashai.com</a>
+        </div>
+        <div className="flex items-center gap-4 text-[11px]">
+          <button
+            type="button"
+            onClick={() => onOpenLegal && onOpenLegal('privacy')}
+            className="text-neutral-500 hover:text-amber-400 underline underline-offset-4 transition"
+          >
+            {isEn ? 'Privacy Policy (Habeas Data)' : 'Política de Privacidad (Habeas Data)'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenLegal && onOpenLegal('terms')}
+            className="text-neutral-500 hover:text-amber-400 underline underline-offset-4 transition"
+          >
+            {isEn ? 'Terms & Conditions' : 'Términos y Condiciones'}
+          </button>
+        </div>
       </footer>
 
       {/* MODAL REGLAS & MANUAL DE GARANTÍA */}

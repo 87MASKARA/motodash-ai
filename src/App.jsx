@@ -17,6 +17,7 @@ import SettingsModal from './components/Modals/SettingsModal';
 import LoginModal, { isFounderVipEmail } from './components/Auth/LoginModal';
 import ProfileModal from './components/Profile/ProfileModal';
 import CertifiedMarketplaceModal from './components/Modals/CertifiedMarketplaceModal';
+import LegalTermsModal from './components/Modals/LegalTermsModal';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
 import { DEMO_GARAGE, DEMO_PREVIEW_IDS } from './services/demoGarage';
@@ -122,6 +123,13 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState('privacy');
+
+  const handleOpenLegal = (tab = 'privacy') => {
+    setLegalModalTab(tab);
+    setIsLegalModalOpen(true);
+  };
 
   // Ajustes Globales
   const [globalSettings, setGlobalSettings] = useState(() => {
@@ -578,6 +586,7 @@ export default function App() {
           onEnterDemo={handleEnterDemo}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onReplayIntro={() => setShowIntroSplash(true)}
+          onOpenLegal={handleOpenLegal}
         />
       )}
 
@@ -697,6 +706,7 @@ export default function App() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onUpdateHojaDeVida={handleUpdateHojaDeVida}
             onSyncHardwareOdometer={handleSyncHardwareOdometer}
+            onOpenLegal={handleOpenLegal}
           />
         </div>
       )}
@@ -836,6 +846,7 @@ export default function App() {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
+        onOpenLegal={handleOpenLegal}
         onLoginSuccess={(profile) => {
           setUserProfile(profile);
           const effectiveUserId = profile?.id || null;
@@ -883,6 +894,13 @@ export default function App() {
           setIsProfileModalOpen(false);
           setCurrentView("landing");
         }}
+      />
+
+      {/* MODAL CENTRO LEGAL: POLÍTICA DE PRIVACIDAD (HABEAS DATA) Y TÉRMINOS Y CONDICIONES */}
+      <LegalTermsModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        initialTab={legalModalTab}
       />
     </>
   );

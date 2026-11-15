@@ -11,7 +11,7 @@ export function isFounderVipEmail(email = '') {
   return FOUNDER_VIP_EMAILS.includes(String(email).trim().toLowerCase());
 }
 
-export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
+export default function LoginModal({ isOpen, onClose, onLoginSuccess, onOpenLegal }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -196,6 +196,25 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Acceso Rápido Modo Demo</span>
           </button>
+
+          <p className="text-[10px] font-mono text-neutral-500 mt-3 leading-relaxed">
+            Al ingresar aceptas la{' '}
+            <button
+              type="button"
+              onClick={() => onOpenLegal && onOpenLegal('privacy')}
+              className="text-amber-400 hover:underline"
+            >
+              Política de Privacidad (Habeas Data)
+            </button>{' '}
+            y los{' '}
+            <button
+              type="button"
+              onClick={() => onOpenLegal && onOpenLegal('terms')}
+              className="text-amber-400 hover:underline"
+            >
+              Términos y Condiciones
+            </button>.
+          </p>
         </div>
       </div>
     </div>
