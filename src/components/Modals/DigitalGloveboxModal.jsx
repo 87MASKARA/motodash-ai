@@ -29,6 +29,10 @@ import {
 } from '../../services/trafficLawyerAiService';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { uploadMotoDocument } from '../../services/supabaseClient';
+import {
+  saveOfflineCheckpointPhoto,
+  loadOfflineCheckpointPhotos
+} from '../../services/offlineDocsCache';
 
 export default function DigitalGloveboxModal({
   isOpen,
@@ -69,16 +73,31 @@ export default function DigitalGloveboxModal({
     issuerPlaceholder: 'Ministerio de Transporte / RUNT'
   };
 
-  // Filtro rápido por documento en el retén
-  const [activeDocFilter, setActiveDocFilter] = useState('all'); // 'all' | 'license' | 'registration' | 'soat' | 'tecno'
-
-  // Estado de escaneo IA y compresión
+  // Estado de escaneo IA, compresión, bóveda offline y bloqueo PIN para agente
   const [scanningSlot, setScanningSlot] = useState(null);
   const [aiDraft, setAiDraft] = useState(null);
   const [compressionStats, setCompressionStats] = useState(null);
   const [fullscreenView, setFullscreenView] = useState(null);
+  const [offlinePhotos, setOfflinePhotos] = useState({});
+  const [isPinLocked, setIsPinLocked] = useState(false);
+  const [showPinPrompt, setShowPinPrompt] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
   const fileInputRef = useRef(null);
   const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
+
+  useEffect(() => {
+    if (isOpen && bike?.id) {
+      loadOfflineCheckpointPhotos(bike.id).then((cached) => {
+        if (cached && typeof cached === 'object') {
+          setOfflinePhotos(cached);
+        }
+      });
+    }
+  }, [isOpen, bike?.id]);
+
+  // Filtro rápido por documento en el retén
+  const [activeDocFilter, setActiveDocFilter] = useState('all');
 
   // 1. PASE / LICENCIA DE CONDUCCIÓN (AMBOS LADOS: FRONTAL Y POSTERIOR)
   const driverLicenseRaw = globalDocs.driver_license || {};
@@ -91,10 +110,12 @@ export default function DigitalGloveboxModal({
     restrictions: docs.licenciaRestricciones || driverLicenseRaw.restrictions || 'Ninguna',
     issuer: driverLabels.issuerPlaceholder,
     frontImageUrl:
+      offlinePhotos.driver_license_front ||
       driverLicenseRaw.frontImageUrl ||
       globalDocs.driver_license_front?.imageUrl ||
       null,
     backImageUrl:
+      offlinePhotos.driver_license_back ||
       driverLicenseRaw.backImageUrl ||
       globalDocs.driver_license_back?.imageUrl ||
       null
@@ -112,11 +133,13 @@ export default function DigitalGloveboxModal({
     displacementCc: identity.displacementCc || bike.config?.telemetrySpecs?.engineCc || 160,
     issuer: countryLabels.vehicle_registration.issuerPlaceholder,
     frontImageUrl:
+      offlinePhotos.vehicle_registration_front ||
       vehicleRegRaw.frontImageUrl ||
       vehicleRegRaw.imageUrl ||
       globalDocs.vehicle_registration_front?.imageUrl ||
       null,
     backImageUrl:
+      offlinePhotos.vehicle_registration_back ||
       vehicleRegRaw.backImageUrl ||
       globalDocs.vehicle_registration_back?.imageUrl ||
       null
@@ -127,7 +150,7 @@ export default function DigitalGloveboxModal({
     expiryDate: docs.soatVencimiento || '',
     policyNumber: docs.soatPoliza || `SOAT-${docs.placa || 'OFICIAL'}`,
     issuer: docs.soatAseguradora || countryLabels.mandatory_insurance.issuerPlaceholder,
-    imageUrl: globalDocs.mandatory_insurance?.imageUrl || null,
+    imageUrl: offlinePhotos.mandatory_insurance || globalDocs.mandatory_insurance?.imageUrl || null,
     verifiedByAi: Boolean(globalDocs.mandatory_insurance?.verifiedByAi || docs.soatVencimiento)
   };
 
@@ -136,7 +159,7 @@ export default function DigitalGloveboxModal({
     expiryDate: docs.tecnoVencimiento || '',
     policyNumber: docs.tecnoCertificado || `CERT-${docs.placa || 'RUNT'}`,
     issuer: docs.tecnoCentro || countryLabels.technical_inspection.issuerPlaceholder,
-    imageUrl: globalDocs.technical_inspection?.imageUrl || null,
+    imageUrl: offlinePhotos.technical_inspection || globalDocs.technical_inspection?.imageUrl || null,
     verifiedByAi: Boolean(globalDocs.technical_inspection?.verifiedByAi || docs.tecnoVencimiento)
   };
 
@@ -377,6 +400,15 @@ export default function DigitalGloveboxModal({
         bikeBrand: identity.brand || '',
         bikeModel: identity.model || ''
       });
+
+      // Guardar inmediatamente en la Bóveda Offline IndexedDB para funcionar con 0% señal en carretera
+      if (bike?.id && compressed.dataUrl) {
+        await saveOfflineCheckpointPhoto(bike.id, slot, compressed.dataUrl, {
+          expiryDate: extracted.expiryDate,
+          policyOrCertNumber: extracted.policyOrCertNumber
+        });
+        setOfflinePhotos((prev) => ({ ...prev, [slot]: compressed.dataUrl }));
+      }
 
       setAiDraft({
         slot,
@@ -839,20 +871,94 @@ export default function DigitalGloveboxModal({
           </div>
         )}
 
-        {/* VISOR DE PANTALLA COMPLETA PARA INSPECCIÓN DE AGENTE DE TRÁNSITO */}
+        {/* VISOR DE PANTALLA COMPLETA PARA INSPECCIÓN DE AGENTE DE TRÁNSITO + BLOQUEO TÁCTIL CON PIN */}
         {fullscreenView && (
           <div className="fixed inset-0 z-50 bg-black/96 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-4xl w-full bg-neutral-900 border-2 border-emerald-500 rounded-3xl p-4 sm:p-6 text-white relative my-auto max-h-[94vh] overflow-y-auto">
-              <button
-                onClick={() => setFullscreenView(null)}
-                className="absolute top-4 right-4 p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500 text-black uppercase">
+                    {isEn ? `OFFICIAL TRAFFIC INSPECTION • PLATE ${vehicleRegistration.plate}` : `INSPECCIÓN OFICIAL DE TRÁNSITO • PLACA ${vehicleRegistration.plate}`}
+                  </span>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    ⚡ {isEn ? 'Offline Vault Active (0% Signal Ready)' : 'Bóveda Offline 0% Señal Activa'}
+                  </span>
+                </div>
 
-              <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500 text-black uppercase">
-                {isEn ? `OFFICIAL TRAFFIC INSPECTION • PLATE ${vehicleRegistration.plate}` : `INSPECCIÓN OFICIAL DE TRÁNSITO • PLACA ${vehicleRegistration.plate}`}
-              </span>
+                <div className="flex items-center gap-2">
+                  {/* Botón de Bloqueo Táctil Anti-Curiosos para entregar el celular al agente */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isPinLocked) {
+                        setIsPinLocked(true);
+                        setShowPinPrompt(false);
+                        setPinError('');
+                      } else {
+                        setShowPinPrompt(true);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border flex items-center gap-1.5 transition ${
+                      isPinLocked
+                        ? 'bg-red-600 text-white border-red-400 shadow-lg shadow-red-600/30'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                    }`}
+                    title="Bloquea la salida para que el agente solo pueda ver los 4 documentos sin tocar tu celular"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>
+                      {isPinLocked
+                        ? (isEn ? '🔒 Screen Locked (Tap to Unlock PIN)' : '🔒 Modo Agente Bloqueado (Desbloquear PIN)')
+                        : (isEn ? 'Lock Screen for Officer (PIN 1234)' : 'Bloquear Pantalla para Agente (PIN 1234)')}
+                    </span>
+                  </button>
+
+                  {!isPinLocked && (
+                    <button
+                      onClick={() => setFullscreenView(null)}
+                      className="p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Mini Modal de Desbloqueo con PIN (1234) */}
+              {isPinLocked && showPinPrompt && (
+                <div className="my-2 p-3.5 rounded-2xl bg-neutral-950 border-2 border-red-500/60 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-mono text-red-300">
+                    🔐 Ingresa tu PIN de seguridad (Por defecto: <strong>1234</strong>) para salir del Modo Agente:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value)}
+                      placeholder="1234"
+                      className="w-24 bg-neutral-900 border border-red-500/50 rounded-xl px-3 py-1.5 text-center font-mono text-sm text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (pinInput === '1234') {
+                          setIsPinLocked(false);
+                          setShowPinPrompt(false);
+                          setPinInput('');
+                          setPinError('');
+                        } else {
+                          setPinError('PIN incorrecto');
+                        }
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-black font-racing font-bold text-xs uppercase"
+                    >
+                      Desbloquear
+                    </button>
+                    {pinError && <span className="text-xs font-mono text-red-400">{pinError}</span>}
+                  </div>
+                </div>
+              )}
 
               {/* Selector rápido entre las 6 fotos o vista completa */}
               <div className="flex gap-1.5 overflow-x-auto py-3 mt-2 border-b border-neutral-800">
@@ -942,13 +1048,15 @@ export default function DigitalGloveboxModal({
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setFullscreenView(null)}
-                className="mt-5 w-full py-3 rounded-xl bg-emerald-500 text-black font-racing font-bold uppercase text-xs"
-              >
-                Volver a la Guantera Digital
-              </button>
+              {!isPinLocked && (
+                <button
+                  type="button"
+                  onClick={() => setFullscreenView(null)}
+                  className="mt-5 w-full py-3 rounded-xl bg-emerald-500 text-black font-racing font-bold uppercase text-xs"
+                >
+                  {isEn ? 'Back to Digital Glovebox' : 'Volver a la Guantera Digital'}
+                </button>
+              )}
             </div>
           </div>
         )}

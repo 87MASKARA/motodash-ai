@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
   Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
-  ShieldCheck, Users, Award, Bell, Scale
+  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -24,6 +24,8 @@ import AlertsCenterModal from '../Modals/AlertsCenterModal';
 import CommunityChatModal from '../Modals/CommunityChatModal';
 import CertifiedMarketplaceModal from '../Modals/CertifiedMarketplaceModal';
 import TrafficLawyerModal from '../Modals/TrafficLawyerModal';
+import SosEmergencyModal from '../Modals/SosEmergencyModal';
+import DoctorMotorModal from '../Modals/DoctorMotorModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -62,6 +64,9 @@ export default function DynamicDashboard({
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false);
   const [isLawyerModalOpen, setIsLawyerModalOpen] = useState(false);
+  const [isSosModalOpen, setIsSosModalOpen] = useState(false);
+  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
+  const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
     userProfile?.isLifetimeVip ||
@@ -303,16 +308,35 @@ export default function DynamicDashboard({
   const displayMaxSpeed = isImperial ? Math.round((telemetry.maxSpeed || 0) * 0.621371) : (telemetry.maxSpeed || 0);
   const displayUnit = isImperial ? 'mph' : (telemetrySpecs.speedUnit || 'km/h');
 
+  const themeColors = {
+    street: {
+      primary: bikeIdentity.colorHex || '#FF6600',
+      secondary: bikeIdentity.accentGlow || bikeIdentity.colorHex || '#FF8533',
+      glow: bikeIdentity.accentGlow || 'rgba(255, 102, 0, 0.35)'
+    },
+    track: {
+      primary: '#FF1E56',
+      secondary: '#00F5D4',
+      glow: 'rgba(255, 30, 86, 0.45)'
+    },
+    stealth: {
+      primary: '#10B981',
+      secondary: '#06B6D4',
+      glow: 'rgba(16, 185, 129, 0.38)'
+    }
+  };
+  const activeTheme = themeColors[tftTheme] || themeColors.street;
+
   const dashboardStyle = {
-    '--primary-accent': bikeIdentity.colorHex || '#FF6600',
-    '--secondary-accent': bikeIdentity.accentGlow || bikeIdentity.colorHex || '#FF8533',
-    '--accent-glow': bikeIdentity.accentGlow || 'rgba(255, 102, 0, 0.35)'
+    '--primary-accent': activeTheme.primary,
+    '--secondary-accent': activeTheme.secondary,
+    '--accent-glow': activeTheme.glow
   };
 
   return (
     <div 
       style={dashboardStyle}
-      className="min-h-screen bg-neutral-950 text-white flex flex-col transition-colors duration-700"
+      className="min-h-screen bg-neutral-950 text-white flex flex-col transition-colors duration-700 pb-16 sm:pb-0"
     >
       {/* Barra Superior Cockpit */}
       <header className="border-b border-neutral-800/80 bg-neutral-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 sticky top-0 z-40">
@@ -495,6 +519,51 @@ export default function DynamicDashboard({
             >
               <Scale className="w-3.5 h-3.5 text-amber-400" />
               <span>{isEn ? 'AI Lawyer' : 'Abogado IA'}</span>
+            </button>
+
+            {/* Pill Doctor Motor IA (Diagnóstico Mecánico por Ruido / Síntoma + Precio Justo) */}
+            <button
+              type="button"
+              onClick={() => setIsDoctorModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-teal-950/80 hover:bg-teal-900/80 border-teal-500/50 text-teal-300"
+              title="Doctor Motor IA: Diagnóstico mecánico por sonido o síntoma y precio justo de reparación"
+            >
+              <Wrench className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isEn ? 'Doctor AI' : 'Doctor IA'}</span>
+            </button>
+
+            {/* Pill SOS Emergencia Médica & Grúa 24/7 + GPS en Vivo */}
+            <button
+              type="button"
+              onClick={() => setIsSosModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-red-950/90 hover:bg-red-900 border-red-500/60 text-red-200"
+              title="SOS Emergencia: Ficha Médica para Paramédicos (Factor RH), Grúa 24/7 y Alerta GPS al Clan"
+            >
+              <HeartPulse className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+              <span>SOS</span>
+            </button>
+
+            {/* Selector Rápido de Carátula TFT (Street / Track Race / Night Stealth) */}
+            <button
+              type="button"
+              onClick={() =>
+                setTftTheme((prev) =>
+                  prev === 'street' ? 'track' : prev === 'track' ? 'stealth' : 'street'
+                )
+              }
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition border bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
+              title="Cambiar Carátula del Tacómetro TFT (Street / Track MotoGP / Night Stealth)"
+            >
+              {tftTheme === 'track' ? (
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+              ) : tftTheme === 'stealth' ? (
+                <Moon className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <Gauge className="w-3.5 h-3.5 text-amber-400" />
+              )}
+              <span className="hidden md:inline uppercase">
+                TFT: {tftTheme}
+              </span>
             </button>
 
             {/* Pill Centro de Alertas (Separado de Comunidad: Push/WhatsApp 30-15-5d + Radar Retenes) */}
@@ -778,6 +847,82 @@ export default function DynamicDashboard({
         userProfile={userProfile}
         onOpenHojaDeVida={onOpenHojaDeVida}
       />
+
+      {/* MODAL SOS EMERGENCIA MÉDICA PARA PARAMÉDICOS, GRÚA Y ALERTA GPS AL CLAN */}
+      <SosEmergencyModal
+        isOpen={isSosModalOpen}
+        onClose={() => setIsSosModalOpen(false)}
+        bike={effectiveBike}
+        hojaDeVida={hojaDeVida}
+        userProfile={userProfile}
+        onUpdateHojaDeVida={onUpdateHojaDeVida}
+      />
+
+      {/* MODAL DOCTOR MOTOR IA (DIAGNÓSTICO MECÁNICO POR SONIDO O SÍNTOMA) */}
+      <DoctorMotorModal
+        isOpen={isDoctorModalOpen}
+        onClose={() => setIsDoctorModalOpen(false)}
+        bike={effectiveBike}
+        odometer={odometer}
+      />
+
+      {/* DOCK INFERIOR FIJO PARA CELULAR Y SOPORTE DE MANUBRIO (CON GUANTES) */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-800 px-2 py-1.5 grid grid-cols-5 gap-1">
+        <button
+          type="button"
+          onClick={() => setIsGloveboxOpen(true)}
+          className="flex flex-col items-center justify-center py-1 rounded-xl text-emerald-400 hover:bg-neutral-900"
+        >
+          <ShieldCheck className="w-5 h-5" />
+          <span className="text-[10px] font-racing font-bold uppercase mt-0.5">
+            {isEn ? 'Docs' : 'Retén'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsLawyerModalOpen(true)}
+          className="flex flex-col items-center justify-center py-1 rounded-xl text-indigo-400 hover:bg-neutral-900"
+        >
+          <Scale className="w-5 h-5" />
+          <span className="text-[10px] font-racing font-bold uppercase mt-0.5">
+            {isEn ? 'Lawyer' : 'Abogado'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsSosModalOpen(true)}
+          className="flex flex-col items-center justify-center py-1 rounded-xl bg-red-600/20 border border-red-500/40 text-red-400"
+        >
+          <HeartPulse className="w-5 h-5 animate-pulse" />
+          <span className="text-[10px] font-racing font-black uppercase mt-0.5">
+            SOS
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsDoctorModalOpen(true)}
+          className="flex flex-col items-center justify-center py-1 rounded-xl text-cyan-400 hover:bg-neutral-900"
+        >
+          <Wrench className="w-5 h-5" />
+          <span className="text-[10px] font-racing font-bold uppercase mt-0.5">
+            {isEn ? 'Doctor' : 'Taller IA'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsCommunityOpen(true)}
+          className="flex flex-col items-center justify-center py-1 rounded-xl text-amber-400 hover:bg-neutral-900"
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-[10px] font-racing font-bold uppercase mt-0.5">
+            {isEn ? 'Clans' : 'Clanes'}
+          </span>
+        </button>
+      </nav>
     </div>
   );
 }

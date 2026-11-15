@@ -211,6 +211,7 @@ export default function CommunityChatModal({
   });
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [rsvpClans, setRsvpClans] = useState({});
 
   // Modal interno para crear un nuevo Clan Motero con logo propio
   const [isCreateClanOpen, setIsCreateClanOpen] = useState(false);
@@ -445,10 +446,32 @@ export default function CommunityChatModal({
     }
   };
 
-  const handleUnlockClan = (e) => {
+  const handleUnlockClan = async (e) => {
     e.preventDefault();
     if (!currentClan) return;
-    if (inviteCodeInput.trim().toUpperCase() === String(currentClan.invite_code || '').toUpperCase()) {
+    const cleanCode = inviteCodeInput.trim().toUpperCase();
+
+    try {
+      const authUid = await getAuthenticatedUserId();
+      if (authUid) {
+        const { data } = await supabase.rpc('join_moto_clan_with_code', {
+          p_clan_slug: currentClan.slug,
+          p_invite_code: cleanCode,
+          p_member_name: userProfile?.fullName || 'Piloto Clan',
+          p_member_bike: bikeLabel
+        });
+        if (data?.success) {
+          const nextUnlocked = Array.from(new Set([...unlockedClans, currentClan.slug]));
+          setUnlockedClans(nextUnlocked);
+          setInviteCodeInput('');
+          setInviteError('');
+          localStorage.setItem('motodash_unlocked_clans', JSON.stringify(nextUnlocked));
+          return;
+        }
+      }
+    } catch {}
+
+    if (cleanCode === String(currentClan.invite_code || '').toUpperCase()) {
       const nextUnlocked = Array.from(new Set([...unlockedClans, currentClan.slug]));
       setUnlockedClans(nextUnlocked);
       setInviteCodeInput('');
@@ -895,6 +918,30 @@ export default function CommunityChatModal({
                     <div className="px-2.5 py-1 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
                       🔑 Código Clan: <strong>{currentClan.invite_code}</strong>
                     </div>
+                  )}
+
+                  {hasClanAccess && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRsvpClans((prev) => ({
+                          ...prev,
+                          [currentClan.slug]: !prev[currentClan.slug]
+                        }))
+                      }
+                      className={`px-2.5 py-1 rounded-xl border font-bold transition flex items-center gap-1 ${
+                        rsvpClans[currentClan.slug]
+                          ? 'bg-emerald-500 text-black border-emerald-400'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>
+                        {rsvpClans[currentClan.slug]
+                          ? `✅ Confirmado en Rodada (${(currentClan.member_count || 12) + 1} motos)`
+                          : `🏍️ Confirmar Rodada (${currentClan.member_count || 12} motos)`}
+                      </span>
+                    </button>
                   )}
                 </div>
               </div>

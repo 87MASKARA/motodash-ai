@@ -676,6 +676,26 @@ Responde a la consulta del piloto ("${question}") ESTRICTAMENTE en español y en
   ]
 }`;
 
+  // 1. Intentar primero el Serverless AI Gateway seguro (/api/ai-gateway) para proteger GEMINI_API_KEY
+  try {
+    const gatewayRes = await fetch('/api/ai-gateway', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: systemPrompt, temperature: 0.15 })
+    });
+    if (gatewayRes.ok) {
+      const payload = await gatewayRes.json();
+      if (payload?.data?.instantVerdict) {
+        return {
+          ...payload.data,
+          source: isEn
+            ? `Gemini 2.0 Flash Secure Gateway (${country})`
+            : `Gemini 2.0 Flash • Servidor Seguro (${country})`
+        };
+      }
+    }
+  } catch {}
+
   if (apiKey) {
     try {
       const response = await fetch(
