@@ -352,10 +352,24 @@ export default function HojaDeVidaModal({
                       desc: "Certificado de gases y seguridad vial" 
                     },
                     { 
+                      id: "tarjeta_frontal", 
+                      title: "Tarjeta de Propiedad • Lado 1 (Cara Frontal / Anverso)", 
+                      date: null,
+                      permanentBadge: "PERMANENTE",
+                      desc: `Placa: ${docs.placa || "SIN PLACA"} • ${bikeIdentity.brand} ${bikeIdentity.model}` 
+                    },
+                    { 
+                      id: "tarjeta_posterior", 
+                      title: "Tarjeta de Propiedad • Lado 2 (Cara Posterior / Reverso)", 
+                      date: null,
+                      permanentBadge: "PERMANENTE",
+                      desc: `VIN: ${docs.numeroChasis || docs.vinChasis || "VERIFICADO"} • Motor: ${docs.numeroMotor || docs.engineNumber || "VERIFICADO"}` 
+                    },
+                    { 
                       id: "seguro", 
-                      title: docs.seguroNombre || "Seguro Todo Riesgo", 
-                      date: docs.seguroVencimiento, 
-                      desc: `Póliza #${docs.seguroPoliza || "SURA"}` 
+                      title: docs.seguroTodoRiesgoAseguradora || docs.seguroNombre || "Seguro Todo Riesgo", 
+                      date: docs.seguroTodoRiesgoVencimiento || docs.seguroVencimiento, 
+                      desc: `Póliza #${docs.seguroTodoRiesgoPoliza || docs.seguroPoliza || "SURA"}` 
                     },
                     { 
                       id: "impuesto", 
@@ -381,7 +395,7 @@ export default function HojaDeVidaModal({
                           <div>
                             <h5 className="text-sm font-bold text-white">{doc.title}</h5>
                             <p className="text-[11px] text-neutral-400 font-mono">
-                              Vence: {doc.date || "Sin fecha"} • {doc.desc}
+                              {doc.permanentBadge ? doc.desc : `Vence: ${doc.date || "Sin fecha"} • ${doc.desc}`}
                             </p>
                           </div>
                         </div>
@@ -392,7 +406,7 @@ export default function HojaDeVidaModal({
                             isWarning ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" :
                             "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
                           }`}>
-                            {days === null ? "N/A" : isExpired ? "VENCIDO" : `${days} días`}
+                            {doc.permanentBadge ? doc.permanentBadge : days === null ? "N/A" : isExpired ? "VENCIDO" : `${days} días`}
                           </span>
                         </div>
                       </div>

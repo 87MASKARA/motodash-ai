@@ -11,7 +11,8 @@ import {
   QrCode,
   Lock,
   FlipHorizontal,
-  Eye
+  Eye,
+  CreditCard
 } from 'lucide-react';
 import {
   COUNTRY_DOCUMENT_TERMINOLOGY,
@@ -45,8 +46,7 @@ export default function DigitalGloveboxModal({
   const [scanningSlot, setScanningSlot] = useState(null);
   const [aiDraft, setAiDraft] = useState(null);
   const [compressionStats, setCompressionStats] = useState(null);
-  const [fullscreenDoc, setFullscreenDoc] = useState(null);
-  const [regSideFilter, setRegSideFilter] = useState('both'); // 'both' | 'front' | 'back'
+  const [fullscreenView, setFullscreenView] = useState(null); // 'all_checkpoint' | card object
   const fileInputRef = useRef(null);
   const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
 
@@ -70,8 +70,8 @@ export default function DigitalGloveboxModal({
   const vehicleRegRaw = globalDocs.vehicle_registration || {};
   const vehicleRegistration = {
     plate: docs.placa || vehicleRegRaw.plate || 'SIN PLACA',
-    vin: docs.numeroChasis || vehicleRegRaw.vin || identity.vin || 'N/A',
-    engineNumber: docs.numeroMotor || vehicleRegRaw.engineNumber || identity.engineNumber || 'N/A',
+    vin: docs.numeroChasis || docs.vinChasis || vehicleRegRaw.vin || identity.vin || 'N/A',
+    engineNumber: docs.numeroMotor || docs.engineNumber || vehicleRegRaw.engineNumber || identity.engineNumber || 'N/A',
     ownerName: docs.propietario || userProfile?.fullName || 'Titular Registrado',
     ownerDoc: docs.documentoPropietario || 'Verificado',
     modelYear: docs.modeloAno || identity.year || '2026',
@@ -85,8 +85,7 @@ export default function DigitalGloveboxModal({
     backImageUrl:
       vehicleRegRaw.backImageUrl ||
       globalDocs.vehicle_registration_back?.imageUrl ||
-      null,
-    verifiedByAi: true
+      null
   };
 
   const mandatoryEval = evaluateDocumentAlertStatus(
@@ -97,6 +96,104 @@ export default function DigitalGloveboxModal({
     technicalInspection.expiryDate,
     countryLabels.technical_inspection.shortName
   );
+
+  // Las 4 Fotos Oficiales Exigidas por Tránsito en Retenes:
+  // 1. Foto SOAT
+  // 2. Foto Tecnomecánica
+  // 3. Foto Tarjeta de Propiedad — Lado 1 (Cara Frontal / Anverso)
+  // 4. Foto Tarjeta de Propiedad — Lado 2 (Cara Posterior / Reverso)
+  const checkpointPhotoCards = [
+    {
+      slot: 'mandatory_insurance',
+      stepNumber: '1/4',
+      globalKey: 'mandatory_insurance',
+      shortLabel: `Foto ${countryLabels.mandatory_insurance.shortName}`,
+      fullLabel: countryLabels.mandatory_insurance.fullName,
+      sideBadge: 'PÓLIZA VIGENTE',
+      accentBorder: 'border-emerald-500/50',
+      badgeColor:
+        mandatoryEval.status === 'expired'
+          ? 'bg-red-500/20 text-red-300 border-red-500/40'
+          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      badgeText: mandatoryEval.badgeText,
+      imageUrl: mandatoryInsurance.imageUrl,
+      uploadBtnText: mandatoryInsurance.imageUrl
+        ? `Cambiar Foto ${countryLabels.mandatory_insurance.shortName}`
+        : `Subir Foto ${countryLabels.mandatory_insurance.shortName} (Escáner IA)`,
+      fields: [
+        { label: 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: 'FECHA VENCIMIENTO', value: mandatoryInsurance.expiryDate || 'SIN FECHA', highlight: 'text-emerald-400 font-bold' },
+        { label: 'N° PÓLIZA', value: mandatoryInsurance.policyNumber, highlight: 'text-white' },
+        { label: 'ASEGURADORA', value: mandatoryInsurance.issuer, highlight: 'text-neutral-300' }
+      ]
+    },
+    {
+      slot: 'technical_inspection',
+      stepNumber: '2/4',
+      globalKey: 'technical_inspection',
+      shortLabel: `Foto ${countryLabels.technical_inspection.shortName}`,
+      fullLabel: countryLabels.technical_inspection.fullName,
+      sideBadge: 'CERTIFICADO TÉCNICO',
+      accentBorder: 'border-emerald-500/50',
+      badgeColor:
+        technicalEval.status === 'expired'
+          ? 'bg-red-500/20 text-red-300 border-red-500/40'
+          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      badgeText: technicalEval.badgeText,
+      imageUrl: technicalInspection.imageUrl,
+      uploadBtnText: technicalInspection.imageUrl
+        ? `Cambiar Foto ${countryLabels.technical_inspection.shortName}`
+        : `Subir Foto ${countryLabels.technical_inspection.shortName} (Escáner IA)`,
+      fields: [
+        { label: 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: 'FECHA VENCIMIENTO', value: technicalInspection.expiryDate || 'SIN FECHA', highlight: 'text-emerald-400 font-bold' },
+        { label: 'N° CERTIFICADO', value: technicalInspection.policyNumber, highlight: 'text-white' },
+        { label: 'CENTRO / CDA', value: technicalInspection.issuer, highlight: 'text-neutral-300' }
+      ]
+    },
+    {
+      slot: 'vehicle_registration_front',
+      stepNumber: '3/4',
+      globalKey: 'vehicle_registration (Lado 1)',
+      shortLabel: `${countryLabels.vehicle_registration.shortName} • LADO 1 (FRONTAL)`,
+      fullLabel: `${countryLabels.vehicle_registration.fullName} — Cara Frontal (Anverso)`,
+      sideBadge: 'CARA 1 DE 2 • ANVERSO',
+      accentBorder: 'border-amber-500/60',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+      badgeText: vehicleRegistration.frontImageUrl ? 'FOTO FRONTAL LISTA' : 'CARA FRONTAL OFICIAL',
+      imageUrl: vehicleRegistration.frontImageUrl,
+      uploadBtnText: vehicleRegistration.frontImageUrl
+        ? 'Cambiar Foto Lado 1 (Cara Frontal)'
+        : 'Subir Foto Lado 1: Cara Frontal (Anverso)',
+      fields: [
+        { label: 'PLACA / MATRÍCULA', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: 'MARCA / LÍNEA / MODELO', value: `${identity.brand} ${identity.model} (${vehicleRegistration.modelYear})`, highlight: 'text-white font-bold' },
+        { label: 'CILINDRADA / CLASE', value: `${vehicleRegistration.displacementCc} cc • MOTOCICLETA`, highlight: 'text-emerald-300' },
+        { label: 'PROPIETARIO TITULAR', value: vehicleRegistration.ownerName, highlight: 'text-neutral-200' }
+      ]
+    },
+    {
+      slot: 'vehicle_registration_back',
+      stepNumber: '4/4',
+      globalKey: 'vehicle_registration (Lado 2)',
+      shortLabel: `${countryLabels.vehicle_registration.shortName} • LADO 2 (POSTERIOR)`,
+      fullLabel: `${countryLabels.vehicle_registration.fullName} — Cara Posterior (Reverso)`,
+      sideBadge: 'CARA 2 DE 2 • REVERSO',
+      accentBorder: 'border-cyan-500/60',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+      badgeText: vehicleRegistration.backImageUrl ? 'FOTO POSTERIOR LISTA' : 'CARA POSTERIOR OFICIAL',
+      imageUrl: vehicleRegistration.backImageUrl,
+      uploadBtnText: vehicleRegistration.backImageUrl
+        ? 'Cambiar Foto Lado 2 (Cara Posterior)'
+        : 'Subir Foto Lado 2: Cara Posterior (Reverso)',
+      fields: [
+        { label: 'VIN / CHASIS / SERIE', value: vehicleRegistration.vin, highlight: 'text-amber-300 font-bold' },
+        { label: 'NÚMERO DE MOTOR', value: vehicleRegistration.engineNumber, highlight: 'text-white font-bold' },
+        { label: 'SERVICIO / RESTRICCIÓN', value: 'PARTICULAR • SIN RESTRICCIÓN', highlight: 'text-emerald-300' },
+        { label: 'ORGANISMO TRÁNSITO', value: countryLabels.authority, highlight: 'text-cyan-300' }
+      ]
+    }
+  ];
 
   const handleTriggerFileSelect = (slotKey) => {
     setActiveUploadSlot(slotKey);
@@ -132,7 +229,6 @@ export default function DigitalGloveboxModal({
         // Si está en modo visitante/demo, continúa con vista previa local comprimida
       }
 
-      // Si es Cara Frontal o Cara Posterior de la Tarjeta de Propiedad, guardar la foto inmediatamente y extraer placa/VIN con IA
       const baseDocSlot = slot.startsWith('vehicle_registration') ? 'vehicle_registration' : slot;
 
       const aiResult = await extractDocumentWithAI({
@@ -173,7 +269,7 @@ export default function DigitalGloveboxModal({
     const prevGlobal = hojaDeVida.globalDocuments || {};
     const prevReg = prevGlobal.vehicle_registration || {};
 
-    let nextGlobalDocs = { ...prevGlobal };
+    const nextGlobalDocs = { ...prevGlobal };
     const nextDocs = { ...(hojaDeVida.documentos || {}) };
 
     if (slot === 'vehicle_registration_front' || slot === 'vehicle_registration_back') {
@@ -187,6 +283,12 @@ export default function DigitalGloveboxModal({
         frontImageUrl: isFront ? aiDraft.imageUrl : prevReg.frontImageUrl || null,
         backImageUrl: !isFront ? aiDraft.imageUrl : prevReg.backImageUrl || null,
         verifiedByAi: true,
+        updatedAt: new Date().toISOString()
+      };
+      nextGlobalDocs[slot] = {
+        documentType: slot,
+        imageUrl: aiDraft.imageUrl,
+        storagePath: aiDraft.storagePath,
         updatedAt: new Date().toISOString()
       };
       if (aiDraft.plate) nextDocs.placa = aiDraft.plate;
@@ -249,7 +351,7 @@ export default function DigitalGloveboxModal({
         />
 
         {/* ENCABEZADO MODO RETÉN POLICIAL */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-800">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
               <ShieldCheck className="w-7 h-7" />
@@ -257,22 +359,31 @@ export default function DigitalGloveboxModal({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500 text-black">
-                  MODO RETÉN POLICIAL • VISOR DE FOTOS OFICIALES
+                  MODO RETÉN POLICIAL • 4 FOTOS OFICIALES
                 </span>
                 <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">
                   PLACA: {vehicleRegistration.plate}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black font-racing uppercase tracking-wider text-white mt-1">
-                Mis Documentos: Fotos de {countryLabels.mandatory_insurance.shortName}, {countryLabels.technical_inspection.shortName} y {countryLabels.vehicle_registration.shortName} (Ambos Lados)
+              <h2 className="text-base sm:text-xl font-black font-racing uppercase tracking-wider text-white mt-1">
+                Guantera Digital: {countryLabels.mandatory_insurance.shortName}, {countryLabels.technical_inspection.shortName} y {countryLabels.vehicle_registration.shortName} (Ambos Lados)
               </h2>
               <p className="text-xs text-neutral-400 font-mono">
-                {identity.brand} {identity.model} ({vehicleRegistration.modelYear}) • Toca cualquier foto para abrirla en pantalla completa ante el agente de tránsito
+                {identity.brand} {identity.model} ({vehicleRegistration.modelYear}) • Incluye Lado 1 (Frontal) y Lado 2 (Posterior) de la Tarjeta de Propiedad
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
+            <button
+              type="button"
+              onClick={() => setFullscreenView({ mode: 'all_checkpoint' })}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-racing font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span>Mostrar las 4 Fotos al Agente</span>
+            </button>
+
             <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 rounded-xl px-2.5 py-1.5">
               <Globe2 className="w-3.5 h-3.5 text-amber-400" />
               <select
@@ -376,304 +487,46 @@ export default function DigitalGloveboxModal({
           </div>
         )}
 
-        {/* SECCIÓN 1: TARJETA DE PROPIEDAD POR AMBOS LADOS (CARA FRONTAL / ANVERSO Y CARA POSTERIOR / REVERSO) */}
-        <div className="mt-5 p-4 rounded-2xl bg-neutral-900/95 border-2 border-amber-500/40">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-neutral-800">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500 text-black">
-                  EXIGIDO EN RETENES • AMBAS CARAS
-                </span>
-                <span className="text-[10px] font-mono text-neutral-400">
-                  DB: vehicle_registration
-                </span>
-              </div>
-              <h3 className="text-base sm:text-lg font-black font-racing uppercase text-white mt-1 flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-amber-400" />
-                <span>{countryLabels.vehicle_registration.shortName} (Cara Frontal y Cara Posterior)</span>
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() =>
-                  setFullscreenDoc({
-                    type: 'registration_both',
-                    title: `${countryLabels.vehicle_registration.fullName} (Ambos Lados)`,
-                    frontImageUrl: vehicleRegistration.frontImageUrl,
-                    backImageUrl: vehicleRegistration.backImageUrl
-                  })
-                }
-                className="px-3 py-1.5 rounded-xl bg-amber-500 text-black font-racing font-bold text-xs uppercase flex items-center gap-1.5 shadow-md"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-                <span>Mostrar Ambos Lados al Agente</span>
-              </button>
-            </div>
-          </div>
-
-          {/* GRILLA DOBLE: LADO A (CARA FRONTAL) Y LADO B (CARA POSTERIOR) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            {/* LADO 1: CARA FRONTAL (ANVERSO) */}
-            <div className="rounded-2xl bg-neutral-950 border border-neutral-800 p-3.5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-racing font-bold uppercase text-amber-300 flex items-center gap-1.5">
-                    <FlipHorizontal className="w-3.5 h-3.5" />
-                    <span>Lado 1: Cara Frontal (Anverso)</span>
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    {vehicleRegistration.frontImageUrl ? 'FOTO REAL CARGADA' : 'CREDENCIAL DIGITAL'}
-                  </span>
-                </div>
-
-                {/* FOTO CARA FRONTAL O FACSCÍMIL VISUAL */}
-                <div
-                  onClick={() =>
-                    setFullscreenDoc({
-                      type: 'registration_both',
-                      title: `${countryLabels.vehicle_registration.fullName} — Cara Frontal y Posterior`,
-                      frontImageUrl: vehicleRegistration.frontImageUrl,
-                      backImageUrl: vehicleRegistration.backImageUrl
-                    })
-                  }
-                  className="relative group cursor-pointer rounded-xl overflow-hidden border-2 border-neutral-700 hover:border-amber-400 h-48 bg-gradient-to-br from-emerald-950/60 via-neutral-900 to-neutral-950 flex flex-col justify-between p-3.5 transition"
-                >
-                  {vehicleRegistration.frontImageUrl ? (
-                    <img
-                      src={vehicleRegistration.frontImageUrl}
-                      alt="Tarjeta de Propiedad - Cara Frontal"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-start border-b border-emerald-500/30 pb-2">
-                        <div>
-                          <span className="text-[9px] font-mono uppercase text-emerald-300 block font-bold">
-                            REPÚBLICA DE COLOMBIA • LICENCIA DE TRÁNSITO (ANVERSO)
-                          </span>
-                          <span className="text-sm font-black font-racing text-white">
-                            {identity.brand} {identity.model}
-                          </span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded bg-amber-400 text-black font-mono font-black text-xs">
-                          {vehicleRegistration.plate}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono my-auto py-1">
-                        <div>
-                          <span className="text-neutral-400 text-[9px] block">PROPIETARIO:</span>
-                          <span className="text-white font-bold truncate block">{vehicleRegistration.ownerName}</span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 text-[9px] block">MODELO / CILINDRADA:</span>
-                          <span className="text-white font-bold">{vehicleRegistration.modelYear} • {vehicleRegistration.displacementCc} cc</span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 text-[9px] block">CLASE / SERVICIO:</span>
-                          <span className="text-emerald-300">MOTOCICLETA • PARTICULAR</span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 text-[9px] block">DOCUMENTO:</span>
-                          <span className="text-neutral-200">{vehicleRegistration.ownerDoc}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-[9px] font-mono text-neutral-400 flex justify-between items-center border-t border-neutral-800 pt-1.5">
-                        <span>CARA FRONTAL VERIFICADA</span>
-                        <span className="text-amber-400 font-bold">Toca para ampliar 🔍</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-white transition">
-                    <Maximize2 className="w-4 h-4 text-amber-400" />
-                    <span>Ver en Pantalla Completa</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={scanningSlot === 'vehicle_registration_front'}
-                onClick={() => handleTriggerFileSelect('vehicle_registration_front')}
-                className="mt-3 w-full py-2 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-racing font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>
-                  {scanningSlot === 'vehicle_registration_front'
-                    ? 'Comprimiendo Cara Frontal...'
-                    : vehicleRegistration.frontImageUrl
-                    ? 'Actualizar Foto Cara Frontal'
-                    : 'Subir Foto Cara Frontal (Anverso)'}
-                </span>
-              </button>
-            </div>
-
-            {/* LADO 2: CARA POSTERIOR (REVERSO) */}
-            <div className="rounded-2xl bg-neutral-950 border border-neutral-800 p-3.5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-racing font-bold uppercase text-cyan-300 flex items-center gap-1.5">
-                    <FlipHorizontal className="w-3.5 h-3.5" />
-                    <span>Lado 2: Cara Posterior (Reverso)</span>
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    {vehicleRegistration.backImageUrl ? 'FOTO REAL CARGADA' : 'CREDENCIAL DIGITAL'}
-                  </span>
-                </div>
-
-                {/* FOTO CARA POSTERIOR O FACSCÍMIL VISUAL */}
-                <div
-                  onClick={() =>
-                    setFullscreenDoc({
-                      type: 'registration_both',
-                      title: `${countryLabels.vehicle_registration.fullName} — Cara Frontal y Posterior`,
-                      frontImageUrl: vehicleRegistration.frontImageUrl,
-                      backImageUrl: vehicleRegistration.backImageUrl
-                    })
-                  }
-                  className="relative group cursor-pointer rounded-xl overflow-hidden border-2 border-neutral-700 hover:border-cyan-400 h-48 bg-gradient-to-br from-cyan-950/50 via-neutral-900 to-neutral-950 flex flex-col justify-between p-3.5 transition"
-                >
-                  {vehicleRegistration.backImageUrl ? (
-                    <img
-                      src={vehicleRegistration.backImageUrl}
-                      alt="Tarjeta de Propiedad - Cara Posterior"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-start border-b border-cyan-500/30 pb-2">
-                        <div>
-                          <span className="text-[9px] font-mono uppercase text-cyan-300 block font-bold">
-                            LICENCIA DE TRÁNSITO • REVERSO TÉCNICO (VIN / MOTOR)
-                          </span>
-                          <span className="text-xs font-mono font-bold text-white">
-                            {countryLabels.authority}
-                          </span>
-                        </div>
-                        <QrCode className="w-6 h-6 text-cyan-400 flex-shrink-0" />
-                      </div>
-
-                      <div className="space-y-1.5 text-[11px] font-mono my-auto">
-                        <div className="flex justify-between bg-black/40 px-2.5 py-1 rounded">
-                          <span className="text-neutral-400">VIN / CHASIS:</span>
-                          <span className="text-amber-300 font-bold">{vehicleRegistration.vin}</span>
-                        </div>
-                        <div className="flex justify-between bg-black/40 px-2.5 py-1 rounded">
-                          <span className="text-neutral-400">NÚMERO MOTOR:</span>
-                          <span className="text-white font-bold">{vehicleRegistration.engineNumber}</span>
-                        </div>
-                        <div className="flex justify-between bg-black/40 px-2.5 py-1 rounded">
-                          <span className="text-neutral-400">RESTRICCIÓN:</span>
-                          <span className="text-emerald-300">NINGUNA • LIBRE CIRCULACIÓN</span>
-                        </div>
-                      </div>
-
-                      <div className="text-[9px] font-mono text-neutral-400 flex justify-between items-center border-t border-neutral-800 pt-1.5">
-                        <span>CARA POSTERIOR VERIFICADA</span>
-                        <span className="text-cyan-400 font-bold">Toca para ampliar 🔍</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-white transition">
-                    <Maximize2 className="w-4 h-4 text-cyan-400" />
-                    <span>Ver en Pantalla Completa</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={scanningSlot === 'vehicle_registration_back'}
-                onClick={() => handleTriggerFileSelect('vehicle_registration_back')}
-                className="mt-3 w-full py-2 px-3 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 font-racing font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>
-                  {scanningSlot === 'vehicle_registration_back'
-                    ? 'Comprimiendo Cara Posterior...'
-                    : vehicleRegistration.backImageUrl
-                    ? 'Actualizar Foto Cara Posterior'
-                    : 'Subir Foto Cara Posterior (Reverso)'}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* SECCIÓN 2: FOTOS DE SOAT (SEGURO OBLIGATORIO) Y TECNOMECÁNICA (REVISIÓN TÉCNICA) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          {[
-            {
-              slot: 'mandatory_insurance',
-              globalKey: 'mandatory_insurance',
-              shortLabel: countryLabels.mandatory_insurance.shortName,
-              fullLabel: countryLabels.mandatory_insurance.fullName,
-              expiryDate: mandatoryInsurance.expiryDate,
-              numberLabel: 'Póliza Oficial',
-              numberValue: mandatoryInsurance.policyNumber,
-              issuer: mandatoryInsurance.issuer,
-              imageUrl: mandatoryInsurance.imageUrl,
-              evalStatus: mandatoryEval
-            },
-            {
-              slot: 'technical_inspection',
-              globalKey: 'technical_inspection',
-              shortLabel: countryLabels.technical_inspection.shortName,
-              fullLabel: countryLabels.technical_inspection.fullName,
-              expiryDate: technicalInspection.expiryDate,
-              numberLabel: 'Certificado RUNT',
-              numberValue: technicalInspection.policyNumber,
-              issuer: technicalInspection.issuer,
-              imageUrl: technicalInspection.imageUrl,
-              evalStatus: technicalEval
-            }
-          ].map((card) => {
-            const isExpired = card.evalStatus.status === 'expired';
-            const isWarning = ['critical_5d', 'warning_15d', 'notice_30d'].includes(card.evalStatus.status);
+        {/* GRILLA UNIFORME 2x2 CON LAS 4 FOTOS EXIGIDAS POR TRÁNSITO EN RETENES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+          {checkpointPhotoCards.map((card) => {
             const isScanning = scanningSlot === card.slot;
+            const isRegCard = card.slot.startsWith('vehicle_registration');
 
             return (
               <div
                 key={card.slot}
-                className={`rounded-2xl p-4 border flex flex-col justify-between transition ${
-                  isExpired
-                    ? 'bg-red-950/25 border-red-500/60'
-                    : isWarning
-                    ? 'bg-amber-950/25 border-amber-500/60'
-                    : 'bg-neutral-900/90 border-neutral-800 hover:border-emerald-500/40'
-                }`}
+                className={`rounded-2xl p-4 bg-neutral-900/95 border-2 ${card.accentBorder} flex flex-col justify-between transition`}
               >
                 <div>
+                  {/* Cabecera de cada Foto */}
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <h3 className="text-base font-black font-racing uppercase text-white flex items-center gap-1.5">
-                      <FileCheck2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span>Foto {card.shortLabel}</span>
-                    </h3>
-                    <span
-                      className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full ${
-                        isExpired
-                          ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-                          : isWarning
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      }`}
-                    >
-                      {card.evalStatus.badgeText}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-md bg-neutral-800 text-amber-400 border border-neutral-700">
+                        FOTO {card.stepNumber}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold uppercase text-neutral-300">
+                        {card.sideBadge}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${card.badgeColor}`}>
+                      {card.badgeText}
                     </span>
                   </div>
 
-                  {/* VISOR FOTOGRÁFICO GRANDE DEL DOCUMENTO */}
+                  <h3 className="text-sm sm:text-base font-black font-racing uppercase text-white flex items-center gap-1.5 mb-2">
+                    {isRegCard ? (
+                      <CreditCard className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    ) : (
+                      <FileCheck2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    )}
+                    <span>{card.shortLabel}</span>
+                  </h3>
+
+                  {/* VISOR DE LA FOTO DEL DOCUMENTO */}
                   <div
-                    onClick={() =>
-                      setFullscreenDoc({
-                        type: 'single',
-                        card
-                      })
-                    }
-                    className="relative group cursor-pointer rounded-xl overflow-hidden border-2 border-neutral-700 hover:border-emerald-400 h-52 bg-neutral-950 flex flex-col justify-between p-4 transition"
+                    onClick={() => setFullscreenView({ mode: 'single', card })}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden border-2 border-neutral-700 hover:border-amber-400 h-52 bg-neutral-950 flex flex-col justify-between p-3.5 transition"
                   >
                     {card.imageUrl ? (
                       <img
@@ -686,48 +539,42 @@ export default function DigitalGloveboxModal({
                         <div className="flex items-start justify-between border-b border-neutral-800 pb-2">
                           <div>
                             <span className="text-[9px] font-mono uppercase text-emerald-400 font-bold block">
-                              SOPORTE DIGITAL OFICIAL • {card.globalKey}
+                              CREDENCIAL DIGITAL VERIFICADA • {card.globalKey}
                             </span>
-                            <span className="text-sm font-black font-racing uppercase text-white">
+                            <span className="text-xs font-black font-racing uppercase text-white line-clamp-1">
                               {card.fullLabel}
                             </span>
                           </div>
-                          <QrCode className="w-8 h-8 text-emerald-400 flex-shrink-0" />
+                          <QrCode className="w-7 h-7 text-emerald-400 flex-shrink-0" />
                         </div>
 
-                        <div className="space-y-1.5 font-mono text-xs my-auto">
-                          <div className="flex justify-between bg-neutral-900/90 px-3 py-1.5 rounded-lg">
-                            <span className="text-neutral-400">PLACA VEHÍCULO:</span>
-                            <span className="font-bold text-amber-400">{vehicleRegistration.plate}</span>
-                          </div>
-                          <div className="flex justify-between bg-neutral-900/90 px-3 py-1.5 rounded-lg">
-                            <span className="text-neutral-400">VENCIMIENTO:</span>
-                            <span className="font-bold text-emerald-400">{card.expiryDate || 'SIN FECHA'}</span>
-                          </div>
-                          <div className="flex justify-between bg-neutral-900/90 px-3 py-1.5 rounded-lg">
-                            <span className="text-neutral-400">{card.numberLabel}:</span>
-                            <span className="text-white truncate max-w-[180px]">{card.numberValue}</span>
-                          </div>
-                          <div className="flex justify-between bg-neutral-900/90 px-3 py-1.5 rounded-lg">
-                            <span className="text-neutral-400">ENTIDAD:</span>
-                            <span className="text-neutral-200 truncate max-w-[180px]">{card.issuer}</span>
-                          </div>
+                        <div className="space-y-1.5 font-mono text-[11px] my-auto">
+                          {card.fields.map((f) => (
+                            <div
+                              key={f.label}
+                              className="flex justify-between gap-2 bg-neutral-900/90 px-2.5 py-1 rounded-lg border border-neutral-800/80"
+                            >
+                              <span className="text-neutral-400">{f.label}:</span>
+                              <span className={`${f.highlight} truncate max-w-[200px]`}>{f.value}</span>
+                            </div>
+                          ))}
                         </div>
 
                         <div className="text-[10px] font-mono text-neutral-400 flex justify-between items-center pt-1 border-t border-neutral-800">
-                          <span>Toca para mostrar en pantalla completa</span>
-                          <span className="text-emerald-400 font-bold">Ampliar 🔍</span>
+                          <span>Sube la foto física o toca para ampliar</span>
+                          <span className="text-amber-400 font-bold">Pantalla Completa 🔍</span>
                         </div>
                       </>
                     )}
 
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-white transition">
+                    <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-white transition">
                       <Maximize2 className="w-4 h-4 text-emerald-400" />
-                      <span>Mostrar {card.shortLabel} en Pantalla Completa</span>
+                      <span>Mostrar al Agente en Pantalla Completa</span>
                     </div>
                   </div>
                 </div>
 
+                {/* BOTONES DE ACCIÓN DE CADA FOTO */}
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
@@ -743,25 +590,16 @@ export default function DigitalGloveboxModal({
                     ) : (
                       <>
                         <Camera className="w-3.5 h-3.5" />
-                        <span>
-                          {card.imageUrl
-                            ? `Cambiar Foto de ${card.shortLabel}`
-                            : `Subir Foto de ${card.shortLabel} (IA)`}
-                        </span>
+                        <span>{card.uploadBtnText}</span>
                       </>
                     )}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setFullscreenDoc({
-                        type: 'single',
-                        card
-                      })
-                    }
+                    onClick={() => setFullscreenView({ mode: 'single', card })}
                     className="px-3 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-xs font-mono text-white flex items-center gap-1"
-                    title="Abrir en pantalla completa"
+                    title="Ampliar foto en pantalla completa"
                   >
                     <Eye className="w-4 h-4 text-emerald-400" />
                   </button>
@@ -791,12 +629,12 @@ export default function DigitalGloveboxModal({
           </div>
         )}
 
-        {/* MODAL INTERNO DE PANTALLA COMPLETA PARA MOSTRAR AL AGENTE DE TRÁNSITO */}
-        {fullscreenDoc && (
+        {/* VISOR DE PANTALLA COMPLETA PARA INSPECCIÓN DE AGENTE DE TRÁNSITO */}
+        {fullscreenView && (
           <div className="fixed inset-0 z-50 bg-black/96 flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto">
-            <div className="max-w-3xl w-full bg-neutral-900 border-2 border-emerald-500 rounded-3xl p-4 sm:p-6 text-white relative my-auto">
+            <div className="max-w-4xl w-full bg-neutral-900 border-2 border-emerald-500 rounded-3xl p-4 sm:p-6 text-white relative my-auto max-h-[94vh] overflow-y-auto">
               <button
-                onClick={() => setFullscreenDoc(null)}
+                onClick={() => setFullscreenView(null)}
                 className="absolute top-4 right-4 p-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white"
               >
                 <X className="w-5 h-5" />
@@ -806,158 +644,100 @@ export default function DigitalGloveboxModal({
                 INSPECCIÓN OFICIAL DE TRÁNSITO • PLACA {vehicleRegistration.plate}
               </span>
 
-              {fullscreenDoc.type === 'registration_both' ? (
-                <>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
-                    <h3 className="text-lg sm:text-xl font-black font-racing uppercase">
-                      {fullscreenDoc.title}
-                    </h3>
-                    <div className="flex gap-1.5">
-                      {[
-                        { id: 'both', label: 'Ambos Lados' },
-                        { id: 'front', label: 'Solo Frontal' },
-                        { id: 'back', label: 'Solo Posterior' }
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setRegSideFilter(tab.id)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${
-                            regSideFilter === tab.id
-                              ? 'bg-amber-500 text-black font-bold border-amber-400'
-                              : 'bg-neutral-800 text-neutral-300 border-neutral-700'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
+              {/* Selector rápido entre las 4 fotos o vista simultánea */}
+              <div className="flex gap-1.5 overflow-x-auto py-3 mt-2 border-b border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setFullscreenView({ mode: 'all_checkpoint' })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap border ${
+                    fullscreenView.mode === 'all_checkpoint'
+                      ? 'bg-emerald-500 text-black font-bold border-emerald-400'
+                      : 'bg-neutral-800 text-neutral-300 border-neutral-700'
+                  }`}
+                >
+                  📋 Ver las 4 Fotos Juntas
+                </button>
+                {checkpointPhotoCards.map((c) => (
+                  <button
+                    key={c.slot}
+                    type="button"
+                    onClick={() => setFullscreenView({ mode: 'single', card: c })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap border ${
+                      fullscreenView.card?.slot === c.slot
+                        ? 'bg-amber-500 text-black font-bold border-amber-400'
+                        : 'bg-neutral-800 text-neutral-300 border-neutral-700'
+                    }`}
+                  >
+                    {c.stepNumber} {c.shortLabel}
+                  </button>
+                ))}
+              </div>
+
+              {fullscreenView.mode === 'all_checkpoint' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {checkpointPhotoCards.map((c) => (
+                    <div key={c.slot} className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-racing font-bold uppercase text-amber-400">
+                          {c.stepNumber} • {c.shortLabel}
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400">{c.sideBadge}</span>
+                      </div>
+                      {c.imageUrl ? (
+                        <img
+                          src={c.imageUrl}
+                          alt={c.shortLabel}
+                          className="w-full h-48 object-contain rounded-xl bg-black"
+                        />
+                      ) : (
+                        <div className="space-y-1.5 font-mono text-xs p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                          {c.fields.map((f) => (
+                            <div key={f.label} className="flex justify-between gap-2">
+                              <span className="text-neutral-400">{f.label}:</span>
+                              <span className={f.highlight}>{f.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 mt-4">
-                    {(regSideFilter === 'both' || regSideFilter === 'front') && (
-                      <div className="p-4 rounded-2xl bg-neutral-950 border border-amber-500/50">
-                        <span className="text-xs font-racing font-bold uppercase text-amber-400 block mb-2">
-                          Lado 1: Cara Frontal (Anverso) — Datos del Vehículo y Propietario
-                        </span>
-                        {fullscreenDoc.frontImageUrl ? (
-                          <img
-                            src={fullscreenDoc.frontImageUrl}
-                            alt="Cara Frontal"
-                            className="w-full max-h-[42vh] object-contain rounded-xl bg-black mx-auto"
-                          />
-                        ) : (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs p-3 rounded-xl bg-neutral-900 border border-neutral-800">
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">PLACA:</span>
-                              <span className="text-amber-400 font-bold text-base">{vehicleRegistration.plate}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">MARCA / LÍNEA:</span>
-                              <span className="text-white font-bold">{identity.brand} {identity.model}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">MODELO / CILINDRADA:</span>
-                              <span className="text-white font-bold">{vehicleRegistration.modelYear} • {vehicleRegistration.displacementCc} cc</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">PROPIETARIO:</span>
-                              <span className="text-emerald-300 font-bold">{vehicleRegistration.ownerName}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">IDENTIFICACIÓN:</span>
-                              <span className="text-white">{vehicleRegistration.ownerDoc}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">SERVICIO:</span>
-                              <span className="text-white">PARTICULAR</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {(regSideFilter === 'both' || regSideFilter === 'back') && (
-                      <div className="p-4 rounded-2xl bg-neutral-950 border border-cyan-500/50">
-                        <span className="text-xs font-racing font-bold uppercase text-cyan-400 block mb-2">
-                          Lado 2: Cara Posterior (Reverso) — Chasis / VIN, Motor y Organismo de Tránsito
-                        </span>
-                        {fullscreenDoc.backImageUrl ? (
-                          <img
-                            src={fullscreenDoc.backImageUrl}
-                            alt="Cara Posterior"
-                            className="w-full max-h-[42vh] object-contain rounded-xl bg-black mx-auto"
-                          />
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs p-3 rounded-xl bg-neutral-900 border border-neutral-800">
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">VIN / CHASIS / SERIE:</span>
-                              <span className="text-amber-300 font-bold">{vehicleRegistration.vin}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">NÚMERO DE MOTOR:</span>
-                              <span className="text-white font-bold">{vehicleRegistration.engineNumber}</span>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500 block text-[10px]">AUTORIDAD:</span>
-                              <span className="text-cyan-300 font-bold">{countryLabels.authority}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
+                  ))}
+                </div>
               ) : (
-                <>
-                  <h3 className="text-xl font-black font-racing uppercase mt-2">
-                    {fullscreenDoc.card?.fullLabel}
+                <div className="mt-4">
+                  <h3 className="text-lg sm:text-xl font-black font-racing uppercase text-white">
+                    {fullscreenView.card?.fullLabel}
                   </h3>
-                  <p className="text-xs font-mono text-neutral-400">
-                    Vehículo: {identity.brand} {identity.model} • Placa: {vehicleRegistration.plate}
+                  <p className="text-xs font-mono text-neutral-400 mb-3">
+                    {fullscreenView.card?.sideBadge} • Vehículo: {identity.brand} {identity.model} ({vehicleRegistration.plate})
                   </p>
 
-                  {fullscreenDoc.card?.imageUrl ? (
-                    <div className="mt-4 rounded-2xl overflow-hidden border border-neutral-700 max-h-[60vh] flex items-center justify-center bg-black">
+                  {fullscreenView.card?.imageUrl ? (
+                    <div className="rounded-2xl overflow-hidden border border-neutral-700 max-h-[60vh] flex items-center justify-center bg-black">
                       <img
-                        src={fullscreenDoc.card.imageUrl}
-                        alt={fullscreenDoc.card.shortLabel}
+                        src={fullscreenView.card.imageUrl}
+                        alt={fullscreenView.card.shortLabel}
                         className="max-h-[60vh] w-auto object-contain"
                       />
                     </div>
                   ) : (
-                    <div className="mt-4 p-5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5 font-mono text-sm">
-                      <div className="flex justify-between border-b border-neutral-800 pb-2">
-                        <span className="text-neutral-400">PLACA:</span>
-                        <span className="font-bold text-amber-400 text-base">{vehicleRegistration.plate}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-neutral-800 pb-2">
-                        <span className="text-neutral-400">VENCIMIENTO:</span>
-                        <span className="font-bold text-emerald-400">{fullscreenDoc.card?.expiryDate || 'VIGENTE'}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-neutral-800 pb-2">
-                        <span className="text-neutral-400">REFERENCIA:</span>
-                        <span className="text-white">{fullscreenDoc.card?.numberValue}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-neutral-800 pb-2">
-                        <span className="text-neutral-400">ENTIDAD:</span>
-                        <span className="text-white">{fullscreenDoc.card?.issuer}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-neutral-400">VIN / CHASIS:</span>
-                        <span className="text-neutral-300">{vehicleRegistration.vin}</span>
-                      </div>
+                    <div className="p-5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5 font-mono text-sm">
+                      {fullscreenView.card?.fields.map((f) => (
+                        <div key={f.label} className="flex justify-between border-b border-neutral-800 pb-2">
+                          <span className="text-neutral-400">{f.label}:</span>
+                          <span className={f.highlight}>{f.value}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </>
+                </div>
               )}
 
               <button
                 type="button"
-                onClick={() => setFullscreenDoc(null)}
+                onClick={() => setFullscreenView(null)}
                 className="mt-5 w-full py-3 rounded-xl bg-emerald-500 text-black font-racing font-bold uppercase text-xs"
               >
-                Cerrar Vista de Inspección
+                Volver a la Guantera Digital
               </button>
             </div>
           </div>
