@@ -445,13 +445,45 @@ export default function App() {
     );
   };
 
-  const handleSyncHardwareOdometer = (newKm, sourceName = 'Hardware Link') => {
+  const handleSyncHardwareOdometer = (newKm, sourceName = 'Hardware Link', fullTelemetry = null) => {
     setGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
+        const cleanOdometer = Number(newKm) || bike.odometer;
+        const currentHoja = bike.hojaDeVida || {};
+        const currentCustom = { ...(bike.customComponents || {}) };
+
+        if (fullTelemetry && typeof fullTelemetry === 'object') {
+          const existingBattery = currentCustom.bateria_sistema_carga || {};
+          const syncedVoltage = fullTelemetry.batteryVoltage ?? existingBattery.batteryVoltage ?? '12.8';
+          const syncedLevel = fullTelemetry.batteryLevel ?? existingBattery.batteryLevel ?? 92;
+
+          currentCustom.bateria_sistema_carga = {
+            ...existingBattery,
+            id: 'bateria_sistema_carga',
+            batteryVoltage: syncedVoltage,
+            batteryLevel: syncedLevel,
+            syncedSource: sourceName,
+            syncedAt: fullTelemetry.syncedAt || new Date().toISOString(),
+            especificacion: `${syncedVoltage}V (${syncedLevel}% Salud) • Sincronizado con ${sourceName}`
+          };
+        }
+
         return {
           ...bike,
-          odometer: Number(newKm) || bike.odometer
+          odometer: cleanOdometer,
+          customComponents: currentCustom,
+          hojaDeVida: fullTelemetry
+            ? {
+                ...currentHoja,
+                hardwareTelemetry: {
+                  ...(currentHoja.hardwareTelemetry || {}),
+                  ...fullTelemetry,
+                  odometerKm: cleanOdometer,
+                  sourceName
+                }
+              }
+            : currentHoja
         };
       })
     );

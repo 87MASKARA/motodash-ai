@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Wrench, CheckCircle2, AlertTriangle, AlertCircle, Droplet, Filter, 
   Link, Cog, Disc, Beaker, GitCommit, Wind, Flame, Crosshair, 
-  CircleDot, Activity, Layers, Droplets, Settings, Plus, Sparkles
+  CircleDot, Activity, Layers, Droplets, Settings, Plus, Sparkles,
+  Zap, Battery, Bluetooth
 } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES, CATEGORIAS_MANTENIMIENTO } from '../../../services/maintenanceCatalog';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -23,16 +24,20 @@ const ICONS_MAP = {
   Wrench,
   Activity,
   Layers,
-  Droplets
+  Droplets,
+  Zap,
+  Battery
 };
 
 export default function MaintenanceWidget({ 
   currentOdometer, 
   customComponents = {}, 
+  hardwareTelemetry = null,
   ridingCondition = 'normal', // 'ciudad' | 'normal' | 'carretera'
   onChangeRidingCondition,
   onOpenOdometerModal,
-  onOpenEditComponentModal
+  onOpenEditComponentModal,
+  onOpenHardwareBridgeModal
 }) {
   const { t } = useLanguage();
   const [categoriaActiva, setCategoriaActiva] = useState("todas");
@@ -65,11 +70,32 @@ export default function MaintenanceWidget({
       kmRestantes = Math.max(0, effectiveIntervalo - kmEnCiclo);
     }
 
-    const vidaPorcentaje = Math.max(0, Math.min(100, Math.round((kmRestantes / effectiveIntervalo) * 100)));
+    let vidaPorcentaje = Math.max(0, Math.min(100, Math.round((kmRestantes / effectiveIntervalo) * 100)));
     const alertaMargin = custom.alertaPreventivaKm || comp.alertaPreventivaKm || 300;
 
-    const isCritico = kmRestantes <= alertaMargin;
-    const isPreventivo = kmRestantes <= alertaMargin * 2 && !isCritico;
+    // Sincronización Especial en Vivo para Batería desde Tablero TFT / Cable OBD-II
+    const isBatteryComp = comp.id === 'bateria_sistema_carga';
+    const syncedBatteryLevel = isBatteryComp
+      ? (hardwareTelemetry?.batteryLevel ?? custom.batteryLevel ?? null)
+      : null;
+    const syncedBatteryVoltage = isBatteryComp
+      ? (hardwareTelemetry?.batteryVoltage ?? custom.batteryVoltage ?? null)
+      : null;
+    const syncedSource = isBatteryComp
+      ? (hardwareTelemetry?.sourceName ?? custom.syncedSource ?? null)
+      : null;
+
+    if (isBatteryComp && syncedBatteryLevel !== null && !Number.isNaN(Number(syncedBatteryLevel))) {
+      vidaPorcentaje = Math.max(0, Math.min(100, Math.round(Number(syncedBatteryLevel))));
+      kmRestantes = Math.round((effectiveIntervalo * vidaPorcentaje) / 100);
+    }
+
+    const isCritico = isBatteryComp && syncedBatteryVoltage !== null
+      ? (Number(syncedBatteryVoltage) < 12.1 || vidaPorcentaje <= 35 || kmRestantes <= alertaMargin)
+      : (kmRestantes <= alertaMargin);
+    const isPreventivo = isBatteryComp && syncedBatteryVoltage !== null
+      ? (!isCritico && (Number(syncedBatteryVoltage) < 12.5 || vidaPorcentaje <= 65 || kmRestantes <= alertaMargin * 2))
+      : (kmRestantes <= alertaMargin * 2 && !isCritico);
     const isOptimo = !isCritico && !isPreventivo;
 
     return {
@@ -82,7 +108,11 @@ export default function MaintenanceWidget({
       vidaPorcentaje,
       isCritico,
       isPreventivo,
-      isOptimo
+      isOptimo,
+      isBatteryComp,
+      syncedBatteryLevel,
+      syncedBatteryVoltage,
+      syncedSource
     };
   });
 
@@ -200,16 +230,30 @@ export default function MaintenanceWidget({
                     <IconComponent className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-neutral-200 flex items-center flex-wrap gap-1.5">
                       {comp.label}
                       {comp.isCustom && (
                         <span className="text-[9px] bg-neutral-800 text-amber-400 border border-neutral-700 px-1.5 rounded font-mono">
                           CUSTOM
                         </span>
                       )}
+                      {comp.isBatteryComp && comp.syncedBatteryVoltage && (
+                        <span className="text-[9px] bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                          <Zap className="w-2.5 h-2.5 text-emerald-400" />
+                          {comp.syncedBatteryVoltage}V • {comp.vidaPorcentaje}% TFT/OBD
+                        </span>
+                      )}
                     </h4>
                     <span className="text-[10px] text-neutral-400 font-mono">
-                      {t('widgets.maintenance.intervalEvery')} <strong className="text-neutral-200">{comp.intervalo.toLocaleString()} km</strong>
+                      {comp.isBatteryComp && comp.syncedSource ? (
+                        <span className="text-cyan-400">
+                          Sincronizada con <strong>{comp.syncedSource}</strong> ({comp.intervalo.toLocaleString()} km ciclo)
+                        </span>
+                      ) : (
+                        <>
+                          {t('widgets.maintenance.intervalEvery')} <strong className="text-neutral-200">{comp.intervalo.toLocaleString()} km</strong>
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -222,10 +266,10 @@ export default function MaintenanceWidget({
                       ? "text-amber-400" 
                       : "text-neutral-200"
                   }`}>
-                    {comp.kmRestantes.toLocaleString()} km
+                    {comp.isBatteryComp && comp.syncedBatteryVoltage ? `${comp.syncedBatteryVoltage}V • ${comp.vidaPorcentaje}%` : `${comp.kmRestantes.toLocaleString()} km`}
                   </span>
                   <span className="text-[9px] text-neutral-500 block">
-                    {comp.vidaPorcentaje}% {t('widgets.maintenance.remaining')}
+                    {comp.isBatteryComp && comp.syncedBatteryVoltage ? `≈ ${comp.kmRestantes.toLocaleString()} km est.` : `${comp.vidaPorcentaje}% ${t('widgets.maintenance.remaining')}`}
                   </span>
                 </div>
               </div>
@@ -246,11 +290,25 @@ export default function MaintenanceWidget({
 
               {/* Pie de Tarjeta con Botón Editable ⚙️ y Registrar Cambio ✎ */}
               <div className="flex justify-between items-center text-[10px] text-neutral-400 font-mono pt-1.5 border-t border-neutral-800/40">
-                <span className="text-neutral-500 truncate max-w-[150px]" title={comp.especificacion}>
+                <span className="text-neutral-500 truncate max-w-[145px]" title={comp.especificacion}>
                   {comp.ultimoCambioKm > 0 ? `${t('widgets.maintenance.lastChange')} ${comp.ultimoCambioKm.toLocaleString()} km` : comp.especificacion}
                 </span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {comp.isBatteryComp && onOpenHardwareBridgeModal && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenHardwareBridgeModal();
+                      }}
+                      className="flex items-center gap-1 text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/70 px-2 py-0.5 rounded-lg border border-cyan-500/40 transition font-bold"
+                      title="Actualizar batería desde el Tablero TFT o Cable OBD-II"
+                    >
+                      <Bluetooth className="w-3 h-3 text-cyan-400" />
+                      <span>TFT/OBD</span>
+                    </button>
+                  )}
                   {/* Botón Editable para Ajustar Intervalo en Su Moto */}
                   <button
                     type="button"

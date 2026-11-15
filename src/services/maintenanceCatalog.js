@@ -5,6 +5,7 @@
 
 export const CATEGORIAS_MANTENIMIENTO = {
   todas: { id: "todas", label: "Todos los Componentes" },
+  electrico: { id: "electrico", label: "Batería & Eléctrico" },
   motor: { id: "motor", label: "Motor & Filtros" },
   frenos: { id: "frenos", label: "Frenos & Suspensión" },
   transmision: { id: "transmision", label: "Transmisión & Cadena" },
@@ -12,6 +13,18 @@ export const CATEGORIAS_MANTENIMIENTO = {
 };
 
 export const COMPONENTES_DESGASTE_OFICIALES = {
+  bateria_sistema_carga: {
+    id: "bateria_sistema_carga",
+    label: "Batería AGM / Gel & Sistema de Carga (TFT/OBD)",
+    shortLabel: "Batería & Regulador",
+    intervalo: 24000,
+    alertaPreventivaKm: 2000,
+    costoSugerido: 185000,
+    categoria: "electrico",
+    impacto: "Garantiza arranque en frío, alimentación estable de ECU, inyección FI, ABS y tablero TFT. Se sincroniza automáticamente por Bluetooth TFT o cable OBD-II.",
+    icono: "Zap",
+    especificacion: "12.6V reposo / 13.8V–14.4V en marcha (Sincronizable con TFT/OBD)"
+  },
   aceite_motor: {
     id: "aceite_motor",
     label: "Aceite de Motor Sintético",

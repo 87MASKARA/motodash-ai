@@ -33,6 +33,13 @@ export default function CriticalAlertBanner({
       kmRestantes = intervalo - kmEnCiclo;
     }
 
+    if (comp.id === 'bateria_sistema_carga' && custom.batteryLevel !== undefined) {
+      const pct = Math.max(0, Math.min(100, Number(custom.batteryLevel)));
+      kmRestantes = Math.round((intervalo * pct) / 100);
+      const isCriticoBat = (custom.batteryVoltage && Number(custom.batteryVoltage) < 12.1) || pct <= 35;
+      return { ...comp, ...custom, kmRestantes, isCritico: isCriticoBat };
+    }
+
     const isCritico = kmRestantes <= alertaMargin;
     return { ...comp, ...custom, kmRestantes, isCritico };
   }).filter(c => c.isCritico);

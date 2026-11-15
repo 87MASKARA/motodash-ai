@@ -488,14 +488,22 @@ export default function DynamicDashboard({
             <button
               type="button"
               onClick={() => setIsHardwareBridgeOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border ${
+                hojaDeVida.hardwareTelemetry
+                  ? 'bg-emerald-950/75 hover:bg-emerald-900/75 border-emerald-500/50 text-emerald-300'
+                  : 'bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300'
+              }`}
               title="Vincular Tablero TFT SmartXonnect (Gratis) o Escáner OBD-II (PRO)"
             >
-              <Bluetooth className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">{isEn ? 'Connect' : 'Vincular'}</span>
+              <Bluetooth className={`w-3.5 h-3.5 ${hojaDeVida.hardwareTelemetry ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <span className="hidden sm:inline">{hojaDeVida.hardwareTelemetry ? (isEn ? 'TFT Synced' : 'TFT Activo') : (isEn ? 'Connect' : 'Vincular')}</span>
               <span className="sm:hidden">TFT</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
-                TFT/OBD
+              <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold border ${
+                hojaDeVida.hardwareTelemetry
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              }`}>
+                {hojaDeVida.hardwareTelemetry?.batteryVoltage ? `${hojaDeVida.hardwareTelemetry.batteryVoltage}V` : 'TFT/OBD'}
               </span>
             </button>
 
@@ -719,7 +727,9 @@ export default function DynamicDashboard({
             engineCc={telemetrySpecs.engineCc}
             tanqueos={hojaDeVida.tanqueos || []}
             currency={globalSettings.currency || 'COP'}
+            hardwareTelemetry={hojaDeVida.hardwareTelemetry || null}
             onOpenOdometerModal={onOpenOdometerModal}
+            onOpenHardwareBridgeModal={() => setIsHardwareBridgeOpen(true)}
           />
 
           {/* Fila 5: Mantenimiento Preventivo con Componentes Editables Individualmente */}
@@ -727,10 +737,12 @@ export default function DynamicDashboard({
             <MaintenanceWidget 
               currentOdometer={odometer}
               customComponents={customComponents}
+              hardwareTelemetry={hojaDeVida.hardwareTelemetry || null}
               ridingCondition={ridingCondition}
               onChangeRidingCondition={onChangeRidingCondition}
               onOpenOdometerModal={onOpenOdometerModal}
               onOpenEditComponentModal={onOpenEditComponentModal}
+              onOpenHardwareBridgeModal={() => setIsHardwareBridgeOpen(true)}
             />
           </div>
         </div>
@@ -788,9 +800,9 @@ export default function DynamicDashboard({
         onClose={() => setIsHardwareBridgeOpen(false)}
         bike={effectiveBike}
         userProfile={userProfile}
-        onSyncOdometer={(km, source) => {
+        onSyncOdometer={(km, source, fullTelemetry) => {
           if (onSyncHardwareOdometer) {
-            onSyncHardwareOdometer(km, source);
+            onSyncHardwareOdometer(km, source, fullTelemetry);
           }
         }}
         onOpenPaywall={onOpenPaywall}
