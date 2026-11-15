@@ -20,15 +20,13 @@ const COMMUNITY_CHANNELS = [
   { id: 'cdmx', label: '🇲🇽 CDMX & Ruta Sur', type: 'city', city: 'CDMX' },
   { id: 'madrid', label: '🇪🇸 Madrid & Sierra', type: 'city', city: 'Madrid' },
   { id: 'apache_rtr', label: '🏍️ Club TVS Apache RTR / Street', type: 'bike', city: 'Global' },
-  { id: 'sport_racing', label: '🏁 Alto Cilindrada & Racing', type: 'bike', city: 'Global' },
-  { id: 'alertas_viales', label: '🚨 Radar Retenes & Estado de Vías', type: 'alerts', city: 'Nacional' }
+  { id: 'sport_racing', label: '🏁 Alto Cilindrada & Racing', type: 'bike', city: 'Global' }
 ];
 
 const MESSAGE_CATEGORIES = [
-  { id: 'alerta_vial', label: '🚨 Alerta / Retén', color: 'bg-red-500/20 text-red-300 border-red-500/40', icon: AlertTriangle },
-  { id: 'rodada', label: '🏍️ Rodada / Ruta', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', icon: Compass },
-  { id: 'taller', label: '🔧 Taller & Tips', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40', icon: Wrench },
-  { id: 'general', label: '💬 Comunidad', color: 'bg-neutral-800 text-neutral-300 border-neutral-700', icon: MessageSquare }
+  { id: 'rodada', label: '🏍️ Convocar Rodada / Ruta', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', icon: Compass },
+  { id: 'taller', label: '🔧 Taller & Mecánica', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40', icon: Wrench },
+  { id: 'general', label: '💬 Charla Motera', color: 'bg-neutral-800 text-neutral-300 border-neutral-700', icon: MessageSquare }
 ];
 
 const FALLBACK_MESSAGES = {
@@ -37,21 +35,11 @@ const FALLBACK_MESSAGES = {
       id: 'seed_1',
       channel_id: 'medellin',
       category: 'rodada',
-      author_name: 'Control Ruta Antioquia',
+      author_name: 'Club Rutas Antioquia',
       author_bike: 'TVS Apache RTR 4V',
       author_verified: true,
-      content: '¡Bienvenidos al canal en vivo de Medellín! Vía Las Palmas despejada y excelente clima para rodar.',
+      content: '¡Bienvenidos al canal de Comunidad y Rodadas de Medellín! Este domingo salimos a las 7:00 AM hacia Santa Fe de Antioquia.',
       created_at: new Date(Date.now() - 1800000).toISOString()
-    },
-    {
-      id: 'seed_2',
-      channel_id: 'medellin',
-      category: 'alerta_vial',
-      author_name: 'Red Vial Moteros',
-      author_bike: 'Yamaha MT-09 SP',
-      author_verified: true,
-      content: '⚠️ Control de documentos en Autopista Sur altura Itagüí. Tengan lista la Guantera Digital con SOAT y Tecno.',
-      created_at: new Date(Date.now() - 600000).toISOString()
     }
   ],
   apache_rtr: [
@@ -80,7 +68,7 @@ export default function CommunityChatModal({
   const bikeLabel = `${identity.brand || 'Moto'} ${identity.model || ''}`.trim();
 
   const [activeChannel, setActiveChannel] = useState('medellin');
-  const [selectedCategory, setSelectedCategory] = useState('alerta_vial');
+  const [selectedCategory, setSelectedCategory] = useState('rodada');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -258,7 +246,7 @@ export default function CommunityChatModal({
         {/* FEED DE MENSAJES EN TIEMPO REAL */}
         <div className="flex-1 overflow-y-auto py-4 space-y-3 pr-1">
           {messages.map((msg) => {
-            const cat = MESSAGE_CATEGORIES.find((c) => c.id === msg.category) || MESSAGE_CATEGORIES[3];
+            const cat = MESSAGE_CATEGORIES.find((c) => c.id === msg.category) || MESSAGE_CATEGORIES[2];
             const timeStr = msg.created_at
               ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : 'Ahora';
@@ -318,7 +306,7 @@ export default function CommunityChatModal({
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={`Reportar alerta vial, retén o rodada desde tu ${bikeLabel}...`}
+              placeholder={`Coordinar rodada, ruta o consulta técnica desde tu ${bikeLabel}...`}
               maxLength={500}
               className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
             />
@@ -336,3 +324,4 @@ export default function CommunityChatModal({
     </div>
   );
 }
+

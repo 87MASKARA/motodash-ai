@@ -561,47 +561,6 @@ export default function DigitalGloveboxModal({
           </div>
         )}
 
-        {/* SISTEMA DE ALERTAS AUTOMATIZADAS (CRON 8:00 AM • 30, 15 Y 5 DÍAS • PUSH + WHATSAPP) */}
-        <div className="mt-5 p-4 rounded-2xl bg-neutral-900/90 border border-neutral-800">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <h4 className="text-xs font-black font-racing uppercase tracking-wider text-white">
-                  Cron Job Diario (8:00 AM) • Alertas Automatizadas 30, 15 y 5 Días
-                </h4>
-              </div>
-              <p className="text-[11px] font-mono text-neutral-400 mt-0.5">
-                Revisión automática en servidor de <code className="text-amber-300">mandatory_insurance</code> y <code className="text-amber-300">technical_inspection</code> para evitar multas e inmovilización.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={handleTestPushNotification}
-                className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-xs font-mono text-white flex items-center gap-1.5 transition"
-              >
-                <Bell className="w-3.5 h-3.5 text-amber-400" />
-                <span>Activar / Probar Push</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSendWhatsAppAlert}
-                className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-mono font-bold text-emerald-300 flex items-center gap-1.5 transition"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Enviar Alerta a mi WhatsApp</span>
-              </button>
-            </div>
-          </div>
-
-          {pushStatus && (
-            <p className="mt-2 text-[11px] font-mono text-emerald-400">{pushStatus}</p>
-          )}
-        </div>
-
         {/* MODAL INTERNO DE PANTALLA COMPLETA PARA MOSTRAR AL AGENTE EN RETÉN */}
         {fullscreenDoc && (
           <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4">
