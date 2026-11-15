@@ -137,44 +137,29 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
         </div>
 
         {/* Banner Cinematográfico en Vivo del Video Oficial en el Inicio */}
-        <div className="mt-10 max-w-4xl mx-auto rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl shadow-amber-500/15 relative group bg-black">
+        <div className="mt-10 max-w-4xl mx-auto rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl shadow-amber-500/15 relative group bg-black aspect-video">
           <video
             src="/motodash-intro.mp4"
             autoPlay
             muted
             loop
             playsInline
-            className="w-full h-56 sm:h-72 object-cover filter brightness-[0.75] contrast-[1.12] group-hover:scale-[1.02] transition-transform duration-700"
+            className="w-full h-full object-contain sm:object-cover group-hover:scale-[1.01] transition-transform duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent flex flex-col justify-end p-5 sm:p-7 text-left">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-mono font-black uppercase tracking-wider mb-1.5">
-                  <Zap className="w-3 h-3 fill-black" />
-                  MOTODASH AI • COCKPIT OFICIAL
-                </span>
-                <h2 className="text-xl sm:text-3xl font-black font-racing uppercase text-white drop-shadow">
-                  {isEn
-                    ? 'SMARTXONNECT TFT + PREDICTIVE BATTERY + AI LEGAL SHIELD'
-                    : 'TELEMETRÍA TFT + BATERÍA PREDICTIVA + DEFENSA LEGAL IA'}
-                </h2>
-                <p className="text-xs text-neutral-300 font-mono mt-0.5">
-                  {isEn
-                    ? '12 Live Sensors • 2-Sided Checkpoint Vault • Doctor Motor AI • Private Biker Clans'
-                    : '12 Sensores en Vivo • Modo Retén por Ambos Lados • Doctor Motor IA • Clanes Moteros'}
-                </p>
-              </div>
-              {onReplayIntro && (
-                <button
-                  type="button"
-                  onClick={onReplayIntro}
-                  className="px-4 py-2.5 rounded-2xl bg-black/75 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50 font-racing font-bold uppercase text-xs flex items-center gap-1.5 transition shadow-lg"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>{isEn ? 'Full Screen Intro (10s)' : 'Pantalla Completa (10s)'}</span>
-                </button>
-              )}
-            </div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between p-4 sm:p-6 text-left">
+            <h2 className="text-xl sm:text-3xl font-black font-racing uppercase tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
+              MOTO<span className="text-amber-400">DASH</span> AI
+            </h2>
+            {onReplayIntro && (
+              <button
+                type="button"
+                onClick={onReplayIntro}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black uppercase text-[11px] sm:text-xs flex items-center gap-1.5 transition shadow-lg"
+              >
+                <Play className="w-3.5 h-3.5 fill-black" />
+                <span>{isEn ? 'Play with Sound (10s)' : 'Ver con Sonido (10s)'}</span>
+              </button>
+            )}
           </div>
         </div>
 
