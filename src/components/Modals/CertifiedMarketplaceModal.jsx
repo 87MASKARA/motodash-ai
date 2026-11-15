@@ -390,3 +390,4 @@ export default function CertifiedMarketplaceModal({
     </div>
   );
 }
+

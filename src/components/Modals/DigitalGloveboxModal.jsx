@@ -12,7 +12,8 @@ import {
   Lock,
   Eye,
   CreditCard,
-  UserCheck
+  UserCheck,
+  Scale
 } from 'lucide-react';
 import {
   COUNTRY_DOCUMENT_TERMINOLOGY,
@@ -29,7 +30,8 @@ export default function DigitalGloveboxModal({
   bike,
   hojaDeVida = {},
   userProfile,
-  onUpdateHojaDeVida
+  onUpdateHojaDeVida,
+  onOpenLawyer
 }) {
   if (!isOpen || !bike) return null;
 
@@ -490,6 +492,18 @@ export default function DigitalGloveboxModal({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
+            {onOpenLawyer && (
+              <button
+                type="button"
+                onClick={onOpenLawyer}
+                className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-racing font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition"
+                title="Consultar al Asesor Jurídico Vial IA si un comparendo o grúa es legal"
+              >
+                <Scale className="w-4 h-4 text-amber-400" />
+                <span>¿Comparendo o Grúa? Abogado IA</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setFullscreenView({ mode: 'all_checkpoint' })}

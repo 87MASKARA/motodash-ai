@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
   Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
-  ShieldCheck, Users, Award, Bell
+  ShieldCheck, Users, Award, Bell, Scale
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -23,6 +23,7 @@ import DigitalGloveboxModal from '../Modals/DigitalGloveboxModal';
 import AlertsCenterModal from '../Modals/AlertsCenterModal';
 import CommunityChatModal from '../Modals/CommunityChatModal';
 import CertifiedMarketplaceModal from '../Modals/CertifiedMarketplaceModal';
+import TrafficLawyerModal from '../Modals/TrafficLawyerModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -59,6 +60,7 @@ export default function DynamicDashboard({
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false);
+  const [isLawyerModalOpen, setIsLawyerModalOpen] = useState(false);
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
     userProfile?.isLifetimeVip ||
@@ -461,10 +463,21 @@ export default function DynamicDashboard({
               type="button"
               onClick={() => setIsGloveboxOpen(true)}
               className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-emerald-950/70 hover:bg-emerald-900/70 border-emerald-500/50 text-emerald-300"
-              title="Guantera Digital para Retenes (SOAT, Tecno, Tarjeta + Escáner IA)"
+              title="Guantera Digital para Retenes (Pase 2 Lados, Tarjeta 2 Lados, SOAT y Tecno + Escáner IA)"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Mis Documentos</span>
+            </button>
+
+            {/* Pill Asesor Jurídico Vial IA (Abogado de Bolsillo para Retenes, Comparendos y Grúa) */}
+            <button
+              type="button"
+              onClick={() => setIsLawyerModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-indigo-950/80 hover:bg-indigo-900/80 border-indigo-500/50 text-indigo-300"
+              title="Asesor Jurídico Vial IA: Consulta si un comparendo o inmovilización en grúa es legal según el Código de Tránsito de tu país"
+            >
+              <Scale className="w-3.5 h-3.5 text-amber-400" />
+              <span>Abogado IA</span>
             </button>
 
             {/* Pill Centro de Alertas (Separado de Comunidad: Push/WhatsApp 30-15-5d + Radar Retenes) */}
@@ -705,6 +718,18 @@ export default function DynamicDashboard({
         hojaDeVida={hojaDeVida}
         userProfile={userProfile}
         onUpdateHojaDeVida={onUpdateHojaDeVida}
+        onOpenLawyer={() => {
+          setIsGloveboxOpen(false);
+          setIsLawyerModalOpen(true);
+        }}
+      />
+
+      {/* MODAL ASESOR JURÍDICO VIAL IA (ABOGADO DE TRÁNSITO POR PAÍS) */}
+      <TrafficLawyerModal
+        isOpen={isLawyerModalOpen}
+        onClose={() => setIsLawyerModalOpen(false)}
+        bike={effectiveBike}
+        userProfile={userProfile}
       />
 
       {/* MODAL CENTRO DE ALERTAS INDEPENDIENTE (PUSH/WHATSAPP 30-15-5D + RADAR RETENES) */}
