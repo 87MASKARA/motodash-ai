@@ -180,11 +180,28 @@ export function getCountryTrafficPortal(countryCode = "CO") {
   return TRAFFIC_PORTALS[code] || TRAFFIC_PORTALS.CO;
 }
 
+const COUNTRY_NAME_TO_CODE = {
+  Colombia: "CO",
+  España: "ES",
+  México: "MX",
+  "Estados Unidos": "US",
+  Argentina: "AR",
+  Chile: "CL",
+  Perú: "PE",
+  "Reino Unido": "US"
+};
+
 /**
  * Calcula el estado del Radar de Multas para la moto activa.
  */
 export function computeFinesRadarState(bike, userProfile = null) {
-  const countryCode = userProfile?.countryCode || bike?.hojaDeVida?.multas?.pais || "CO";
+  const fromCountryName = COUNTRY_NAME_TO_CODE[bike?.hojaDeVida?.country];
+  const countryCode =
+    fromCountryName ||
+    bike?.hojaDeVida?.multas?.pais ||
+    userProfile?.countryCode ||
+    COUNTRY_NAME_TO_CODE[userProfile?.country] ||
+    "CO";
   const portal = getCountryTrafficPortal(countryCode);
   const placa = bike?.hojaDeVida?.documentos?.placa || "APC-4V";
   const docTitular = bike?.hojaDeVida?.multas?.documentoTitular || userProfile?.documentId || "1020405060";

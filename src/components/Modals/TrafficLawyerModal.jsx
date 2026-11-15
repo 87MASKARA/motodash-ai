@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Scale,
-  ShieldAlert,
   CheckCircle2,
   BookOpen,
   Send,
@@ -12,33 +11,93 @@ import {
 } from 'lucide-react';
 import {
   COUNTRY_LEGAL_FRAMEWORKS,
-  QUICK_LEGAL_QUESTIONS,
+  COUNTRY_TO_ISO_AND_LANG,
+  ISO_TO_COUNTRY_NAME,
+  isEnglishCountry,
+  getCountryQuickLegalQuestions,
+  getLawyerModalUiLabels,
   askTrafficLawyerAI
 } from '../../services/trafficLawyerAiService';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export default function TrafficLawyerModal({
   isOpen,
   onClose,
   bike,
-  userProfile
+  hojaDeVida = {},
+  userProfile,
+  onUpdateHojaDeVida
 }) {
+  const { setLang } = useLanguage();
+
+  const resolvedInitialCountry =
+    hojaDeVida?.country ||
+    ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
+    userProfile?.country ||
+    'Colombia';
+
+  const [selectedCountry, setSelectedCountry] = useState(resolvedInitialCountry);
+  const [selectedQuestionId, setSelectedQuestionId] = useState('digital_docs');
+  const [customQuery, setCustomQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [customResponse, setCustomResponse] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const nextCountry =
+        hojaDeVida?.country ||
+        ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
+        userProfile?.country ||
+        'Colombia';
+      if (COUNTRY_LEGAL_FRAMEWORKS[nextCountry]) {
+        setSelectedCountry(nextCountry);
+      }
+    }
+  }, [isOpen, hojaDeVida?.country, hojaDeVida?.multas?.pais, userProfile?.country]);
+
   if (!isOpen) return null;
 
   const identity = bike?.config?.bikeIdentity || {};
-  const [selectedCountry, setSelectedCountry] = useState(
-    userProfile?.country || 'Colombia'
-  );
-  const [customQuery, setCustomQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [activeResponse, setActiveResponse] = useState(QUICK_LEGAL_QUESTIONS[0]);
-
   const framework = COUNTRY_LEGAL_FRAMEWORKS[selectedCountry] || COUNTRY_LEGAL_FRAMEWORKS.Colombia;
+  const countryQuestions = getCountryQuickLegalQuestions(selectedCountry);
+  const ui = getLawyerModalUiLabels(selectedCountry);
+  const isEn = isEnglishCountry(selectedCountry);
+
+  const activeQuickItem =
+    countryQuestions.find((q) => q.id === selectedQuestionId) || countryQuestions[0];
+
+  const activeResponse = customResponse || {
+    ...activeQuickItem,
+    source: isEn
+      ? `Verified Legal Database (${selectedCountry})`
+      : `Base Legal Verificada (${selectedCountry})`
+  };
+
+  const handleCountryChange = (newCountry) => {
+    setSelectedCountry(newCountry);
+    setCustomResponse(null);
+
+    const mapping = COUNTRY_TO_ISO_AND_LANG[newCountry] || { iso: 'CO', lang: 'es' };
+    if (setLang) {
+      setLang(mapping.lang);
+    }
+
+    if (onUpdateHojaDeVida) {
+      const currentMultas = hojaDeVida?.multas || {};
+      onUpdateHojaDeVida({
+        ...hojaDeVida,
+        country: newCountry,
+        multas: {
+          ...currentMultas,
+          pais: mapping.iso
+        }
+      });
+    }
+  };
 
   const handleSelectQuickQuestion = (item) => {
-    setActiveResponse({
-      ...item,
-      source: `Base Legal Verificada (${selectedCountry})`
-    });
+    setCustomResponse(null);
+    setSelectedQuestionId(item.id);
   };
 
   const handleAskCustomQuestion = async (e) => {
@@ -54,7 +113,8 @@ export default function TrafficLawyerModal({
         bikeBrand: identity.brand || 'TVS',
         bikeModel: identity.model || 'Apache'
       });
-      setActiveResponse({
+      setCustomResponse({
+        id: 'custom_ai',
         question: clean,
         ...result
       });
@@ -75,28 +135,29 @@ export default function TrafficLawyerModal({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-indigo-500 text-white">
-                  ABOGADO DE BOLSILLO IA • DEFENSA EN RETENES
+                  {ui.topPill}
                 </span>
                 <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  {framework.flag} {selectedCountry}
+                  {framework.flag} {selectedCountry} ({framework.lang.toUpperCase()})
                 </span>
               </div>
               <h2 className="text-lg sm:text-xl font-black font-racing uppercase tracking-wider text-white mt-1">
-                Asesor Jurídico de Tránsito & Anti-Inmovilización IA
+                {ui.title}
               </h2>
               <p className="text-xs text-neutral-400 font-mono">
-                {framework.codeName} • Consulta al instante si un comparendo o grúa es legal o ilegal
+                {framework.codeName} • {ui.subtitleSuffix}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-center">
-            <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 rounded-xl px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 bg-neutral-900 border border-indigo-500/50 rounded-xl px-2.5 py-1.5">
               <Globe2 className="w-3.5 h-3.5 text-indigo-400" />
               <select
                 value={selectedCountry}
-                onChange={(e) => setSelectedCountry(e.target.value)}
+                onChange={(e) => handleCountryChange(e.target.value)}
                 className="bg-transparent text-xs font-mono text-white focus:outline-none cursor-pointer"
+                title={isEn ? 'Select Country & Legal Code' : 'Selecciona el país y código de tránsito'}
               >
                 {Object.keys(COUNTRY_LEGAL_FRAMEWORKS).map((c) => (
                   <option key={c} value={c} className="bg-neutral-900 text-white">
@@ -118,14 +179,14 @@ export default function TrafficLawyerModal({
         {/* BUSCADOR / PREGUNTA LIBRE AL ABOGADO VIAL IA */}
         <form onSubmit={handleAskCustomQuestion} className="mt-4">
           <label className="text-xs font-mono text-indigo-300 block mb-1.5">
-            ¿Qué te está diciendo el agente de tránsito o qué duda tienes del comparendo?
+            {ui.inputLabel}
           </label>
           <div className="flex gap-2">
             <input
               type="text"
               value={customQuery}
               onChange={(e) => setCustomQuery(e.target.value)}
-              placeholder="Ej: El agente dice que se va a llevar mi moto en grúa porque no tengo el SOAT impreso en papel..."
+              placeholder={ui.inputPlaceholder}
               className="flex-1 bg-neutral-900 border border-indigo-500/40 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-400"
             />
             <button
@@ -136,29 +197,29 @@ export default function TrafficLawyerModal({
               {loading ? (
                 <>
                   <Sparkles className="w-4 h-4 animate-spin" />
-                  <span>Analizando Ley...</span>
+                  <span>{ui.askingBtn}</span>
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Consultar Ley</span>
+                  <span>{ui.askBtn}</span>
                 </>
               )}
             </button>
           </div>
         </form>
 
-        {/* BOTONES DE EMERGENCIA EN RETÉN (1 CLIC) */}
+        {/* BOTONES DE EMERGENCIA EN RETÉN (1 CLIC ADAPTADOS AL PAÍS E IDIOMA) */}
         <div className="mt-4">
           <span className="text-[10px] font-mono uppercase text-neutral-400 block mb-2">
-            Situaciones Frecuentes en Retenes (Toca una para ver el Artículo Exacto):
+            {ui.quickSectionTitle}
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {QUICK_LEGAL_QUESTIONS.map((q) => {
-              const isSelected = activeResponse?.id === q.id;
+            {countryQuestions.map((q) => {
+              const isSelected = !customResponse && activeResponse?.id === q.id;
               return (
                 <button
-                  key={q.id}
+                  key={`${selectedCountry}_${q.id}`}
                   type="button"
                   onClick={() => handleSelectQuickQuestion(q)}
                   className={`p-2.5 rounded-xl text-left text-xs font-mono border transition ${
@@ -180,19 +241,22 @@ export default function TrafficLawyerModal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-neutral-800">
               <div>
                 <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold block">
-                  PREGUNTA ANALIZADA ({activeResponse.source || `Código de Tránsito ${selectedCountry}`}):
+                  {ui.analyzedLabel} ({activeResponse.source}):
                 </span>
                 <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">
                   "{activeResponse.question}"
                 </h3>
               </div>
+              <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 self-start sm:self-center">
+                {framework.authority}
+              </span>
             </div>
 
             {/* SEMÁFORO DE INMOVILIZACIÓN / GRÚA */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-neutral-950 border border-emerald-500/40">
                 <span className="text-[10px] font-mono uppercase text-neutral-400 block">
-                  ⚖️ VEREDICTO LEGAL INMEDIATO
+                  {ui.verdictLabel}
                 </span>
                 <p className="text-sm font-black font-racing uppercase text-emerald-400 mt-1">
                   {activeResponse.instantVerdict}
@@ -202,7 +266,7 @@ export default function TrafficLawyerModal({
               <div className="p-3.5 rounded-xl bg-neutral-950 border border-amber-500/40">
                 <span className="text-[10px] font-mono uppercase text-neutral-400 flex items-center gap-1">
                   <Truck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>¿SE PUEDEN LLEVAR LA MOTO EN GRÚA?</span>
+                  <span>{ui.impoundLabel}</span>
                 </span>
                 <p className="text-sm font-black font-racing uppercase text-amber-300 mt-1">
                   {activeResponse.canImpound}
@@ -214,7 +278,7 @@ export default function TrafficLawyerModal({
             <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/40">
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-indigo-300 mb-1">
                 <BookOpen className="w-4 h-4" />
-                <span>NORMA / ARTÍCULO EXACTO PARA INVOCAR ANTE EL AGENTE:</span>
+                <span>{ui.citationLabel}</span>
               </div>
               <p className="text-xs sm:text-sm font-mono font-bold text-white">
                 {activeResponse.lawCitation}
@@ -228,7 +292,7 @@ export default function TrafficLawyerModal({
             {Array.isArray(activeResponse.actionSteps) && activeResponse.actionSteps.length > 0 && (
               <div className="space-y-2">
                 <span className="text-xs font-racing uppercase tracking-wider text-amber-400 block">
-                  🛡️ Qué hacer paso a paso en este momento:
+                  {ui.stepsLabel}
                 </span>
                 {activeResponse.actionSteps.map((step, idx) => (
                   <div

@@ -54,7 +54,8 @@ export default function DynamicDashboard({
   onUpdateHojaDeVida,
   onSyncHardwareOdometer
 }) {
-  const { t } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
+  const isEn = lang === 'en';
   const [isHardwareBridgeOpen, setIsHardwareBridgeOpen] = useState(false);
   const [isGloveboxOpen, setIsGloveboxOpen] = useState(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -205,9 +206,23 @@ export default function DynamicDashboard({
   const handleSaveTrafficSettings = (settings) => {
     const currentHoja = hojaDeVida || { documentos: {}, servicios: [], tanqueos: [], multas: {} };
     const currentMultas = currentHoja.multas || {};
+    const codeToCountry = {
+      CO: 'Colombia',
+      ES: 'España',
+      MX: 'México',
+      US: 'Estados Unidos',
+      CL: 'Chile',
+      PE: 'Perú'
+    };
+    const nextCountryName = codeToCountry[settings?.pais] || currentHoja.country || 'Colombia';
+
+    if (setLang && settings?.pais) {
+      setLang(settings.pais === 'US' ? 'en' : 'es');
+    }
 
     const nextHoja = {
       ...currentHoja,
+      country: nextCountryName,
       multas: {
         ...currentMultas,
         ...settings
@@ -420,7 +435,7 @@ export default function DynamicDashboard({
                 title={`Guardián de Garantía ${warrantyState.distribuidorCorto}`}
               >
                 <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline">Garantía</span>
+                <span className="hidden sm:inline">{isEn ? 'Warranty' : 'Garantía'}</span>
                 <span className="text-cyan-300">{warrantyState.nextRev ? `${warrantyState.nextRev.numero}ª` : '100%'}</span>
               </button>
             )}
@@ -439,7 +454,9 @@ export default function DynamicDashboard({
               <Radar className={`w-3.5 h-3.5 ${finesRadarState.tieneMultas ? "text-red-400" : "text-emerald-400"}`} />
               <span className="hidden sm:inline">{finesRadarState.portal.entidadCorta}</span>
               <span className={finesRadarState.tieneMultas ? "text-red-300 font-bold" : "text-emerald-400"}>
-                {finesRadarState.tieneMultas ? `${finesRadarState.totalMultas} Multa` : 'Al Día'}
+                {finesRadarState.tieneMultas
+                  ? `${finesRadarState.totalMultas} ${isEn ? 'Ticket' : 'Multa'}`
+                  : (isEn ? 'Clear' : 'Al Día')}
               </span>
             </button>
 
@@ -451,7 +468,7 @@ export default function DynamicDashboard({
               title="Vincular Tablero TFT SmartXonnect (Gratis) o Escáner OBD-II (PRO)"
             >
               <Bluetooth className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Vincular</span>
+              <span className="hidden sm:inline">{isEn ? 'Connect' : 'Vincular'}</span>
               <span className="sm:hidden">TFT</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
                 TFT/OBD
@@ -466,7 +483,7 @@ export default function DynamicDashboard({
               title="Guantera Digital para Retenes (Pase 2 Lados, Tarjeta 2 Lados, SOAT y Tecno + Escáner IA)"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Mis Documentos</span>
+              <span>{isEn ? 'My Documents' : 'Mis Documentos'}</span>
             </button>
 
             {/* Pill Asesor Jurídico Vial IA (Abogado de Bolsillo para Retenes, Comparendos y Grúa) */}
@@ -477,7 +494,7 @@ export default function DynamicDashboard({
               title="Asesor Jurídico Vial IA: Consulta si un comparendo o inmovilización en grúa es legal según el Código de Tránsito de tu país"
             >
               <Scale className="w-3.5 h-3.5 text-amber-400" />
-              <span>Abogado IA</span>
+              <span>{isEn ? 'AI Lawyer' : 'Abogado IA'}</span>
             </button>
 
             {/* Pill Centro de Alertas (Separado de Comunidad: Push/WhatsApp 30-15-5d + Radar Retenes) */}
@@ -488,7 +505,7 @@ export default function DynamicDashboard({
               title="Centro de Alertas (Push/WhatsApp 30, 15 y 5 días + Radar de Retenes)"
             >
               <Bell className="w-3.5 h-3.5 text-rose-400" />
-              <span>Alertas</span>
+              <span>{isEn ? 'Alerts' : 'Alertas'}</span>
             </button>
 
             {/* Pill Comunidad & Rodadas en Tiempo Real */}
@@ -499,7 +516,7 @@ export default function DynamicDashboard({
               title="Comunidad Motera & Rodadas en Tiempo Real (Supabase Realtime)"
             >
               <Users className="w-3.5 h-3.5 text-amber-400" />
-              <span>Comunidad</span>
+              <span>{isEn ? 'Community' : 'Comunidad'}</span>
             </button>
 
             {/* Pill Poner en Venta (Historial Certificado) */}
@@ -510,7 +527,7 @@ export default function DynamicDashboard({
               title="Poner en Venta con Sello de Mantenimiento Verificado"
             >
               <Award className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Poner en Venta</span>
+              <span>{isEn ? 'Sell Bike' : 'Poner en Venta'}</span>
             </button>
 
             {/* Ajustes Globales */}
@@ -729,7 +746,9 @@ export default function DynamicDashboard({
         isOpen={isLawyerModalOpen}
         onClose={() => setIsLawyerModalOpen(false)}
         bike={effectiveBike}
+        hojaDeVida={hojaDeVida}
         userProfile={userProfile}
+        onUpdateHojaDeVida={onUpdateHojaDeVida}
       />
 
       {/* MODAL CENTRO DE ALERTAS INDEPENDIENTE (PUSH/WHATSAPP 30-15-5D + RADAR RETENES) */}

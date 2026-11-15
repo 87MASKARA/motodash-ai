@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ShieldCheck,
   FileCheck2,
@@ -22,6 +22,12 @@ import {
   extractDocumentWithAI,
   evaluateDocumentAlertStatus
 } from '../../services/globalDocumentsService';
+import {
+  COUNTRY_TO_ISO_AND_LANG,
+  ISO_TO_COUNTRY_NAME,
+  isEnglishCountry
+} from '../../services/trafficLawyerAiService';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { uploadMotoDocument } from '../../services/supabaseClient';
 
 export default function DigitalGloveboxModal({
@@ -33,15 +39,28 @@ export default function DigitalGloveboxModal({
   onUpdateHojaDeVida,
   onOpenLawyer
 }) {
+  const { setLang } = useLanguage();
+  const resolvedCountry =
+    hojaDeVida?.country ||
+    ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
+    userProfile?.country ||
+    'Colombia';
+
+  const [selectedCountry, setSelectedCountry] = useState(resolvedCountry);
+
+  useEffect(() => {
+    if (isOpen && resolvedCountry && COUNTRY_DOCUMENT_TERMINOLOGY[resolvedCountry]) {
+      setSelectedCountry(resolvedCountry);
+    }
+  }, [isOpen, resolvedCountry]);
+
   if (!isOpen || !bike) return null;
 
   const identity = bike.config?.bikeIdentity || {};
   const docs = hojaDeVida?.documentos || {};
   const globalDocs = hojaDeVida?.globalDocuments || {};
 
-  const [selectedCountry, setSelectedCountry] = useState(
-    userProfile?.country || hojaDeVida?.country || 'Colombia'
-  );
+  const isEn = isEnglishCountry(selectedCountry);
   const countryLabels = getCountryDocumentLabels(selectedCountry);
   const driverLabels = countryLabels.driver_license || {
     shortName: 'Pase / Licencia de Conducción',
@@ -144,91 +163,115 @@ export default function DigitalGloveboxModal({
       slot: 'driver_license_front',
       group: 'license',
       stepNumber: '1A',
-      globalKey: 'driver_license (Lado 1)',
-      shortLabel: `${driverLabels.shortName} • LADO 1 (FRONTAL)`,
-      fullLabel: `${driverLabels.fullName} — Cara Frontal (Anverso)`,
-      sideBadge: 'PASE LADO 1 • DATOS CONDUCTOR',
+      globalKey: isEn ? 'driver_license (Side 1)' : 'driver_license (Lado 1)',
+      shortLabel: isEn
+        ? `${driverLabels.shortName} • SIDE 1 (FRONT)`
+        : `${driverLabels.shortName} • LADO 1 (FRONTAL)`,
+      fullLabel: isEn
+        ? `${driverLabels.fullName} — Front Side`
+        : `${driverLabels.fullName} — Cara Frontal (Anverso)`,
+      sideBadge: isEn ? 'LICENSE SIDE 1 • HOLDER INFO' : 'PASE LADO 1 • DATOS CONDUCTOR',
       accentBorder: 'border-violet-500/60',
       badgeColor: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
-      badgeText: driverLicense.frontImageUrl ? 'FOTO FRONTAL LISTA' : 'PASE ANVERSO ACTIVO',
+      badgeText: driverLicense.frontImageUrl
+        ? (isEn ? 'FRONT PHOTO READY' : 'FOTO FRONTAL LISTA')
+        : (isEn ? 'ACTIVE FRONT SIDE' : 'PASE ANVERSO ACTIVO'),
       imageUrl: driverLicense.frontImageUrl,
       uploadBtnText: driverLicense.frontImageUrl
-        ? 'Cambiar Foto Pase Lado 1 (Frontal)'
-        : 'Subir Foto Pase Lado 1 (Cara Frontal)',
+        ? (isEn ? 'Change License Side 1 (Front)' : 'Cambiar Foto Pase Lado 1 (Frontal)')
+        : (isEn ? 'Upload License Side 1 (Front)' : 'Subir Foto Pase Lado 1 (Cara Frontal)'),
       fields: [
-        { label: 'CONDUCTOR TITULAR', value: driverLicense.holderName, highlight: 'text-white font-bold' },
-        { label: 'N° LICENCIA / CÉDULA', value: driverLicense.licenseNumber, highlight: 'text-amber-300 font-bold' },
-        { label: 'FACTOR RH / SANGRE', value: driverLicense.bloodType, highlight: 'text-emerald-300 font-bold' },
-        { label: 'ENTIDAD EXPEDIDORA', value: driverLicense.issuer, highlight: 'text-neutral-300' }
+        { label: isEn ? 'LICENSE HOLDER' : 'CONDUCTOR TITULAR', value: driverLicense.holderName, highlight: 'text-white font-bold' },
+        { label: isEn ? 'LICENSE / ID NUMBER' : 'N° LICENCIA / CÉDULA', value: driverLicense.licenseNumber, highlight: 'text-amber-300 font-bold' },
+        { label: isEn ? 'BLOOD TYPE / RH' : 'FACTOR RH / SANGRE', value: driverLicense.bloodType, highlight: 'text-emerald-300 font-bold' },
+        { label: isEn ? 'ISSUING AUTHORITY' : 'ENTIDAD EXPEDIDORA', value: driverLicense.issuer, highlight: 'text-neutral-300' }
       ]
     },
     {
       slot: 'driver_license_back',
       group: 'license',
       stepNumber: '1B',
-      globalKey: 'driver_license (Lado 2)',
-      shortLabel: `${driverLabels.shortName} • LADO 2 (POSTERIOR)`,
-      fullLabel: `${driverLabels.fullName} — Cara Posterior (Categoría y Vigencia)`,
-      sideBadge: 'PASE LADO 2 • CATEGORÍA MOTO',
+      globalKey: isEn ? 'driver_license (Side 2)' : 'driver_license (Lado 2)',
+      shortLabel: isEn
+        ? `${driverLabels.shortName} • SIDE 2 (BACK)`
+        : `${driverLabels.shortName} • LADO 2 (POSTERIOR)`,
+      fullLabel: isEn
+        ? `${driverLabels.fullName} — Back Side (Class & Expiration)`
+        : `${driverLabels.fullName} — Cara Posterior (Categoría y Vigencia)`,
+      sideBadge: isEn ? 'LICENSE SIDE 2 • MOTORCYCLE CLASS' : 'PASE LADO 2 • CATEGORÍA MOTO',
       accentBorder: 'border-violet-500/60',
       badgeColor:
         licenseEval.status === 'expired'
           ? 'bg-red-500/20 text-red-300 border-red-500/40'
           : 'bg-violet-500/20 text-violet-300 border-violet-500/40',
-      badgeText: driverLicense.backImageUrl ? 'FOTO POSTERIOR LISTA' : licenseEval.badgeText,
+      badgeText: driverLicense.backImageUrl
+        ? (isEn ? 'BACK PHOTO READY' : 'FOTO POSTERIOR LISTA')
+        : (isEn ? 'VALID LICENSE' : licenseEval.badgeText),
       imageUrl: driverLicense.backImageUrl,
       uploadBtnText: driverLicense.backImageUrl
-        ? 'Cambiar Foto Pase Lado 2 (Posterior)'
-        : 'Subir Foto Pase Lado 2 (Cara Posterior)',
+        ? (isEn ? 'Change License Side 2 (Back)' : 'Cambiar Foto Pase Lado 2 (Posterior)')
+        : (isEn ? 'Upload License Side 2 (Back)' : 'Subir Foto Pase Lado 2 (Cara Posterior)'),
       fields: [
-        { label: 'CATEGORÍA AUTORIZADA', value: driverLicense.category, highlight: 'text-amber-400 font-bold' },
-        { label: 'FECHA VENCIMIENTO PASE', value: driverLicense.expiryDate, highlight: 'text-emerald-400 font-bold' },
-        { label: 'RESTRICCIONES', value: driverLicense.restrictions, highlight: 'text-white' },
-        { label: 'VERIFICACIÓN OFICIAL', value: countryLabels.authority, highlight: 'text-violet-300' }
+        { label: isEn ? 'AUTHORIZED CLASS' : 'CATEGORÍA AUTORIZADA', value: driverLicense.category, highlight: 'text-amber-400 font-bold' },
+        { label: isEn ? 'EXPIRATION DATE' : 'FECHA VENCIMIENTO PASE', value: driverLicense.expiryDate, highlight: 'text-emerald-400 font-bold' },
+        { label: isEn ? 'RESTRICTIONS' : 'RESTRICCIONES', value: isEn && driverLicense.restrictions === 'Ninguna' ? 'None' : driverLicense.restrictions, highlight: 'text-white' },
+        { label: isEn ? 'OFFICIAL VERIFICATION' : 'VERIFICACIÓN OFICIAL', value: countryLabels.authority, highlight: 'text-violet-300' }
       ]
     },
     {
       slot: 'vehicle_registration_front',
       group: 'registration',
       stepNumber: '2A',
-      globalKey: 'vehicle_registration (Lado 1)',
-      shortLabel: `${countryLabels.vehicle_registration.shortName} • LADO 1 (FRONTAL)`,
-      fullLabel: `${countryLabels.vehicle_registration.fullName} — Cara Frontal (Anverso)`,
-      sideBadge: 'TARJETA LADO 1 • ANVERSO',
+      globalKey: isEn ? 'vehicle_registration (Side 1)' : 'vehicle_registration (Lado 1)',
+      shortLabel: isEn
+        ? `${countryLabels.vehicle_registration.shortName} • SIDE 1 (FRONT)`
+        : `${countryLabels.vehicle_registration.shortName} • LADO 1 (FRONTAL)`,
+      fullLabel: isEn
+        ? `${countryLabels.vehicle_registration.fullName} — Front Side`
+        : `${countryLabels.vehicle_registration.fullName} — Cara Frontal (Anverso)`,
+      sideBadge: isEn ? 'REGISTRATION SIDE 1 • FRONT' : 'TARJETA LADO 1 • ANVERSO',
       accentBorder: 'border-amber-500/60',
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-      badgeText: vehicleRegistration.frontImageUrl ? 'FOTO FRONTAL LISTA' : 'CARA FRONTAL OFICIAL',
+      badgeText: vehicleRegistration.frontImageUrl
+        ? (isEn ? 'FRONT PHOTO READY' : 'FOTO FRONTAL LISTA')
+        : (isEn ? 'OFFICIAL FRONT SIDE' : 'CARA FRONTAL OFICIAL'),
       imageUrl: vehicleRegistration.frontImageUrl,
       uploadBtnText: vehicleRegistration.frontImageUrl
-        ? 'Cambiar Foto Tarjeta Lado 1 (Frontal)'
-        : 'Subir Foto Tarjeta Lado 1 (Cara Frontal)',
+        ? (isEn ? 'Change Registration Side 1 (Front)' : 'Cambiar Foto Tarjeta Lado 1 (Frontal)')
+        : (isEn ? 'Upload Registration Side 1 (Front)' : 'Subir Foto Tarjeta Lado 1 (Cara Frontal)'),
       fields: [
-        { label: 'PLACA / MATRÍCULA', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
-        { label: 'MARCA / LÍNEA / MODELO', value: `${identity.brand} ${identity.model} (${vehicleRegistration.modelYear})`, highlight: 'text-white font-bold' },
-        { label: 'CILINDRADA / CLASE', value: `${vehicleRegistration.displacementCc} cc • MOTOCICLETA`, highlight: 'text-emerald-300' },
-        { label: 'PROPIETARIO TITULAR', value: vehicleRegistration.ownerName, highlight: 'text-neutral-200' }
+        { label: isEn ? 'LICENSE PLATE' : 'PLACA / MATRÍCULA', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: isEn ? 'MAKE / MODEL / YEAR' : 'MARCA / LÍNEA / MODELO', value: `${identity.brand} ${identity.model} (${vehicleRegistration.modelYear})`, highlight: 'text-white font-bold' },
+        { label: isEn ? 'DISPLACEMENT / CLASS' : 'CILINDRADA / CLASE', value: `${vehicleRegistration.displacementCc} cc • ${isEn ? 'MOTORCYCLE' : 'MOTOCICLETA'}`, highlight: 'text-emerald-300' },
+        { label: isEn ? 'REGISTERED OWNER' : 'PROPIETARIO TITULAR', value: vehicleRegistration.ownerName, highlight: 'text-neutral-200' }
       ]
     },
     {
       slot: 'vehicle_registration_back',
       group: 'registration',
       stepNumber: '2B',
-      globalKey: 'vehicle_registration (Lado 2)',
-      shortLabel: `${countryLabels.vehicle_registration.shortName} • LADO 2 (POSTERIOR)`,
-      fullLabel: `${countryLabels.vehicle_registration.fullName} — Cara Posterior (Reverso)`,
-      sideBadge: 'TARJETA LADO 2 • REVERSO',
+      globalKey: isEn ? 'vehicle_registration (Side 2)' : 'vehicle_registration (Lado 2)',
+      shortLabel: isEn
+        ? `${countryLabels.vehicle_registration.shortName} • SIDE 2 (BACK)`
+        : `${countryLabels.vehicle_registration.shortName} • LADO 2 (POSTERIOR)`,
+      fullLabel: isEn
+        ? `${countryLabels.vehicle_registration.fullName} — Back Side`
+        : `${countryLabels.vehicle_registration.fullName} — Cara Posterior (Reverso)`,
+      sideBadge: isEn ? 'REGISTRATION SIDE 2 • BACK' : 'TARJETA LADO 2 • REVERSO',
       accentBorder: 'border-cyan-500/60',
       badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
-      badgeText: vehicleRegistration.backImageUrl ? 'FOTO POSTERIOR LISTA' : 'CARA POSTERIOR OFICIAL',
+      badgeText: vehicleRegistration.backImageUrl
+        ? (isEn ? 'BACK PHOTO READY' : 'FOTO POSTERIOR LISTA')
+        : (isEn ? 'OFFICIAL BACK SIDE' : 'CARA POSTERIOR OFICIAL'),
       imageUrl: vehicleRegistration.backImageUrl,
       uploadBtnText: vehicleRegistration.backImageUrl
-        ? 'Cambiar Foto Tarjeta Lado 2 (Posterior)'
-        : 'Subir Foto Tarjeta Lado 2 (Cara Posterior)',
+        ? (isEn ? 'Change Registration Side 2 (Back)' : 'Cambiar Foto Tarjeta Lado 2 (Posterior)')
+        : (isEn ? 'Upload Registration Side 2 (Back)' : 'Subir Foto Tarjeta Lado 2 (Cara Posterior)'),
       fields: [
-        { label: 'VIN / CHASIS / SERIE', value: vehicleRegistration.vin, highlight: 'text-amber-300 font-bold' },
-        { label: 'NÚMERO DE MOTOR', value: vehicleRegistration.engineNumber, highlight: 'text-white font-bold' },
-        { label: 'SERVICIO / RESTRICCIÓN', value: 'PARTICULAR • SIN RESTRICCIÓN', highlight: 'text-emerald-300' },
-        { label: 'ORGANISMO TRÁNSITO', value: countryLabels.authority, highlight: 'text-cyan-300' }
+        { label: isEn ? 'VIN / CHASSIS / SERIAL' : 'VIN / CHASIS / SERIE', value: vehicleRegistration.vin, highlight: 'text-amber-300 font-bold' },
+        { label: isEn ? 'ENGINE NUMBER' : 'NÚMERO DE MOTOR', value: vehicleRegistration.engineNumber, highlight: 'text-white font-bold' },
+        { label: isEn ? 'USE / RESTRICTION' : 'SERVICIO / RESTRICCIÓN', value: isEn ? 'PRIVATE • NO RESTRICTIONS' : 'PARTICULAR • SIN RESTRICCIÓN', highlight: 'text-emerald-300' },
+        { label: isEn ? 'TRAFFIC AUTHORITY' : 'ORGANISMO TRÁNSITO', value: countryLabels.authority, highlight: 'text-cyan-300' }
       ]
     },
     {
@@ -236,24 +279,24 @@ export default function DigitalGloveboxModal({
       group: 'soat',
       stepNumber: '3',
       globalKey: 'mandatory_insurance',
-      shortLabel: `Foto ${countryLabels.mandatory_insurance.shortName}`,
+      shortLabel: isEn ? `${countryLabels.mandatory_insurance.shortName} Photo` : `Foto ${countryLabels.mandatory_insurance.shortName}`,
       fullLabel: countryLabels.mandatory_insurance.fullName,
-      sideBadge: 'SEGURO OBLIGATORIO VIGENTE',
+      sideBadge: isEn ? 'MANDATORY LIABILITY INSURANCE' : 'SEGURO OBLIGATORIO VIGENTE',
       accentBorder: 'border-emerald-500/50',
       badgeColor:
         mandatoryEval.status === 'expired'
           ? 'bg-red-500/20 text-red-300 border-red-500/40'
           : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-      badgeText: mandatoryEval.badgeText,
+      badgeText: isEn ? (mandatoryEval.status === 'expired' ? 'EXPIRED' : 'ACTIVE POLICY') : mandatoryEval.badgeText,
       imageUrl: mandatoryInsurance.imageUrl,
       uploadBtnText: mandatoryInsurance.imageUrl
-        ? `Cambiar Foto ${countryLabels.mandatory_insurance.shortName}`
-        : `Subir Foto ${countryLabels.mandatory_insurance.shortName} (Escáner IA)`,
+        ? (isEn ? `Change ${countryLabels.mandatory_insurance.shortName} Photo` : `Cambiar Foto ${countryLabels.mandatory_insurance.shortName}`)
+        : (isEn ? `Upload ${countryLabels.mandatory_insurance.shortName} (AI Scanner)` : `Subir Foto ${countryLabels.mandatory_insurance.shortName} (Escáner IA)`),
       fields: [
-        { label: 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
-        { label: 'FECHA VENCIMIENTO', value: mandatoryInsurance.expiryDate || 'SIN FECHA', highlight: 'text-emerald-400 font-bold' },
-        { label: 'N° PÓLIZA', value: mandatoryInsurance.policyNumber, highlight: 'text-white' },
-        { label: 'ASEGURADORA', value: mandatoryInsurance.issuer, highlight: 'text-neutral-300' }
+        { label: isEn ? 'VEHICLE PLATE' : 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: isEn ? 'EXPIRATION DATE' : 'FECHA VENCIMIENTO', value: mandatoryInsurance.expiryDate || (isEn ? 'NO DATE' : 'SIN FECHA'), highlight: 'text-emerald-400 font-bold' },
+        { label: isEn ? 'POLICY NUMBER' : 'N° PÓLIZA', value: mandatoryInsurance.policyNumber, highlight: 'text-white' },
+        { label: isEn ? 'INSURANCE CARRIER' : 'ASEGURADORA', value: mandatoryInsurance.issuer, highlight: 'text-neutral-300' }
       ]
     },
     {
@@ -261,24 +304,24 @@ export default function DigitalGloveboxModal({
       group: 'tecno',
       stepNumber: '4',
       globalKey: 'technical_inspection',
-      shortLabel: `Foto ${countryLabels.technical_inspection.shortName}`,
+      shortLabel: isEn ? `${countryLabels.technical_inspection.shortName} Photo` : `Foto ${countryLabels.technical_inspection.shortName}`,
       fullLabel: countryLabels.technical_inspection.fullName,
-      sideBadge: 'CERTIFICADO TÉCNICO Y GASES',
+      sideBadge: isEn ? 'SAFETY & EMISSIONS CERTIFICATE' : 'CERTIFICADO TÉCNICO Y GASES',
       accentBorder: 'border-emerald-500/50',
       badgeColor:
         technicalEval.status === 'expired'
           ? 'bg-red-500/20 text-red-300 border-red-500/40'
           : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-      badgeText: technicalEval.badgeText,
+      badgeText: isEn ? (technicalEval.status === 'expired' ? 'EXPIRED' : 'ACTIVE INSPECTION') : technicalEval.badgeText,
       imageUrl: technicalInspection.imageUrl,
       uploadBtnText: technicalInspection.imageUrl
-        ? `Cambiar Foto ${countryLabels.technical_inspection.shortName}`
-        : `Subir Foto ${countryLabels.technical_inspection.shortName} (Escáner IA)`,
+        ? (isEn ? `Change ${countryLabels.technical_inspection.shortName} Photo` : `Cambiar Foto ${countryLabels.technical_inspection.shortName}`)
+        : (isEn ? `Upload ${countryLabels.technical_inspection.shortName} (AI Scanner)` : `Subir Foto ${countryLabels.technical_inspection.shortName} (Escáner IA)`),
       fields: [
-        { label: 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
-        { label: 'FECHA VENCIMIENTO', value: technicalInspection.expiryDate || 'SIN FECHA', highlight: 'text-emerald-400 font-bold' },
-        { label: 'N° CERTIFICADO', value: technicalInspection.policyNumber, highlight: 'text-white' },
-        { label: 'CENTRO / CDA', value: technicalInspection.issuer, highlight: 'text-neutral-300' }
+        { label: isEn ? 'VEHICLE PLATE' : 'PLACA VEHÍCULO', value: vehicleRegistration.plate, highlight: 'text-amber-400 font-bold' },
+        { label: isEn ? 'EXPIRATION DATE' : 'FECHA VENCIMIENTO', value: technicalInspection.expiryDate || (isEn ? 'NO DATE' : 'SIN FECHA'), highlight: 'text-emerald-400 font-bold' },
+        { label: isEn ? 'CERTIFICATE NUMBER' : 'N° CERTIFICADO', value: technicalInspection.policyNumber, highlight: 'text-white' },
+        { label: isEn ? 'INSPECTION STATION' : 'CENTRO / CDA', value: technicalInspection.issuer, highlight: 'text-neutral-300' }
       ]
     }
   ];
@@ -448,10 +491,19 @@ export default function DigitalGloveboxModal({
 
   const handleCountryChange = (newCountry) => {
     setSelectedCountry(newCountry);
+    const mapping = COUNTRY_TO_ISO_AND_LANG[newCountry] || { iso: 'CO', lang: 'es' };
+    if (setLang) {
+      setLang(mapping.lang);
+    }
     if (onUpdateHojaDeVida) {
+      const currentMultas = hojaDeVida?.multas || {};
       onUpdateHojaDeVida({
         ...hojaDeVida,
-        country: newCountry
+        country: newCountry,
+        multas: {
+          ...currentMultas,
+          pais: mapping.iso
+        }
       });
     }
   };
@@ -476,17 +528,19 @@ export default function DigitalGloveboxModal({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500 text-black">
-                  MODO RETÉN POLICIAL • LOS 4 DOCUMENTOS EXIGIDOS
+                  {isEn
+                    ? 'POLICE CHECKPOINT MODE • ALL 4 REQUIRED DOCUMENTS'
+                    : 'MODO RETÉN POLICIAL • LOS 4 DOCUMENTOS EXIGIDOS'}
                 </span>
                 <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  PLACA: {vehicleRegistration.plate}
+                  {isEn ? 'PLATE' : 'PLACA'}: {vehicleRegistration.plate}
                 </span>
               </div>
               <h2 className="text-base sm:text-xl font-black font-racing uppercase tracking-wider text-white mt-1">
-                1. {driverLabels.shortName} (2 Lados) • 2. {countryLabels.vehicle_registration.shortName} (2 Lados) • 3. {countryLabels.mandatory_insurance.shortName} • 4. {countryLabels.technical_inspection.shortName}
+                1. {driverLabels.shortName} ({isEn ? '2 Sides' : '2 Lados'}) • 2. {countryLabels.vehicle_registration.shortName} ({isEn ? '2 Sides' : '2 Lados'}) • 3. {countryLabels.mandatory_insurance.shortName} • 4. {countryLabels.technical_inspection.shortName}
               </h2>
               <p className="text-xs text-neutral-400 font-mono">
-                {identity.brand} {identity.model} ({vehicleRegistration.modelYear}) • Adaptado automáticamente para {selectedCountry} ({countryLabels.authority})
+                {identity.brand} {identity.model} ({vehicleRegistration.modelYear}) • {isEn ? `Automatically adapted for ${selectedCountry}` : `Adaptado automáticamente para ${selectedCountry}`} ({countryLabels.authority})
               </p>
             </div>
           </div>
@@ -497,10 +551,10 @@ export default function DigitalGloveboxModal({
                 type="button"
                 onClick={onOpenLawyer}
                 className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-racing font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition"
-                title="Consultar al Asesor Jurídico Vial IA si un comparendo o grúa es legal"
+                title={isEn ? 'Ask AI Traffic Lawyer if a ticket or tow is legal' : 'Consultar al Asesor Jurídico Vial IA si un comparendo o grúa es legal'}
               >
                 <Scale className="w-4 h-4 text-amber-400" />
-                <span>¿Comparendo o Grúa? Abogado IA</span>
+                <span>{isEn ? 'Ticket or Tow? AI Lawyer' : '¿Comparendo o Grúa? Abogado IA'}</span>
               </button>
             )}
 
@@ -510,7 +564,7 @@ export default function DigitalGloveboxModal({
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-racing font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
             >
               <Maximize2 className="w-4 h-4" />
-              <span>Mostrar Todo al Agente</span>
+              <span>{isEn ? 'Show All to Officer' : 'Mostrar Todo al Agente'}</span>
             </button>
 
             <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 rounded-xl px-2.5 py-1.5">
@@ -519,7 +573,7 @@ export default function DigitalGloveboxModal({
                 value={selectedCountry}
                 onChange={(e) => handleCountryChange(e.target.value)}
                 className="bg-transparent text-xs font-mono text-white focus:outline-none cursor-pointer"
-                title="Cambia de país para ver qué documentos exige la autoridad local"
+                title={isEn ? 'Switch country to adapt required traffic documents' : 'Cambia de país para ver qué documentos exige la autoridad local'}
               >
                 {Object.keys(COUNTRY_DOCUMENT_TERMINOLOGY).map((countryName) => (
                   <option key={countryName} value={countryName} className="bg-neutral-900 text-white">
@@ -541,9 +595,9 @@ export default function DigitalGloveboxModal({
         {/* BARRA DE FILTRO RÁPIDO ENTRE LOS 4 DOCUMENTOS EXIGIDOS EN UN RETÉN */}
         <div className="flex gap-1.5 overflow-x-auto py-3 border-b border-neutral-800/80">
           {[
-            { id: 'all', label: '📋 Todos los Documentos (6 Fotos)' },
-            { id: 'license', label: `🪪 1. ${driverLabels.shortName} (Ambos Lados)` },
-            { id: 'registration', label: `💳 2. ${countryLabels.vehicle_registration.shortName} (Ambos Lados)` },
+            { id: 'all', label: isEn ? '📋 All Documents (6 Photos)' : '📋 Todos los Documentos (6 Fotos)' },
+            { id: 'license', label: `🪪 1. ${driverLabels.shortName} (${isEn ? 'Both Sides' : 'Ambos Lados'})` },
+            { id: 'registration', label: `💳 2. ${countryLabels.vehicle_registration.shortName} (${isEn ? 'Both Sides' : 'Ambos Lados'})` },
             { id: 'soat', label: `🛡️ 3. ${countryLabels.mandatory_insurance.shortName}` },
             { id: 'tecno', label: `🔧 4. ${countryLabels.technical_inspection.shortName}` }
           ].map((tab) => (
@@ -695,7 +749,7 @@ export default function DigitalGloveboxModal({
                         <div className="flex items-start justify-between border-b border-neutral-800 pb-2">
                           <div>
                             <span className="text-[9px] font-mono uppercase text-emerald-400 font-bold block">
-                              CREDENCIAL DIGITAL VERIFICADA • {card.globalKey}
+                              {isEn ? 'VERIFIED DIGITAL CREDENTIAL' : 'CREDENCIAL DIGITAL VERIFICADA'} • {card.globalKey}
                             </span>
                             <span className="text-xs font-black font-racing uppercase text-white line-clamp-1">
                               {card.fullLabel}
@@ -717,15 +771,15 @@ export default function DigitalGloveboxModal({
                         </div>
 
                         <div className="text-[10px] font-mono text-neutral-400 flex justify-between items-center pt-1 border-t border-neutral-800">
-                          <span>Sube la foto física o toca para ampliar</span>
-                          <span className="text-amber-400 font-bold">Pantalla Completa 🔍</span>
+                          <span>{isEn ? 'Upload physical photo or tap to expand' : 'Sube la foto física o toca para ampliar'}</span>
+                          <span className="text-amber-400 font-bold">{isEn ? 'Full Screen 🔍' : 'Pantalla Completa 🔍'}</span>
                         </div>
                       </>
                     )}
 
                     <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-xs font-mono font-bold text-white transition">
                       <Maximize2 className="w-4 h-4 text-emerald-400" />
-                      <span>Mostrar al Agente en Pantalla Completa</span>
+                      <span>{isEn ? 'Show to Officer in Full Screen' : 'Mostrar al Agente en Pantalla Completa'}</span>
                     </div>
                   </div>
                 </div>
@@ -797,7 +851,7 @@ export default function DigitalGloveboxModal({
               </button>
 
               <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500 text-black uppercase">
-                INSPECCIÓN OFICIAL DE TRÁNSITO • PLACA {vehicleRegistration.plate}
+                {isEn ? `OFFICIAL TRAFFIC INSPECTION • PLATE ${vehicleRegistration.plate}` : `INSPECCIÓN OFICIAL DE TRÁNSITO • PLACA ${vehicleRegistration.plate}`}
               </span>
 
               {/* Selector rápido entre las 6 fotos o vista completa */}
@@ -811,7 +865,7 @@ export default function DigitalGloveboxModal({
                       : 'bg-neutral-800 text-neutral-300 border-neutral-700'
                   }`}
                 >
-                  📋 Ver Todos Juntos
+                  {isEn ? '📋 View All Together' : '📋 Ver Todos Juntos'}
                 </button>
                 {checkpointPhotoCards.map((c) => (
                   <button
