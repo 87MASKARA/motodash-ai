@@ -340,16 +340,10 @@ export default function HojaDeVidaModal({
                 <>
                   {[
                     { 
-                      id: "soat", 
-                      title: "SOAT (Seguro Obligatorio)", 
-                      date: docs.soatVencimiento, 
-                      desc: "Cobertura de accidentes de tránsito" 
-                    },
-                    { 
-                      id: "tecno", 
-                      title: "Revisión Técnico-Mecánica (RTM)", 
-                      date: docs.tecnoVencimiento, 
-                      desc: "Certificado de gases y seguridad vial" 
+                      id: "pase_conduccion", 
+                      title: "Pase / Licencia de Conducción • Ambos Lados (Cat. A2)", 
+                      date: docs.licenciaVencimiento || "2030-01-23", 
+                      desc: `Titular: ${docs.propietario || userProfile?.fullName || "Conductor Verificado"} • Cara Frontal y Posterior` 
                     },
                     { 
                       id: "tarjeta_frontal", 
@@ -364,6 +358,18 @@ export default function HojaDeVidaModal({
                       date: null,
                       permanentBadge: "PERMANENTE",
                       desc: `VIN: ${docs.numeroChasis || docs.vinChasis || "VERIFICADO"} • Motor: ${docs.numeroMotor || docs.engineNumber || "VERIFICADO"}` 
+                    },
+                    { 
+                      id: "soat", 
+                      title: "SOAT (Seguro Obligatorio)", 
+                      date: docs.soatVencimiento, 
+                      desc: "Cobertura de accidentes de tránsito" 
+                    },
+                    { 
+                      id: "tecno", 
+                      title: "Revisión Técnico-Mecánica (RTM)", 
+                      date: docs.tecnoVencimiento, 
+                      desc: "Certificado de gases y seguridad vial" 
                     },
                     { 
                       id: "seguro", 

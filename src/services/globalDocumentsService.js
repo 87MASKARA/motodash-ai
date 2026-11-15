@@ -13,6 +13,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'CO',
     flag: '🇨🇴',
     authority: 'RUNT / SIMIT / Policía de Tránsito',
+    driver_license: {
+      shortName: 'Pase / Licencia de Conducción',
+      fullName: 'Licencia Nacional de Conducción (Categoría A1 / A2)',
+      categoryDefault: 'A2 (Motocicletas > 125 cc)',
+      issuerPlaceholder: 'Ministerio de Transporte / RUNT'
+    },
     mandatory_insurance: {
       shortName: 'SOAT',
       fullName: 'Seguro Obligatorio de Accidentes de Tránsito (SOAT)',
@@ -33,6 +39,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'ES',
     flag: '🇪🇸',
     authority: 'DGT / Guardia Civil de Tráfico',
+    driver_license: {
+      shortName: 'Carnet de Conducir (Permiso A/A2)',
+      fullName: 'Permiso de Conducción Europeo DGT (Clase A1 / A2 / A)',
+      categoryDefault: 'Permiso A2 / A',
+      issuerPlaceholder: 'Dirección General de Tráfico (DGT)'
+    },
     mandatory_insurance: {
       shortName: 'Seguro a Terceros',
       fullName: 'Seguro Obligatorio de Responsabilidad Civil',
@@ -53,6 +65,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'US',
     flag: '🇺🇸',
     authority: 'DMV / State Highway Patrol',
+    driver_license: {
+      shortName: 'Driver License (Class M)',
+      fullName: 'State Driver License with Class M Motorcycle Endorsement',
+      categoryDefault: 'Class M (Motorcycle)',
+      issuerPlaceholder: 'Department of Motor Vehicles (DMV)'
+    },
     mandatory_insurance: {
       shortName: 'Liability Insurance',
       fullName: 'Mandatory Motorcycle Liability Insurance Card',
@@ -73,6 +91,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'MX',
     flag: '🇲🇽',
     authority: 'REPUVE / Secretaría de Movilidad (SEMOVI)',
+    driver_license: {
+      shortName: 'Licencia de Motociclista',
+      fullName: 'Licencia para Conducir Motocicleta (Tipo A1 / A2)',
+      categoryDefault: 'Tipo A1 / A2 Motociclista',
+      issuerPlaceholder: 'SEMOVI / Secretaría de Movilidad'
+    },
     mandatory_insurance: {
       shortName: 'Seguro RC Vial',
       fullName: 'Póliza de Responsabilidad Civil Obligatoria',
@@ -93,6 +117,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'CL',
     flag: '🇨🇱',
     authority: 'Carabineros / Registro Civil / MTT',
+    driver_license: {
+      shortName: 'Licencia de Conducir (Clase C)',
+      fullName: 'Licencia de Conductor Profesional / No Profesional Clase C',
+      categoryDefault: 'Clase C (Motocicletas)',
+      issuerPlaceholder: 'Dirección de Tránsito Municipal'
+    },
     mandatory_insurance: {
       shortName: 'SOAP',
       fullName: 'Seguro Obligatorio de Accidentes Personales (SOAP)',
@@ -113,6 +143,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'PE',
     flag: '🇵🇪',
     authority: 'SUTRAN / SAT / Policía Nacional',
+    driver_license: {
+      shortName: 'Brevete / Licencia (B-IIc)',
+      fullName: 'Licencia de Conducir Vehículos Menores (Clase B Categoría II-B / II-C)',
+      categoryDefault: 'Clase B-IIb / B-IIc',
+      issuerPlaceholder: 'MTC / Municipalidad Provincial'
+    },
     mandatory_insurance: {
       shortName: 'SOAT',
       fullName: 'Seguro Obligatorio de Accidentes de Tránsito (SOAT)',
@@ -133,6 +169,12 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
     countryCode: 'UK',
     flag: '🇬🇧',
     authority: 'DVLA / DVSA',
+    driver_license: {
+      shortName: 'Driving Licence (Cat A)',
+      fullName: 'UK Photocard Driving Licence (Category A1 / A2 / A)',
+      categoryDefault: 'Category A (Motorcycle)',
+      issuerPlaceholder: 'DVLA Swansea'
+    },
     mandatory_insurance: {
       shortName: 'Motor Insurance',
       fullName: 'Third-Party Mandatory Motorcycle Insurance',
@@ -451,3 +493,4 @@ export function buildWhatsAppAlertUrl(phone = '', bikeName = 'mi moto', plate = 
     ? `https://wa.me/${cleanPhone}?text=${encoded}`
     : `https://wa.me/?text=${encoded}`;
 }
+
