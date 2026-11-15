@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bike, Plus, Trash2, X } from 'lucide-react';
+import { Bike, Plus, Trash2, X, Award } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 
 export default function GarageDrawer({ 
@@ -9,6 +9,7 @@ export default function GarageDrawer({
   onAddNewBike, 
   onDeleteBike, 
   onCleanDemoBikes,
+  onSellBike,
   onClose 
 }) {
   const hasDemoBikes = garage.some(b => 
@@ -128,6 +129,21 @@ export default function GarageDrawer({
                   <span>Placa: <strong className="text-neutral-200">{item.hojaDeVida?.documentos?.placa || "SIN PLACA"}</strong></span>
                   <span>{telemetrySpecs.engineCc}cc • {telemetrySpecs.redlineRpm.toLocaleString()} RPM</span>
                 </div>
+
+                {onSellBike && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectBike(item.id);
+                      onSellBike(item);
+                    }}
+                    className="mt-2.5 w-full py-1.5 px-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-racing font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Poner en venta • Historial Certificado</span>
+                  </button>
+                )}
               </div>
             );
           })}

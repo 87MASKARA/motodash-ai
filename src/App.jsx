@@ -15,6 +15,7 @@ import EditComponentModal from './components/Modals/EditComponentModal';
 import SettingsModal from './components/Modals/SettingsModal';
 import LoginModal, { isFounderVipEmail } from './components/Auth/LoginModal';
 import ProfileModal from './components/Profile/ProfileModal';
+import CertifiedMarketplaceModal from './components/Modals/CertifiedMarketplaceModal';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
 import { DEMO_GARAGE, DEMO_PREVIEW_IDS } from './services/demoGarage';
@@ -118,6 +119,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
 
   // Ajustes Globales
   const [globalSettings, setGlobalSettings] = useState(() => {
@@ -742,9 +744,24 @@ export default function App() {
               return DEMO_PREVIEW_IDS.includes(prevId) ? (garage[0]?.id || DEMO_GARAGE[0].id) : prevId;
             });
           }}
+          onSellBike={() => {
+            setIsGarageOpen(false);
+            setIsSellModalOpen(true);
+          }}
           onClose={() => setIsGarageOpen(false)}
         />
       )}
+
+      {/* MODAL COMPRA/VENTA CON HISTORIAL CERTIFICADO DESDE EL GARAJE */}
+      <CertifiedMarketplaceModal
+        isOpen={isSellModalOpen}
+        onClose={() => setIsSellModalOpen(false)}
+        bike={activeBike}
+        hojaDeVida={activeBike?.hojaDeVida || {}}
+        odometer={activeOdometer}
+        userProfile={userProfile}
+        onOpenHojaDeVida={() => setIsHojaDeVidaOpen(true)}
+      />
 
       {/* MODAL SUSCRIPCIÓN PRO */}
       {isPaywallOpen && (

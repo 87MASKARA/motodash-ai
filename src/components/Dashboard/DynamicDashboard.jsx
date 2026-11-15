@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
-  Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth
+  Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
+  ShieldCheck, Users, Award
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -18,6 +19,9 @@ import WarrantyRulesModal from '../Modals/WarrantyRulesModal';
 import RegisterWarrantyRevisionModal from '../Modals/RegisterWarrantyRevisionModal';
 import TrafficFinesModal from '../Modals/TrafficFinesModal';
 import HardwareBridgeModal from '../Modals/HardwareBridgeModal';
+import DigitalGloveboxModal from '../Modals/DigitalGloveboxModal';
+import CommunityChatModal from '../Modals/CommunityChatModal';
+import CertifiedMarketplaceModal from '../Modals/CertifiedMarketplaceModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -50,6 +54,9 @@ export default function DynamicDashboard({
 }) {
   const { t } = useLanguage();
   const [isHardwareBridgeOpen, setIsHardwareBridgeOpen] = useState(false);
+  const [isGloveboxOpen, setIsGloveboxOpen] = useState(false);
+  const [isCommunityOpen, setIsCommunityOpen] = useState(false);
+  const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false);
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
     userProfile?.isLifetimeVip ||
@@ -499,6 +506,87 @@ export default function DynamicDashboard({
 
       {/* Grid Principal de Widgets */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        {/* BARRA DE ACCESO RÁPIDO: GUANTERA DIGITAL (RETÉN + IA), COMUNIDAD LIVE Y VENTA CERTIFICADA */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
+          {/* 1. Botón Gigante "Mis Documentos" (Guantera Digital para Retenes + Escáner IA) */}
+          <button
+            type="button"
+            onClick={() => setIsGloveboxOpen(true)}
+            className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-neutral-900 to-neutral-900 hover:from-emerald-900/80 border-2 border-emerald-500/50 text-left flex items-center justify-between gap-3 shadow-lg shadow-emerald-500/10 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition flex-shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-black">
+                    MODO RETÉN • IA
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black font-racing uppercase tracking-wider text-white mt-0.5">
+                  Mis Documentos
+                </h3>
+                <p className="text-[11px] font-mono text-neutral-400">
+                  SOAT, Tecno y Tarjeta en alta calidad + Escáner IA
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* 2. Botón Comunidad y Chat en Tiempo Real (Supabase Realtime) */}
+          <button
+            type="button"
+            onClick={() => setIsCommunityOpen(true)}
+            className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-neutral-900 to-neutral-900 hover:from-amber-900/70 border border-amber-500/40 text-left flex items-center justify-between gap-3 shadow-lg shadow-amber-500/5 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-105 transition flex-shrink-0">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    REALTIME LIVE
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black font-racing uppercase tracking-wider text-white mt-0.5">
+                  Comunidad & Rodadas
+                </h3>
+                <p className="text-[11px] font-mono text-neutral-400">
+                  Alertas de retenes, rutas y chat por ciudad o moto
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* 3. Botón Venta con Historial Certificado */}
+          <button
+            type="button"
+            onClick={() => setIsMarketplaceOpen(true)}
+            className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/70 via-neutral-900 to-neutral-900 hover:from-cyan-900/70 border border-cyan-500/40 text-left flex items-center justify-between gap-3 shadow-lg shadow-cyan-500/5 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition flex-shrink-0">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    SELLO VERIFICADO
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black font-racing uppercase tracking-wider text-white mt-0.5">
+                  Poner en Venta
+                </h3>
+                <p className="text-[11px] font-mono text-neutral-400">
+                  Ficha con Historial Certificado y Peritaje Digital
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
           
           {/* MÓDULO GUARDIÁN DE GARANTÍA OFICIAL */}
@@ -642,6 +730,35 @@ export default function DynamicDashboard({
           }
         }}
         onOpenPaywall={onOpenPaywall}
+      />
+
+      {/* MODAL GUANTERA DIGITAL PARA RETENES + EXTRACCIÓN IA (GEMINI VISION) */}
+      <DigitalGloveboxModal
+        isOpen={isGloveboxOpen}
+        onClose={() => setIsGloveboxOpen(false)}
+        bike={effectiveBike}
+        hojaDeVida={hojaDeVida}
+        userProfile={userProfile}
+        onUpdateHojaDeVida={onUpdateHojaDeVida}
+      />
+
+      {/* MODAL COMUNIDAD Y CHAT EN TIEMPO REAL (SUPABASE REALTIME) */}
+      <CommunityChatModal
+        isOpen={isCommunityOpen}
+        onClose={() => setIsCommunityOpen(false)}
+        bike={effectiveBike}
+        userProfile={userProfile}
+      />
+
+      {/* MODAL COMPRA/VENTA CON HISTORIAL CERTIFICADO */}
+      <CertifiedMarketplaceModal
+        isOpen={isMarketplaceOpen}
+        onClose={() => setIsMarketplaceOpen(false)}
+        bike={effectiveBike}
+        hojaDeVida={hojaDeVida}
+        odometer={odometer}
+        userProfile={userProfile}
+        onOpenHojaDeVida={onOpenHojaDeVida}
       />
     </div>
   );

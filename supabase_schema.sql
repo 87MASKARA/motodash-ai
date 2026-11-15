@@ -489,3 +489,170 @@ CREATE POLICY "Eliminar propios documentos en storage"
 ALTER ROLE authenticator SET pgrst.db_schemas = 'public';
 NOTIFY pgrst, 'reload config';
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- 9. ADAPTACIÓN GLOBAL: COLUMNAS ESTÁNDAR DE DOCUMENTOS LEGALES
+--    (mandatory_insurance, technical_inspection, vehicle_registration)
+-- ============================================================================
+ALTER TABLE public.motos
+  ADD COLUMN IF NOT EXISTS mandatory_insurance jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS mandatory_insurance_expiry date,
+  ADD COLUMN IF NOT EXISTS technical_inspection jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS technical_inspection_expiry date,
+  ADD COLUMN IF NOT EXISTS vehicle_registration jsonb DEFAULT '{}'::jsonb;
+
+ALTER TABLE public.user_bikes
+  ADD COLUMN IF NOT EXISTS mandatory_insurance jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS mandatory_insurance_expiry date,
+  ADD COLUMN IF NOT EXISTS technical_inspection jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS technical_inspection_expiry date,
+  ADD COLUMN IF NOT EXISTS vehicle_registration jsonb DEFAULT '{}'::jsonb;
+
+ALTER TABLE public.pilot_profiles
+  ADD COLUMN IF NOT EXISTS whatsapp_alerts_enabled boolean DEFAULT true,
+  ADD COLUMN IF NOT EXISTS push_alerts_enabled boolean DEFAULT true;
+
+-- ============================================================================
+-- 10. SISTEMA DE ALERTAS AUTOMATIZADAS (30, 15 y 5 DÍAS) + CRON 8:00 AM
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.document_alerts_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  moto_id text NOT NULL,
+  document_type text NOT NULL,
+  days_remaining integer NOT NULL,
+  expiry_date date NOT NULL,
+  channel text NOT NULL DEFAULT 'whatsapp_and_push',
+  message text NOT NULL,
+  sent_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_alerts_user_id ON public.document_alerts_log(user_id);
+
+ALTER TABLE public.document_alerts_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_alerts_log FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.document_alerts_log FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.document_alerts_log TO authenticated;
+
+CREATE POLICY "Ver propias alertas"
+  ON public.document_alerts_log FOR SELECT
+  TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "Insertar propias alertas"
+  ON public.document_alerts_log FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Actualizar propias alertas"
+  ON public.document_alerts_log FOR UPDATE
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Eliminar propias alertas"
+  ON public.document_alerts_log FOR DELETE
+  TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- ============================================================================
+-- 11. MÓDULO DE COMUNIDAD Y CHAT EN TIEMPO REAL (SUPABASE REALTIME)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.community_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  channel_id text NOT NULL DEFAULT 'medellin',
+  category text NOT NULL DEFAULT 'general',
+  author_name text NOT NULL DEFAULT 'Piloto Rider',
+  author_bike text DEFAULT 'Motocicleta',
+  author_verified boolean DEFAULT false,
+  content text NOT NULL CHECK (char_length(content) BETWEEN 1 AND 600),
+  city text DEFAULT 'Medellín',
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_community_messages_channel ON public.community_messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_messages_user_id ON public.community_messages(user_id);
+
+ALTER TABLE public.community_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_messages FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.community_messages FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.community_messages TO authenticated;
+
+CREATE POLICY "Leer mensajes de comunidad (autenticados)"
+  ON public.community_messages FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Publicar propios mensajes en comunidad"
+  ON public.community_messages FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Editar propios mensajes en comunidad"
+  ON public.community_messages FOR UPDATE
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Eliminar propios mensajes en comunidad"
+  ON public.community_messages FOR DELETE
+  TO authenticated
+  USING ((select auth.uid()) = user_id);
+
+-- ============================================================================
+-- 12. MARKETPLACE: COMPRA CON HISTORIAL CERTIFICADO (FASE 2 READY)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.marketplace_listings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  moto_id text NOT NULL,
+  brand text NOT NULL,
+  model text NOT NULL,
+  year integer NOT NULL,
+  odometer numeric NOT NULL DEFAULT 0,
+  price numeric(14, 2) NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'COP',
+  city text NOT NULL DEFAULT 'Medellín',
+  country text NOT NULL DEFAULT 'Colombia',
+  verified_maintenance_badge boolean DEFAULT false,
+  health_score integer DEFAULT 95,
+  fines_clean boolean DEFAULT true,
+  is_featured boolean DEFAULT false,
+  tier text DEFAULT 'free',
+  status text DEFAULT 'pre_registered',
+  technical_summary jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, moto_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketplace_user_id ON public.marketplace_listings(user_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_city ON public.marketplace_listings(city, status);
+
+ALTER TABLE public.marketplace_listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_listings FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.marketplace_listings FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.marketplace_listings TO authenticated;
+
+CREATE POLICY "Ver anuncios certificados"
+  ON public.marketplace_listings FOR SELECT
+  TO authenticated
+  USING ((select auth.uid()) = user_id OR status = 'active');
+
+CREATE POLICY "Crear propio anuncio certificado"
+  ON public.marketplace_listings FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Actualizar propio anuncio certificado"
+  ON public.marketplace_listings FOR UPDATE
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Eliminar propio anuncio certificado"
+  ON public.marketplace_listings FOR DELETE
+  TO authenticated
+  USING ((select auth.uid()) = user_id);
