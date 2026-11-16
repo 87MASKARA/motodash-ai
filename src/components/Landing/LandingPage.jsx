@@ -4,7 +4,7 @@ import LanguageSwitcher from '../Common/LanguageSwitcher';
 import { 
   Sparkles, Crown, Gauge, ArrowRight, CheckCircle2, 
   FileText, Wrench, Play, LogIn, ShieldCheck, Radar, Scale,
-  Bluetooth, HeartPulse, Users, Lock, Zap, Film
+  Bluetooth, HeartPulse, Users, Lock, Zap, Film, Store, Building2
 } from 'lucide-react';
 import { BRAND_LOGOS, BrandLogo } from '../Common/BrandLogos';
 import { MOTO_CATALOG } from '../../services/motoCatalog';
@@ -19,7 +19,7 @@ const QUICK_DEMO_BIKES = [
   { id: "bike_bmw_s1000rr", brand: "BMW", model: "S 1000 RR", spec: "999cc • 15.0k RPM", color: "#2563EB" }
 ];
 
-export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogin, onReplayIntro, onOpenLegal }) {
+export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogin, onReplayIntro, onOpenLegal, onOpenMotoMall }) {
   const { t, language } = useLanguage();
   const isEn = language === 'en';
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'annual'
@@ -49,6 +49,18 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
               >
                 <Film className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden lg:inline">{isEn ? 'Intro Video' : 'Video Intro'}</span>
+              </button>
+            )}
+
+            {onOpenMotoMall && (
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall('catalog')}
+                className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-racing font-bold text-emerald-300 hover:text-white bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 flex items-center gap-1.5 transition"
+                title="Abrir MotoMall Oficial (Repuestos, Accesorios y Concesionarios)"
+              >
+                <Store className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">MotoMall</span>
               </button>
             )}
 
@@ -628,6 +640,44 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
               className="mt-6 w-full py-3 rounded-xl font-racing font-bold text-xs bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition"
             >
               {t('landing.planGarageBtn')}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 5B. SECCIÓN OFICIAL B2B2C: MOTOMALL PARA TIENDAS DE REPUESTOS Y CONCESIONARIOS */}
+      <section className="py-12 px-4 bg-gradient-to-b from-neutral-950 to-black border-t border-neutral-900">
+        <div className="max-w-5xl mx-auto p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-950/35 via-neutral-900 to-emerald-950/30 border-2 border-amber-500/40 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-2xl">
+          <div className="text-left space-y-2 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[11px] font-mono font-bold text-amber-300">
+              <Store className="w-3.5 h-3.5 text-amber-400" />
+              NUEVO ECOSISTEMA COMERCIAL B2B2C • MOTOMALL OFICIAL
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-black font-racing uppercase text-white">
+              ¿Tienes un Almacén de Repuestos, Boutique o Concesionario?
+            </h3>
+            <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+              Regístrate en el <strong>Portal Empresas (B2B)</strong> con tu NIT y el logo de tu negocio. Tus repuestos, aceites, baterías y motos 0 KM aparecerán conectados directamente con el <strong>Mantenimiento Predictivo</strong> de los pilotos cuando necesiten cambiar una pieza.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => onOpenMotoMall && onOpenMotoMall('catalog')}
+              className="px-5 py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 transition"
+            >
+              <Store className="w-4 h-4 text-emerald-400" />
+              <span>🛒 Explorar MotoMall</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenMotoMall && onOpenMotoMall('merchant_portal')}
+              className="px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 transition"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>🏢 Registrar Mi Tienda / Concesionario</span>
             </button>
           </div>
         </div>

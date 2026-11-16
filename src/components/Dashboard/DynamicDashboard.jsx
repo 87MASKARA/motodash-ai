@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
   Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
-  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon, Monitor
+  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon, Monitor, Store
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -27,6 +27,7 @@ import TrafficLawyerModal from '../Modals/TrafficLawyerModal';
 import SosEmergencyModal from '../Modals/SosEmergencyModal';
 import DoctorMotorModal from '../Modals/DoctorMotorModal';
 import CarPlayHudModal from '../Modals/CarPlayHudModal';
+import MotoMallModal from '../Modals/MotoMallModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -69,6 +70,9 @@ export default function DynamicDashboard({
   const [isSosModalOpen, setIsSosModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isCarPlayHudOpen, setIsCarPlayHudOpen] = useState(false);
+  const [isMotoMallOpen, setIsMotoMallOpen] = useState(false);
+  const [motoMallCompId, setMotoMallCompId] = useState(null);
+  const [motoMallInitialTab, setMotoMallInitialTab] = useState('catalog');
   const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
@@ -593,6 +597,21 @@ export default function DynamicDashboard({
               <span>{isEn ? 'Community' : 'Comunidad'}</span>
             </button>
 
+            {/* Pill MotoMall Oficial B2B2C (Tiendas de Repuestos & Concesionarios) */}
+            <button
+              type="button"
+              onClick={() => {
+                setMotoMallCompId(null);
+                setMotoMallInitialTab('catalog');
+                setIsMotoMallOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300"
+              title="MotoMall Oficial: Almacenes de Repuestos, Concesionarios y Registro Comercial B2B"
+            >
+              <Store className="w-3.5 h-3.5 text-amber-400" />
+              <span>MotoMall</span>
+            </button>
+
             {/* Pill Poner en Venta (Historial Certificado) */}
             <button
               type="button"
@@ -740,6 +759,11 @@ export default function DynamicDashboard({
               onOpenOdometerModal={onOpenOdometerModal}
               onOpenEditComponentModal={onOpenEditComponentModal}
               onOpenHardwareBridgeModal={() => setIsHardwareBridgeOpen(true)}
+              onOpenMotoMall={(compId) => {
+                setMotoMallCompId(compId);
+                setMotoMallInitialTab('catalog');
+                setIsMotoMallOpen(true);
+              }}
             />
           </div>
         </div>
@@ -912,6 +936,16 @@ export default function DynamicDashboard({
         onOpenDoctor={() => setIsDoctorModalOpen(true)}
         onOpenCommunity={() => setIsCommunityOpen(true)}
         onOpenHardwareBridge={() => setIsHardwareBridgeOpen(true)}
+      />
+
+      {/* MODAL MOTOMALL OFICIAL B2B2C: TIENDAS DE REPUESTOS, CONCESIONARIOS Y PORTAL EMPRESAS */}
+      <MotoMallModal
+        isOpen={isMotoMallOpen}
+        onClose={() => setIsMotoMallOpen(false)}
+        bike={effectiveBike}
+        userProfile={userProfile}
+        initialComponentId={motoMallCompId}
+        initialTab={motoMallInitialTab}
       />
 
       {/* DOCK INFERIOR FIJO PARA CELULAR Y SOPORTE DE MANUBRIO (CON GUANTES) */}

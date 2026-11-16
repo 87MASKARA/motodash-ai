@@ -18,6 +18,7 @@ import LoginModal, { isFounderVipEmail } from './components/Auth/LoginModal';
 import ProfileModal from './components/Profile/ProfileModal';
 import CertifiedMarketplaceModal from './components/Modals/CertifiedMarketplaceModal';
 import LegalTermsModal from './components/Modals/LegalTermsModal';
+import MotoMallModal from './components/Modals/MotoMallModal';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { COMPONENTES_DESGASTE_OFICIALES } from './services/maintenanceCatalog';
 import { DEMO_GARAGE, DEMO_PREVIEW_IDS } from './services/demoGarage';
@@ -125,10 +126,17 @@ export default function App() {
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState('privacy');
+  const [isGlobalMallOpen, setIsGlobalMallOpen] = useState(false);
+  const [globalMallTab, setGlobalMallTab] = useState('catalog');
 
   const handleOpenLegal = (tab = 'privacy') => {
     setLegalModalTab(tab);
     setIsLegalModalOpen(true);
+  };
+
+  const handleOpenGlobalMall = (tab = 'catalog') => {
+    setGlobalMallTab(tab);
+    setIsGlobalMallOpen(true);
   };
 
   // Ajustes Globales
@@ -598,6 +606,7 @@ export default function App() {
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onReplayIntro={() => setShowIntroSplash(true)}
           onOpenLegal={handleOpenLegal}
+          onOpenMotoMall={handleOpenGlobalMall}
         />
       )}
 
@@ -912,6 +921,15 @@ export default function App() {
         isOpen={isLegalModalOpen}
         onClose={() => setIsLegalModalOpen(false)}
         initialTab={legalModalTab}
+      />
+
+      {/* MODAL MOTOMALL GLOBAL DESDE LA PÁGINA DE INICIO */}
+      <MotoMallModal
+        isOpen={isGlobalMallOpen}
+        onClose={() => setIsGlobalMallOpen(false)}
+        bike={activeBike}
+        userProfile={userProfile}
+        initialTab={globalMallTab}
       />
     </>
   );

@@ -3,7 +3,7 @@ import {
   Wrench, CheckCircle2, AlertTriangle, AlertCircle, Droplet, Filter, 
   Link, Cog, Disc, Beaker, GitCommit, Wind, Flame, Crosshair, 
   CircleDot, Activity, Layers, Droplets, Settings, Plus, Sparkles,
-  Zap, Battery, Bluetooth
+  Zap, Battery, Bluetooth, ShoppingBag
 } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES, CATEGORIAS_MANTENIMIENTO } from '../../../services/maintenanceCatalog';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -37,7 +37,8 @@ export default function MaintenanceWidget({
   onChangeRidingCondition,
   onOpenOdometerModal,
   onOpenEditComponentModal,
-  onOpenHardwareBridgeModal
+  onOpenHardwareBridgeModal,
+  onOpenMotoMall
 }) {
   const { t } = useLanguage();
   const [categoriaActiva, setCategoriaActiva] = useState("todas");
@@ -419,6 +420,21 @@ export default function MaintenanceWidget({
                     >
                       <Bluetooth className="w-3 h-3 text-cyan-400" />
                       <span>TFT/OBD</span>
+                    </button>
+                  )}
+
+                  {onOpenMotoMall && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenMotoMall(comp.id);
+                      }}
+                      className="flex items-center gap-1 text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/70 px-2 py-0.5 rounded-lg border border-emerald-500/40 transition font-bold"
+                      title="Ver repuesto compatible en el MotoMall Oficial"
+                    >
+                      <ShoppingBag className="w-3 h-3 text-emerald-400" />
+                      <span>Mall</span>
                     </button>
                   )}
                   {/* Botón Editable para Ajustar Intervalo en Su Moto */}
