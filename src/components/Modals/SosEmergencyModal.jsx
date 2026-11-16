@@ -14,10 +14,16 @@ import {
   Search,
   AlertTriangle,
   Compass,
+  Store,
   X
 } from 'lucide-react';
 import { supabase, getAuthenticatedUserId } from '../../services/supabaseClient';
 import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  getLoadedMallStores,
+  sortStoresByProximity,
+  buildStoreMapsUrl
+} from '../../services/mallLocationService';
 
 const COUNTRY_EMERGENCY_NUMBERS = {
   Colombia: {
@@ -820,6 +826,66 @@ export default function SosEmergencyModal({
               </div>
             </div>
           )}
+
+          {/* TARJETA DE RESCATE: TIENDA / TALLER ALIADO MÁS CERCANO DESDE MOTOMALL */}
+          {(() => {
+            const nearbyStores = sortStoresByProximity(
+              getLoadedMallStores(),
+              hasValidCoords ? { lat: effectiveLat, lng: effectiveLng } : null
+            );
+            const closest = nearbyStores[0];
+            if (!closest) return null;
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-950 to-emerald-950/35 border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-black flex items-center gap-1">
+                      <Store className="w-3 h-3" /> TALLER / ALMACÉN ALIADO MÁS CERCANO
+                    </span>
+                    {closest.distanceLabel && (
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        📍 {closest.distanceLabel}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-black font-racing uppercase text-white">
+                    {closest.store_name}
+                  </p>
+                  <p className="text-[11px] font-mono text-neutral-300">
+                    📍 {closest.address} ({closest.city})
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <a
+                    href={buildStoreMapsUrl(closest, hasValidCoords ? { lat: effectiveLat, lng: effectiveLng } : null)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-black uppercase text-[11px] flex items-center gap-1 transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Ir al Aliado</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanPhone = String(closest.whatsapp_sales || '573009120000').replace(/[^0-9]/g, '');
+                      const gpsLine = hasValidCoords
+                        ? `\n📍 Ubicación GPS exacta: https://www.google.com/maps?q=${effectiveLat},${effectiveLng}`
+                        : '';
+                      const msg = `🆘 *SOLICITUD DE DESVARE / REPUESTO — MOTODASH AI*\nHola *${closest.store_name}*, me varé con mi *${identity.brand} ${identity.model}* (${plate}).${gpsLine}\n\n¿Tienen disponibilidad de auxilio o repuesto urgente?`;
+                      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-[11px] flex items-center gap-1 transition"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>WhatsApp Auxilio</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* LÍNEAS TELEFÓNICAS OFICIALES DE EMERGENCIA Y GRÚA SEGÚN EL PAÍS */}

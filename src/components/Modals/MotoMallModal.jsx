@@ -18,11 +18,19 @@ import {
   Bike,
   ExternalLink,
   Filter,
+  Navigation,
+  PhoneCall,
   X
 } from 'lucide-react';
 import { supabase, getAuthenticatedUserId } from '../../services/supabaseClient';
 import { isFounderVipEmail } from '../Auth/LoginModal';
 import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  DEFAULT_MALL_STORES,
+  sortStoresByProximity,
+  getLoadedMallStores,
+  buildStoreMapsUrl
+} from '../../services/mallLocationService';
 
 const OFFICIAL_FOUNDER_NAME = 'Anderson • Fundador VIP';
 
@@ -37,59 +45,7 @@ export const MALL_CATEGORIES = [
   { id: 'accesorios', label: '📟 Pantallas CarPlay & Cascos' }
 ];
 
-const INITIAL_OFFICIAL_STORES = [
-  {
-    id: 'store_auteco_dismerca',
-    slug: 'auteco-dismerca-oficial',
-    store_name: 'Auteco / Dismerca Concesionario & Repuestos',
-    store_type: 'concesionario',
-    tax_id_nit: 'NIT 890.900.123-4 • Verificado',
-    city: 'Medellín / Nacional',
-    country: 'Colombia',
-    address: 'Av. Las Vegas / Red Oficial Auteco Mobility & SAS',
-    whatsapp_sales: '573009120000',
-    logo_url: null,
-    accent_color: '#EF4444',
-    brands_supported: ['TVS', 'KTM', 'KAWASAKI', 'SUZUKI'],
-    is_verified: true,
-    founder_overseer_name: OFFICIAL_FOUNDER_NAME,
-    rating: 4.95
-  },
-  {
-    id: 'store_mundimotos_pro',
-    slug: 'mundorepuestos-racing-co',
-    store_name: 'MundoRepuestos & Lubricantes Racing',
-    store_type: 'repuestos',
-    tax_id_nit: 'NIT 901.442.810-1 • Verificado',
-    city: 'Medellín / Bogotá',
-    country: 'Colombia',
-    address: 'Sector La Bayadera Cra 53 / Calle 38',
-    whatsapp_sales: '573104500000',
-    logo_url: null,
-    accent_color: '#F59E0B',
-    brands_supported: ['TVS', 'YAMAHA', 'BAJAJ', 'HONDA', 'SUZUKI', 'AKT'],
-    is_verified: true,
-    founder_overseer_name: OFFICIAL_FOUNDER_NAME,
-    rating: 4.92
-  },
-  {
-    id: 'store_yamaha_incolmotos',
-    slug: 'yamaha-incolmotos-boutique',
-    store_name: 'Concesionario & Boutique Racing Multimarcas',
-    store_type: 'boutique',
-    tax_id_nit: 'NIT 890.915.440-8 • Verificado',
-    city: 'Medellín / Cali / Bogotá',
-    country: 'Colombia',
-    address: 'Zona Motera El Poblado / Av. El Dorado',
-    whatsapp_sales: '573158000000',
-    logo_url: null,
-    accent_color: '#06B6D4',
-    brands_supported: ['YAMAHA', 'BMW', 'DUCATI', 'TVS', 'KTM'],
-    is_verified: true,
-    founder_overseer_name: OFFICIAL_FOUNDER_NAME,
-    rating: 4.98
-  }
-];
+const INITIAL_OFFICIAL_STORES = DEFAULT_MALL_STORES;
 
 const INITIAL_OFFICIAL_PRODUCTS = [
   {
@@ -261,16 +217,20 @@ export default function MotoMallModal({
   const [selectedStoreSlug, setSelectedStoreSlug] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [stores, setStores] = useState(() => {
+  const [stores, setStores] = useState(() => getLoadedMallStores());
+
+  // Geolocalización del motero varado para mostrar el aliado más cercano
+  const [riderCoords, setRiderCoords] = useState(() => {
     try {
-      const saved = localStorage.getItem('motodash_mall_stores');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return INITIAL_OFFICIAL_STORES;
+      const saved = localStorage.getItem('motodash_last_verified_gps');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
+  const [locatingRider, setLocatingRider] = useState(false);
+  const [riderZoneQuery, setRiderZoneQuery] = useState('');
+  const [searchingRiderZone, setSearchingRiderZone] = useState(false);
 
   const [products, setProducts] = useState(() => {
     try {
@@ -289,6 +249,9 @@ export default function MotoMallModal({
   const [storeNit, setStoreNit] = useState('');
   const [storeCity, setStoreCity] = useState(userProfile?.city || 'Medellín');
   const [storeAddress, setStoreAddress] = useState('');
+  const [storeLat, setStoreLat] = useState('');
+  const [storeLng, setStoreLng] = useState('');
+  const [locatingStoreGps, setLocatingStoreGps] = useState(false);
   const [storeWhatsapp, setStoreWhatsapp] = useState('');
   const [storeBrands, setStoreBrands] = useState('TVS, YAMAHA, KTM, BAJAJ');
   const [storeLogoUrl, setStoreLogoUrl] = useState(null);
@@ -407,6 +370,101 @@ export default function MotoMallModal({
     } catch {}
   };
 
+  const acquireRiderLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocatingRider(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = {
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+          accuracy: Math.round(pos.coords.accuracy || 15)
+        };
+        setRiderCoords(next);
+        setLocatingRider(false);
+        try {
+          localStorage.setItem('motodash_last_verified_gps', JSON.stringify(next));
+        } catch {}
+      },
+      () => {
+        setLocatingRider(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    acquireRiderLocation();
+  }, [isOpen]);
+
+  const handleSearchRiderZone = async (e) => {
+    if (e) e.preventDefault();
+    const q = riderZoneQuery.trim();
+    if (!q) return;
+    setSearchingRiderZone(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(`${q}, ${userProfile?.country || 'Colombia'}`)}&limit=1`
+      );
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list[0]) {
+          const next = {
+            lat: Number(list[0].lat).toFixed(6),
+            lng: Number(list[0].lon).toFixed(6),
+            label: list[0].display_name
+          };
+          setRiderCoords(next);
+          try {
+            localStorage.setItem('motodash_last_verified_gps', JSON.stringify(next));
+          } catch {}
+        }
+      }
+    } catch {} finally {
+      setSearchingRiderZone(false);
+    }
+  };
+
+  const handleCaptureStoreGps = () => {
+    if (!navigator.geolocation) return;
+    setLocatingStoreGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setStoreLat(pos.coords.latitude.toFixed(6));
+        setStoreLng(pos.coords.longitude.toFixed(6));
+        setLocatingStoreGps(false);
+      },
+      () => {
+        setLocatingStoreGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleGeocodeStoreAddress = async () => {
+    const q = `${storeAddress.trim() || storeCity.trim()}, ${storeCity.trim() || 'Colombia'}`;
+    if (!q.trim()) return;
+    setLocatingStoreGps(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&limit=1`
+      );
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list[0]) {
+          setStoreLat(Number(list[0].lat).toFixed(6));
+          setStoreLng(Number(list[0].lon).toFixed(6));
+        }
+      }
+    } catch {} finally {
+      setLocatingStoreGps(false);
+    }
+  };
+
+  const sortedStores = sortStoresByProximity(stores, riderCoords);
+  const nearestStore = sortedStores[0] || null;
+
   // Registrar una nueva Tienda de Repuestos o Concesionario (Flujo Comercial B2B)
   const handleRegisterCommercialStore = async (e) => {
     e.preventDefault();
@@ -419,6 +477,9 @@ export default function MotoMallModal({
       .map((b) => b.trim().toUpperCase())
       .filter(Boolean);
 
+    const parsedLat = storeLat ? Number(storeLat) : (riderCoords?.lat ? Number(riderCoords.lat) : 6.24420);
+    const parsedLng = storeLng ? Number(storeLng) : (riderCoords?.lng ? Number(riderCoords.lng) : -75.58121);
+
     const newStoreObj = {
       id: `store_${Date.now()}`,
       slug,
@@ -428,6 +489,8 @@ export default function MotoMallModal({
       city: storeCity.trim() || 'Medellín',
       country: userProfile?.country || 'Colombia',
       address: storeAddress.trim() || 'Sede Comercial Verificada',
+      latitude: parsedLat,
+      longitude: parsedLng,
       whatsapp_sales: storeWhatsapp.replace(/[^0-9]/g, ''),
       logo_url: storeLogoUrl,
       accent_color: storeType === 'concesionario' ? '#EF4444' : storeType === 'boutique' ? '#06B6D4' : '#F59E0B',
@@ -449,6 +512,8 @@ export default function MotoMallModal({
           city: newStoreObj.city,
           country: newStoreObj.country,
           address: newStoreObj.address,
+          latitude: newStoreObj.latitude,
+          longitude: newStoreObj.longitude,
           whatsapp_sales: newStoreObj.whatsapp_sales,
           logo_url: newStoreObj.logo_url,
           accent_color: newStoreObj.accent_color,
@@ -466,11 +531,13 @@ export default function MotoMallModal({
       } catch {}
 
       setStoreRegisteredMsg(
-        `✅ ¡Comercio "${newStoreObj.store_name}" (${newStoreObj.tax_id_nit}) registrado en MotoMall con Sello Verificado y supervisión oficial de ${OFFICIAL_FOUNDER_NAME}! Ahora puedes publicar tus productos abajo.`
+        `✅ ¡Comercio "${newStoreObj.store_name}" (${newStoreObj.tax_id_nit}) registrado con ubicación GPS exacta (${parsedLat}, ${parsedLng}) y Sello Verificado por ${OFFICIAL_FOUNDER_NAME}! Ahora puedes publicar tus productos abajo.`
       );
       setStoreName('');
       setStoreNit('');
       setStoreAddress('');
+      setStoreLat('');
+      setStoreLng('');
       setStoreLogoUrl(null);
     } finally {
       setRegisteringStore(false);
@@ -705,19 +772,19 @@ export default function MotoMallModal({
               <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 w-full lg:w-auto flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('catalog')}
-                  className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg"
+                  onClick={() => setActiveTab('stores')}
+                  className="px-5 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
                 >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>🛒 Soy Piloto: Ver Repuestos</span>
+                  <MapPin className="w-4 h-4" />
+                  <span>🆘 ¿Varado? Aliado Más Cercano</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('stores')}
-                  className="px-5 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-amber-300 font-racing font-bold uppercase text-xs tracking-wider flex items-center justify-center gap-2"
+                  onClick={() => setActiveTab('catalog')}
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg"
                 >
-                  <Store className="w-4 h-4" />
-                  <span>🏪 Ver Tiendas Oficiales ({stores.length})</span>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>🛒 Soy Piloto: Ver Repuestos</span>
                 </button>
               </div>
             </div>
@@ -1058,79 +1125,197 @@ export default function MotoMallModal({
         )}
 
         {/* ================================================================= */}
-        {/* PESTAÑA 2: DIRECTORIO DE TIENDAS Y CONCESIONARIOS OFICIALES       */}
+        {/* PESTAÑA 2: DIRECTORIO DE TIENDAS ORDENADO POR CERCANÍA GPS        */}
         {/* ================================================================= */}
         {activeTab === 'stores' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 max-h-[62vh] overflow-y-auto pr-1">
-            {stores.map((st) => (
-              <div
-                key={st.slug}
-                style={{ borderColor: `${st.accent_color || '#F59E0B'}66` }}
-                className="p-4 rounded-2xl bg-neutral-900/95 border-2 flex flex-col justify-between gap-3"
-              >
-                <div className="flex items-start gap-3.5">
-                  <div
-                    style={{ borderColor: st.accent_color || '#F59E0B' }}
-                    className="w-14 h-14 rounded-2xl border-2 bg-neutral-950 flex items-center justify-center overflow-hidden flex-shrink-0"
+          <div className="space-y-4 pt-4 max-h-[65vh] overflow-y-auto pr-1">
+            {/* Barra de Ubicación del Motero Varado + Buscador de Zona */}
+            <div className="p-3.5 rounded-2xl bg-neutral-900 border border-cyan-500/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-xs font-racing font-bold uppercase text-cyan-300 flex items-center gap-1.5">
+                  <Navigation className={`w-4 h-4 text-emerald-400 ${locatingRider ? 'animate-spin' : ''}`} />
+                  <span>Radar de Aliados Cercanos (Ordenados del Más Cerca al Más Lejos)</span>
+                </span>
+                <p className="text-[11px] font-mono text-neutral-300">
+                  {riderCoords
+                    ? `📍 Tu punto GPS: ${riderCoords.lat}, ${riderCoords.lng}${riderCoords.label ? ` (${riderCoords.label.split(',').slice(0, 2).join(',')})` : ''}`
+                    : 'Activa tu GPS o escribe tu barrio/municipio para calcular distancia exacta en km:'}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <form onSubmit={handleSearchRiderZone} className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={riderZoneQuery}
+                    onChange={(e) => setRiderZoneQuery(e.target.value)}
+                    placeholder="Ej: Bello / Envigado / Poblado..."
+                    className="bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={searchingRiderZone || !riderZoneQuery.trim()}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-bold text-xs uppercase"
                   >
-                    {st.logo_url ? (
-                      <img src={st.logo_url} alt={st.store_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Store className="w-7 h-7" style={{ color: st.accent_color || '#F59E0B' }} />
+                    {searchingRiderZone ? '...' : 'Fijar Zona'}
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  onClick={acquireRiderLocation}
+                  disabled={locatingRider}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-xs font-mono font-bold flex items-center gap-1"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{locatingRider ? 'Ubicando...' : 'Mi GPS'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tarjeta Destacada del Aliado MÁS CERCANO en caso de varada */}
+            {nearestStore && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/60 via-neutral-900 to-emerald-950/40 border-2 border-emerald-400/70 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-mono font-black uppercase">
+                      🆘 ALIADO MÁS CERCANO PARA DESVARE / REPUESTOS
+                    </span>
+                    {nearestStore.distanceLabel && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-black text-[10px] font-mono font-black uppercase">
+                        📍 {nearestStore.distanceLabel}
+                      </span>
                     )}
                   </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        {st.store_type === 'concesionario'
-                          ? '🏢 Concesionario Oficial'
-                          : st.store_type === 'boutique'
-                          ? '🪖 Boutique & Accesorios'
-                          : '🏪 Almacén de Repuestos'}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" /> Comercio Verificado
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-black font-racing uppercase text-white mt-1">
-                      {st.store_name}
-                    </h3>
-                    <p className="text-xs font-mono text-neutral-400">
-                      {st.tax_id_nit} • 📍 {st.city} ({st.address})
-                    </p>
-                    <p className="text-[11px] font-mono text-amber-300 mt-1">
-                      👑 Avalado por: {OFFICIAL_FOUNDER_NAME}
-                    </p>
-                  </div>
+                  <h3 className="text-base sm:text-lg font-black font-racing uppercase text-white">
+                    {nearestStore.store_name}
+                  </h3>
+                  <p className="text-xs font-mono text-neutral-300">
+                    📍 {nearestStore.address} ({nearestStore.city})
+                  </p>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-neutral-800">
-                  <div className="flex flex-wrap gap-1">
-                    {(st.brands_supported || []).slice(0, 5).map((b) => (
-                      <span
-                        key={b}
-                        className="text-[9px] font-mono px-2 py-0.5 rounded bg-neutral-950 text-neutral-300 border border-neutral-800"
-                      >
-                        {b}
-                      </span>
-                    ))}
-                  </div>
-
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                  <a
+                    href={buildStoreMapsUrl(nearestStore, riderCoords)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-black uppercase text-xs flex items-center gap-1.5 transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Cómo Llegar (Mapa)</span>
+                  </a>
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedStoreSlug(st.slug);
-                      setActiveTab('catalog');
+                      const cleanPhone = String(nearestStore.whatsapp_sales || '573009120000').replace(/[^0-9]/g, '');
+                      const gpsText = riderCoords
+                        ? `\n📍 Mi ubicación GPS exacta: https://www.google.com/maps?q=${riderCoords.lat},${riderCoords.lng}`
+                        : '';
+                      const msg = `🆘 *AUXILIO MOTERO — MOTODASH AI*\nHola *${nearestStore.store_name}*, me encuentro varado con mi *${activeBikeModel}* y la app me mostró que son el aliado más cercano.${gpsText}\n\n¿Me pueden ayudar con repuesto / taller o grúa?`;
+                      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
                     }}
-                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black uppercase text-xs transition"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs flex items-center gap-1.5 transition"
                   >
-                    Ver Productos de esta Tienda →
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Pedir Auxilio / Repuesto</span>
                   </button>
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Lista Completa de Tiendas Ordenada por Distancia */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sortedStores.map((st, idx) => (
+                <div
+                  key={st.slug}
+                  style={{ borderColor: idx === 0 && st.distanceKm !== null ? '#10B981' : `${st.accent_color || '#F59E0B'}66` }}
+                  className="p-4 rounded-2xl bg-neutral-900/95 border-2 flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      style={{ borderColor: st.accent_color || '#F59E0B' }}
+                      className="w-14 h-14 rounded-2xl border-2 bg-neutral-950 flex items-center justify-center overflow-hidden flex-shrink-0"
+                    >
+                      {st.logo_url ? (
+                        <img src={st.logo_url} alt={st.store_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Store className="w-7 h-7" style={{ color: st.accent_color || '#F59E0B' }} />
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          {st.store_type === 'concesionario'
+                            ? '🏢 Concesionario Oficial'
+                            : st.store_type === 'boutique'
+                            ? '🪖 Boutique & Accesorios'
+                            : st.store_type === 'taller'
+                            ? '🔧 Taller / Desvare'
+                            : '🏪 Almacén de Repuestos'}
+                        </span>
+                        {st.distanceLabel && (
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                            idx === 0
+                              ? 'bg-emerald-500 text-black border-emerald-400'
+                              : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                          }`}>
+                            📍 {st.distanceLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-base font-black font-racing uppercase text-white mt-1">
+                        {st.store_name}
+                      </h3>
+                      <p className="text-xs font-mono text-neutral-400">
+                        {st.tax_id_nit} • 📍 {st.address} ({st.city})
+                      </p>
+                      <p className="text-[11px] font-mono text-amber-300 mt-1">
+                        👑 Avalado por: {OFFICIAL_FOUNDER_NAME}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-neutral-800">
+                    <div className="flex flex-wrap gap-1">
+                      {(st.brands_supported || []).slice(0, 4).map((b) => (
+                        <span
+                          key={b}
+                          className="text-[9px] font-mono px-2 py-0.5 rounded bg-neutral-950 text-neutral-300 border border-neutral-800"
+                        >
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={buildStoreMapsUrl(st, riderCoords)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-cyan-500/40 text-cyan-300 font-mono font-bold text-[11px] flex items-center gap-1 transition"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        <span>Mapa</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedStoreSlug(st.slug);
+                          setActiveTab('catalog');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black uppercase text-xs transition"
+                      >
+                        Ver Catálogo →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1300,6 +1485,49 @@ export default function MotoMallModal({
                     placeholder="Ej: Cra 53 # 38-15 La Bayadera / Av. El Poblado"
                     className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white"
                   />
+                </div>
+
+                {/* Ubicación GPS Exacta del Local para rescatar moteros varados cerca */}
+                <div className="sm:col-span-2 p-3 rounded-xl bg-neutral-950 border border-cyan-500/40 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-[10px] text-cyan-300 uppercase font-bold">
+                      📍 Ubicación GPS del Local (Para que moteros varados te encuentren cerca)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleCaptureStoreGps}
+                        disabled={locatingStoreGps}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[10px] text-emerald-300 font-bold"
+                      >
+                        {locatingStoreGps ? 'Ubicando...' : '📍 Usar GPS Actual'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleGeocodeStoreAddress}
+                        disabled={locatingStoreGps}
+                        className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-[10px] text-cyan-300 font-bold"
+                      >
+                        🔍 Ubicar Dirección en Mapa
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={storeLat}
+                      onChange={(e) => setStoreLat(e.target.value)}
+                      placeholder="Latitud (Ej: 6.24035)"
+                      className="bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300"
+                    />
+                    <input
+                      type="text"
+                      value={storeLng}
+                      onChange={(e) => setStoreLng(e.target.value)}
+                      placeholder="Longitud (Ej: -75.57468)"
+                      className="bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300"
+                    />
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">
