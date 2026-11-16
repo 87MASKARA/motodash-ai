@@ -241,7 +241,7 @@ export default function MotoMallModal({
   bike,
   userProfile,
   initialComponentId = null,
-  initialTab = 'catalog' // 'catalog' | 'stores' | 'merchant_portal'
+  initialTab = 'home' // 'home' | 'catalog' | 'stores' | 'merchant_portal'
 }) {
   const { lang } = useLanguage();
   const isEn = lang === 'en';
@@ -253,6 +253,9 @@ export default function MotoMallModal({
   );
 
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [mallBillingCycle, setMallBillingCycle] = useState('monthly'); // 'monthly' | 'annual'
+  const [mallCurrency, setMallCurrency] = useState('COP'); // 'COP' | 'USD'
+  const [selectedMerchantPlan, setSelectedMerchantPlan] = useState('almacen_pro'); // 'vitrina_basica' | 'almacen_pro' | 'concesionario_vip'
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterOnlyMyBike, setFilterOnlyMyBike] = useState(false);
   const [selectedStoreSlug, setSelectedStoreSlug] = useState(null);
@@ -594,9 +597,22 @@ export default function MotoMallModal({
           </div>
         </div>
 
-        {/* NAVEGACIÓN PRINCIPAL DE 3 PESTAÑAS DEL MALL */}
+        {/* NAVEGACIÓN PRINCIPAL DE 4 PESTAÑAS DEL MALL (INCLUYE PORTADA & PLANES B2B) */}
         <div className="flex flex-wrap items-center justify-between gap-2 py-3 border-b border-neutral-800">
           <div className="flex gap-2 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('home')}
+              className={`px-4 py-2 rounded-xl text-xs font-racing font-bold uppercase tracking-wider flex items-center gap-1.5 border transition whitespace-nowrap ${
+                activeTab === 'home'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-amber-300 shadow-md'
+                  : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>🏠 Inicio MotoMall & Planes B2B</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('catalog')}
@@ -660,6 +676,278 @@ export default function MotoMallModal({
             </button>
           )}
         </div>
+
+        {/* ================================================================= */}
+        {/* PESTAÑA 0: PORTADA DE INICIO DEL MOTOMALL & PLANES COMERCIALES    */}
+        {/* ================================================================= */}
+        {activeTab === 'home' && (
+          <div className="space-y-5 pt-4 max-h-[68vh] overflow-y-auto pr-1 animate-fadeIn">
+            {/* Hero Principal del MotoMall */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-950/50 via-neutral-900 to-emerald-950/40 border-2 border-amber-500/40 flex flex-col lg:flex-row items-center justify-between gap-5">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-mono font-black uppercase">
+                    0% COMISIÓN POR VENTA • PEDIDOS DIRECTOS A TU WHATSAPP
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold">
+                    14 DÍAS DE PRUEBA GRATIS PARA COMERCIOS
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-3xl font-black font-racing uppercase text-white leading-tight">
+                  El Primer Mall Conectado al{' '}
+                  <span className="text-amber-400">Mantenimiento Predictivo</span> de cada Moto
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                  Cuando a un piloto se le agota el aceite, las pastillas de freno, la batería o el kit de arrastre en <strong>MotoDash AI</strong>, el sistema le recomienda automáticamente las tiendas y concesionarios aliados de su ciudad que tienen el repuesto exacto para su moto.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 w-full lg:w-auto flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('catalog')}
+                  className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>🛒 Soy Piloto: Ver Repuestos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('stores')}
+                  className="px-5 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-amber-300 font-racing font-bold uppercase text-xs tracking-wider flex items-center justify-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  <span>🏪 Ver Tiendas Oficiales ({stores.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Encabezado y Conmutador de Planes de Suscripción B2B para Tiendas y Concesionarios */}
+            <div className="text-center space-y-2 pt-1">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                MEMBRESÍAS COMERCIALES B2B • PARA ALMACENES DE REPUESTOS, TALLERES Y CONCESIONARIOS
+              </span>
+              <h4 className="text-xl sm:text-2xl font-black font-racing uppercase text-white">
+                Elige el Plan de tu Vitrina Comercial en MotoMall
+              </h4>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                {/* Selector Mensual / Anual (-25%) */}
+                <div className="inline-flex bg-neutral-900 border border-neutral-800 p-1 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setMallBillingCycle('monthly')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-racing font-bold uppercase transition ${
+                      mallBillingCycle === 'monthly'
+                        ? 'bg-neutral-800 text-white shadow'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Pago Mensual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMallBillingCycle('annual')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-racing font-bold uppercase transition ${
+                      mallBillingCycle === 'annual'
+                        ? 'bg-amber-500 text-black shadow'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Anual (-25% Dto.)
+                  </button>
+                </div>
+
+                {/* Selector Moneda COP / USD */}
+                <div className="inline-flex bg-neutral-900 border border-neutral-800 p-1 rounded-2xl text-xs font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setMallCurrency('COP')}
+                    className={`px-3 py-1.5 rounded-xl font-bold ${
+                      mallCurrency === 'COP' ? 'bg-emerald-500 text-black' : 'text-neutral-400'
+                    }`}
+                  >
+                    🇨🇴 $ COP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMallCurrency('USD')}
+                    className={`px-3 py-1.5 rounded-xl font-bold ${
+                      mallCurrency === 'USD' ? 'bg-emerald-500 text-black' : 'text-neutral-400'
+                    }`}
+                  >
+                    🌎 $ USD
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* LAS 3 SUSCRIPCIONES B2B DEL MOTOMALL */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Plan 1: Vitrina Repuestera / Taller Local */}
+              <div className="p-5 rounded-3xl bg-neutral-900/80 border border-neutral-800 hover:border-neutral-700 flex flex-col justify-between transition">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono uppercase text-neutral-300 font-bold">
+                      🏪 Vitrina Repuestera / Taller
+                    </span>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/40">
+                      14 DÍAS GRATIS
+                    </span>
+                  </div>
+
+                  <div className="text-2xl sm:text-3xl font-black font-telemetry text-white mt-1">
+                    {mallCurrency === 'COP'
+                      ? mallBillingCycle === 'annual'
+                        ? '$39.900'
+                        : '$49.900'
+                      : mallBillingCycle === 'annual'
+                      ? '$9.99'
+                      : '$12.99'}{' '}
+                    <span className="text-xs font-mono text-neutral-400 font-normal">
+                      {mallCurrency} / mes
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-emerald-400 mt-0.5">
+                    0% comisión por venta • Con 1 repuesto vendido al mes se paga solo
+                  </p>
+
+                  <ul className="text-xs text-neutral-300 space-y-2 mt-4 font-sans">
+                    <li>✓ Vitrina con tu Logo propio y NIT verificado</li>
+                    <li>✓ Hasta <strong>25 repuestos o servicios</strong> en catálogo</li>
+                    <li>✓ Pedidos directos a tu <strong>WhatsApp Business</strong></li>
+                    <li>✓ Conexión con el Mantenimiento Predictivo local</li>
+                    <li>✓ Respaldo oficial del Fundador ({OFFICIAL_FOUNDER_NAME})</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMerchantPlan('vitrina_basica');
+                    setStoreType('repuestos');
+                    setActiveTab('merchant_portal');
+                  }}
+                  className="mt-5 w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-racing font-bold uppercase text-xs transition"
+                >
+                  Elegir Plan Vitrina Básica →
+                </button>
+              </div>
+
+              {/* Plan 2: Almacén & Boutique Pro (MÁS POPULAR) */}
+              <div className="p-5 rounded-3xl bg-neutral-900 border-2 border-amber-500 shadow-2xl shadow-amber-950/40 flex flex-col justify-between relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full whitespace-nowrap">
+                  🔥 MÁS POPULAR • ALMACENES & BOUTIQUES
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2 mt-1">
+                    <span className="text-xs font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
+                      <Crown className="w-3.5 h-3.5" /> Almacén & Boutique PRO
+                    </span>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      14 DÍAS GRATIS
+                    </span>
+                  </div>
+
+                  <div className="text-2xl sm:text-3xl font-black font-telemetry text-amber-400 mt-1">
+                    {mallCurrency === 'COP'
+                      ? mallBillingCycle === 'annual'
+                        ? '$89.900'
+                        : '$119.900'
+                      : mallBillingCycle === 'annual'
+                      ? '$22.99'
+                      : '$29.99'}{' '}
+                    <span className="text-xs font-mono text-neutral-300 font-normal">
+                      {mallCurrency} / mes
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-amber-200 mt-0.5">
+                    0% comisión por venta • Posicionamiento prioritario por IA
+                  </p>
+
+                  <ul className="text-xs text-neutral-200 space-y-2 mt-4 font-sans">
+                    <li>✓ Hasta <strong>150 productos</strong> con fotos HD y referencia OEM</li>
+                    <li className="text-amber-300 font-bold">
+                      ✓ Recomendación Prioritaria cuando al piloto le sale Alerta en Mantenimiento Predictivo
+                    </li>
+                    <li className="text-emerald-300 font-bold">
+                      ✓ Sello Dorado «Comercio Oficial Verificado ✅»
+                    </li>
+                    <li>✓ Filtro automático por Marca y Modelo de Moto</li>
+                    <li>✓ Destacado en el Doctor Motor IA como proveedor</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMerchantPlan('almacen_pro');
+                    setStoreType('repuestos');
+                    setActiveTab('merchant_portal');
+                  }}
+                  className="mt-5 w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-racing font-black uppercase text-xs shadow-lg shadow-amber-500/25 transition"
+                >
+                  Activar Plan Almacén PRO (14d Gratis) →
+                </button>
+              </div>
+
+              {/* Plan 3: Concesionario Oficial & Red Nacional */}
+              <div className="p-5 rounded-3xl bg-neutral-900/80 border border-cyan-500/40 hover:border-cyan-400 flex flex-col justify-between transition">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono uppercase text-cyan-400 font-bold">
+                      🏢 Concesionario Oficial VIP
+                    </span>
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                      14 DÍAS GRATIS
+                    </span>
+                  </div>
+
+                  <div className="text-2xl sm:text-3xl font-black font-telemetry text-cyan-400 mt-1">
+                    {mallCurrency === 'COP'
+                      ? mallBillingCycle === 'annual'
+                        ? '$189.900'
+                        : '$249.900'
+                      : mallBillingCycle === 'annual'
+                      ? '$44.99'
+                      : '$59.99'}{' '}
+                    <span className="text-xs font-mono text-neutral-400 font-normal">
+                      {mallCurrency} / mes
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-cyan-300 mt-0.5">
+                    Ideal para Concesionarios 0 KM, Importadoras y Redes Multisede
+                  </p>
+
+                  <ul className="text-xs text-neutral-300 space-y-2 mt-4 font-sans">
+                    <li className="text-cyan-300 font-bold">
+                      ✓ Catálogo Ilimitado de Repuestos OEM + Vitrina de Motos 0 KM
+                    </li>
+                    <li className="text-emerald-300 font-bold">
+                      ✓ Integrado al Guardián de Garantía (Agendamiento de revisiones 500km, 2.500km, 5.000km)
+                    </li>
+                    <li>✓ Cotizador directo de Motos Nuevas y Financiación</li>
+                    <li>✓ Cobertura Nacional o Múltiples Sedes por Ciudad</li>
+                    <li>✓ Supervisión directa con {OFFICIAL_FOUNDER_NAME}</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMerchantPlan('concesionario_vip');
+                    setStoreType('concesionario');
+                    setActiveTab('merchant_portal');
+                  }}
+                  className="mt-5 w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-black uppercase text-xs transition shadow-lg shadow-cyan-500/20"
+                >
+                  Elegir Plan Concesionario Oficial →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ================================================================= */}
         {/* PESTAÑA 1: CATÁLOGO DE REPUESTOS, ACCESORIOS Y MOTOS 0 KM         */}
@@ -908,6 +1196,27 @@ export default function MotoMallModal({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-mono">
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] text-amber-300 uppercase font-bold block mb-1">
+                    Plan de Membresía Comercial B2B (Incluye 14 Días Gratis) *
+                  </label>
+                  <select
+                    value={selectedMerchantPlan}
+                    onChange={(e) => setSelectedMerchantPlan(e.target.value)}
+                    className="w-full bg-neutral-950 border-2 border-amber-500/50 rounded-xl px-3 py-2 text-amber-300 font-bold"
+                  >
+                    <option value="vitrina_basica">
+                      🏪 Plan Vitrina Repuestera / Taller — $49.900 COP/mes ($12.99 USD) • Hasta 25 productos
+                    </option>
+                    <option value="almacen_pro">
+                      🚀 Plan Almacén & Boutique PRO — $119.900 COP/mes ($29.99 USD) • Hasta 150 productos + Prioridad IA
+                    </option>
+                    <option value="concesionario_vip">
+                      🏢 Plan Concesionario Oficial VIP — $249.900 COP/mes ($59.99 USD) • Ilimitado + Motos 0 KM & Garantías
+                    </option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="text-[10px] text-neutral-400 uppercase block mb-1">
                     Tipo de Comercio *

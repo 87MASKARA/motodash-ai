@@ -602,11 +602,11 @@ export default function DynamicDashboard({
               type="button"
               onClick={() => {
                 setMotoMallCompId(null);
-                setMotoMallInitialTab('catalog');
+                setMotoMallInitialTab('home');
                 setIsMotoMallOpen(true);
               }}
               className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300"
-              title="MotoMall Oficial: Almacenes de Repuestos, Concesionarios y Registro Comercial B2B"
+              title="MotoMall Oficial: Inicio, Planes B2B, Almacenes de Repuestos y Concesionarios"
             >
               <Store className="w-3.5 h-3.5 text-amber-400" />
               <span>MotoMall</span>

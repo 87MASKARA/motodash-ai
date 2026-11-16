@@ -55,9 +55,9 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             {onOpenMotoMall && (
               <button
                 type="button"
-                onClick={() => onOpenMotoMall('catalog')}
+                onClick={() => onOpenMotoMall('home')}
                 className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-racing font-bold text-emerald-300 hover:text-white bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 flex items-center gap-1.5 transition"
-                title="Abrir MotoMall Oficial (Repuestos, Accesorios y Concesionarios)"
+                title="Abrir MotoMall Oficial (Inicio, Suscripciones B2B, Repuestos y Concesionarios)"
               >
                 <Store className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden md:inline">MotoMall</span>
@@ -664,11 +664,11 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
           <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-shrink-0">
             <button
               type="button"
-              onClick={() => onOpenMotoMall && onOpenMotoMall('catalog')}
+              onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
               className="px-5 py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 transition"
             >
               <Store className="w-4 h-4 text-emerald-400" />
-              <span>🛒 Explorar MotoMall</span>
+              <span>🏪 Inicio & Planes MotoMall</span>
             </button>
 
             <button
