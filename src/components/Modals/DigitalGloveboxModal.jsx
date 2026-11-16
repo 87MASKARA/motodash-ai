@@ -13,7 +13,11 @@ import {
   Eye,
   CreditCard,
   UserCheck,
-  Scale
+  Scale,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Move
 } from 'lucide-react';
 import {
   COUNTRY_DOCUMENT_TERMINOLOGY,
@@ -72,8 +76,23 @@ export default function DigitalGloveboxModal({
   const [showChangePinPanel, setShowChangePinPanel] = useState(false);
   const [newPinValue, setNewPinValue] = useState('');
   const [pinSavedSuccess, setPinSavedSuccess] = useState(false);
+
+  // Controles de Lupa / Zoom / Rotación y Arrastre para que el Agente de Tránsito inspeccione cada detalle
+  const [zoomScale, setZoomScale] = useState(1);
+  const [rotationDeg, setRotationDeg] = useState(0);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
   const fileInputRef = useRef(null);
   const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
+
+  const resetZoomAndPan = () => {
+    setZoomScale(1);
+    setRotationDeg(0);
+    setPanOffset({ x: 0, y: 0 });
+    setIsDraggingDoc(false);
+  };
 
   // Filtro rápido por documento en el retén
   const [activeDocFilter, setActiveDocFilter] = useState('all');
@@ -1057,7 +1076,10 @@ export default function DigitalGloveboxModal({
               <div className="flex gap-1.5 overflow-x-auto py-3 mt-2 border-b border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => setFullscreenView({ mode: 'all_checkpoint' })}
+                  onClick={() => {
+                    resetZoomAndPan();
+                    setFullscreenView({ mode: 'all_checkpoint' });
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap border ${
                     fullscreenView.mode === 'all_checkpoint'
                       ? 'bg-emerald-500 text-black font-bold border-emerald-400'
@@ -1070,7 +1092,10 @@ export default function DigitalGloveboxModal({
                   <button
                     key={c.slot}
                     type="button"
-                    onClick={() => setFullscreenView({ mode: 'single', card: c })}
+                    onClick={() => {
+                      resetZoomAndPan();
+                      setFullscreenView({ mode: 'single', card: c });
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-mono whitespace-nowrap border ${
                       fullscreenView.card?.slot === c.slot
                         ? 'bg-amber-500 text-black font-bold border-amber-400'
@@ -1085,12 +1110,22 @@ export default function DigitalGloveboxModal({
               {fullscreenView.mode === 'all_checkpoint' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   {checkpointPhotoCards.map((c) => (
-                    <div key={c.slot} className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800">
+                    <div
+                      key={c.slot}
+                      onClick={() => {
+                        resetZoomAndPan();
+                        setFullscreenView({ mode: 'single', card: c });
+                      }}
+                      className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 hover:border-amber-400 cursor-pointer group transition"
+                    >
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-racing font-bold uppercase text-amber-400">
                           DOC {c.stepNumber} • {c.shortLabel}
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-400">{c.sideBadge}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <ZoomIn className="w-3 h-3" />
+                          <span>{isEn ? 'Tap to Zoom' : 'Tocar para Hacer Zoom'}</span>
+                        </span>
                       </div>
                       {c.imageUrl ? (
                         <img
@@ -1113,31 +1148,164 @@ export default function DigitalGloveboxModal({
                 </div>
               ) : (
                 <div className="mt-4">
-                  <h3 className="text-lg sm:text-xl font-black font-racing uppercase text-white">
-                    {fullscreenView.card?.fullLabel}
-                  </h3>
-                  <p className="text-xs font-mono text-neutral-400 mb-3">
-                    {fullscreenView.card?.sideBadge} • Vehículo: {identity.brand} {identity.model} ({vehicleRegistration.plate})
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black font-racing uppercase text-white">
+                        {fullscreenView.card?.fullLabel}
+                      </h3>
+                      <p className="text-xs font-mono text-neutral-400">
+                        {fullscreenView.card?.sideBadge} • Vehículo: {identity.brand} {identity.model} ({vehicleRegistration.plate})
+                      </p>
+                    </div>
 
-                  {fullscreenView.card?.imageUrl ? (
-                    <div className="rounded-2xl overflow-hidden border border-neutral-700 max-h-[60vh] flex items-center justify-center bg-black">
-                      <img
-                        src={fullscreenView.card.imageUrl}
-                        alt={fullscreenView.card.shortLabel}
-                        className="max-h-[60vh] w-auto object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="p-5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5 font-mono text-sm">
-                      {fullscreenView.card?.fields.map((f) => (
-                        <div key={f.label} className="flex justify-between border-b border-neutral-800 pb-2">
-                          <span className="text-neutral-400">{f.label}:</span>
-                          <span className={f.highlight}>{f.value}</span>
-                        </div>
+                    {/* BARRA DE LUPA, ZOOM Y ROTACIÓN PARA EL AGENTE DE TRÁNSITO */}
+                    <div className="flex flex-wrap items-center gap-1.5 bg-neutral-950 p-1.5 rounded-2xl border border-emerald-500/40">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.max(1, Number((zoomScale - 0.5).toFixed(1)));
+                          setZoomScale(next);
+                          if (next === 1) setPanOffset({ x: 0, y: 0 });
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-mono font-bold text-white flex items-center gap-1"
+                        title="Alejar documento"
+                      >
+                        <ZoomOut className="w-3.5 h-3.5 text-amber-400" />
+                        <span>-</span>
+                      </button>
+
+                      {[1, 1.5, 2, 3, 4].map((scaleVal) => (
+                        <button
+                          key={scaleVal}
+                          type="button"
+                          onClick={() => {
+                            setZoomScale(scaleVal);
+                            if (scaleVal === 1) setPanOffset({ x: 0, y: 0 });
+                          }}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold border transition ${
+                            zoomScale === scaleVal
+                              ? 'bg-emerald-500 text-black border-emerald-400 shadow'
+                              : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:text-white'
+                          }`}
+                        >
+                          {scaleVal}x
+                        </button>
                       ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale((prev) => Math.min(4, Number((prev + 0.5).toFixed(1))))}
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-mono font-bold text-white flex items-center gap-1"
+                        title="Acercar documento (Lupa)"
+                      >
+                        <ZoomIn className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>+</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRotationDeg((prev) => (prev + 90) % 360)}
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-mono font-bold text-cyan-300 flex items-center gap-1"
+                        title="Girar documento 90°"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>90°</span>
+                      </button>
+
+                      {(zoomScale > 1 || rotationDeg !== 0 || panOffset.x !== 0 || panOffset.y !== 0) && (
+                        <button
+                          type="button"
+                          onClick={resetZoomAndPan}
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-xs font-mono font-bold text-amber-300"
+                        >
+                          100%
+                        </button>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  {/* Instrucción de gesto táctil cuando tiene zoom */}
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-mono text-emerald-300 bg-emerald-950/30 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+                    <span className="flex items-center gap-1.5">
+                      <Move className="w-3.5 h-3.5 text-emerald-400" />
+                      {zoomScale > 1
+                        ? (isEn
+                            ? `Zoom active (${Math.round(zoomScale * 100)}%) • Drag with your finger or mouse to inspect any corner`
+                            : `Lupa activa (${Math.round(zoomScale * 100)}%) • Arrastra con el dedo o mouse para mover el documento`)
+                        : (isEn
+                            ? 'Double-tap the document or use the 1.5x / 2x / 3x / 4x buttons above to zoom in'
+                            : 'Toca dos veces el documento o usa los botones 1.5x / 2x / 3x / 4x arriba para hacer zoom')}
+                    </span>
+                    <span className="text-amber-300 font-bold">
+                      {Math.round(zoomScale * 100)}%
+                    </span>
+                  </div>
+
+                  {/* Contenedor Interactivo con Zoom, Rotación y Arrastre (Pan) */}
+                  <div
+                    onWheel={(e) => {
+                      e.preventDefault();
+                      const delta = e.deltaY < 0 ? 0.25 : -0.25;
+                      const next = Math.max(1, Math.min(4, Number((zoomScale + delta).toFixed(2))));
+                      setZoomScale(next);
+                      if (next === 1) setPanOffset({ x: 0, y: 0 });
+                    }}
+                    onDoubleClick={() => {
+                      if (zoomScale > 1) {
+                        resetZoomAndPan();
+                      } else {
+                        setZoomScale(2.5);
+                      }
+                    }}
+                    onPointerDown={(e) => {
+                      if (zoomScale <= 1) return;
+                      setIsDraggingDoc(true);
+                      dragStartRef.current = {
+                        x: e.clientX - panOffset.x,
+                        y: e.clientY - panOffset.y
+                      };
+                    }}
+                    onPointerMove={(e) => {
+                      if (!isDraggingDoc || zoomScale <= 1) return;
+                      setPanOffset({
+                        x: e.clientX - dragStartRef.current.x,
+                        y: e.clientY - dragStartRef.current.y
+                      });
+                    }}
+                    onPointerUp={() => setIsDraggingDoc(false)}
+                    onPointerLeave={() => setIsDraggingDoc(false)}
+                    style={{ touchAction: zoomScale > 1 ? 'none' : 'pan-y' }}
+                    className={`rounded-2xl overflow-hidden border-2 border-neutral-700 min-h-[340px] max-h-[64vh] flex items-center justify-center bg-black relative select-none ${
+                      zoomScale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'
+                    }`}
+                  >
+                    <div
+                      style={{
+                        transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale}) rotate(${rotationDeg}deg)`,
+                        transformOrigin: 'center center',
+                        transition: isDraggingDoc ? 'none' : 'transform 0.18s ease-out'
+                      }}
+                      className="w-full flex items-center justify-center p-2"
+                    >
+                      {fullscreenView.card?.imageUrl ? (
+                        <img
+                          src={fullscreenView.card.imageUrl}
+                          alt={fullscreenView.card.shortLabel}
+                          draggable={false}
+                          className="max-h-[60vh] w-auto object-contain pointer-events-none"
+                        />
+                      ) : (
+                        <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5 font-mono text-sm w-full max-w-xl">
+                          {fullscreenView.card?.fields.map((f) => (
+                            <div key={f.label} className="flex justify-between border-b border-neutral-800 pb-2 gap-4">
+                              <span className="text-neutral-400">{f.label}:</span>
+                              <span className={f.highlight}>{f.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
