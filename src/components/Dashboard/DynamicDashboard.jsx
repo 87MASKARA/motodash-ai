@@ -887,6 +887,10 @@ export default function DynamicDashboard({
         hojaDeVida={hojaDeVida}
         userProfile={userProfile}
         onUpdateHojaDeVida={onUpdateHojaDeVida}
+        onOpenClanChat={() => {
+          setIsSosModalOpen(false);
+          setIsCommunityOpen(true);
+        }}
       />
 
       {/* MODAL DOCTOR MOTOR IA (DIAGNÓSTICO MECÁNICO POR SONIDO O SÍNTOMA) */}

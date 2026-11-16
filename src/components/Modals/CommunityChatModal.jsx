@@ -1048,7 +1048,14 @@ export default function CommunityChatModal({
             {/* FEED DE MENSAJES EN TIEMPO REAL DEL CLAN O CANAL */}
             <div className="flex-1 min-h-[240px] sm:min-h-[300px] max-h-[380px] overflow-y-auto py-3 px-3 space-y-2.5 bg-neutral-900/50 rounded-2xl border border-neutral-800/90 my-2.5">
               {messages.map((msg) => {
-                const cat = MESSAGE_CATEGORIES.find((c) => c.id === msg.category) || MESSAGE_CATEGORIES[2];
+                const isSosAlert =
+                  msg.is_sos ||
+                  msg.category === 'alerta_vial' ||
+                  String(msg.content || '').includes('[SOS') ||
+                  String(msg.content || '').includes('[ALERTA SOS');
+                const cat = isSosAlert
+                  ? { id: 'alerta_vial', label: '🚨 ALERTA SOS / COORDENADAS GPS', color: 'bg-red-600 text-white border-red-400 font-bold' }
+                  : MESSAGE_CATEGORIES.find((c) => c.id === msg.category) || MESSAGE_CATEGORIES[2];
                 const isMsgFromFounder =
                   msg.is_founder ||
                   String(msg.author_name || '').toLowerCase().includes('anderson') ||
@@ -1057,11 +1064,20 @@ export default function CommunityChatModal({
                   ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : 'Ahora';
 
+                // Extraer URL de Google Maps si el mensaje contiene coordenadas de emergencia
+                const mapsMatch = String(msg.content || '').match(/https:\/\/www\.google\.com\/maps\?q=[-0-9.,]+/);
+                const extractedMapsUrl = msg.maps_url || (mapsMatch ? mapsMatch[0] : null);
+                const coordsTextMatch = extractedMapsUrl
+                  ? extractedMapsUrl.split('q=')[1]
+                  : null;
+
                 return (
                   <div
                     key={msg.id}
                     className={`p-3.5 rounded-2xl border transition ${
-                      isMsgFromFounder
+                      isSosAlert
+                        ? 'bg-gradient-to-r from-red-950/80 via-red-900/40 to-neutral-950 border-2 border-red-500 shadow-lg shadow-red-600/20'
+                        : isMsgFromFounder
                         ? 'bg-gradient-to-r from-amber-950/45 via-neutral-900 to-neutral-900 border-amber-500/60 shadow-md'
                         : 'bg-neutral-950/95 border-neutral-800 hover:border-neutral-700'
                     }`}
@@ -1091,6 +1107,23 @@ export default function CommunityChatModal({
                       <span className="text-[10px] font-mono text-neutral-400">{timeStr}</span>
                     </div>
                     <p className="text-xs sm:text-sm text-white font-medium leading-relaxed break-words">{msg.content}</p>
+
+                    {extractedMapsUrl && (
+                      <div className="mt-2.5 pt-2 border-t border-red-500/30 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] font-mono text-amber-300 font-bold">
+                          📍 Coordenadas GPS: {coordsTextMatch || 'Ubicación Exacta'}
+                        </span>
+                        <a
+                          href={extractedMapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs flex items-center gap-1.5 shadow-md transition"
+                        >
+                          <Compass className="w-3.5 h-3.5" />
+                          <span>Abrir Ubicación del Accidente en Google Maps →</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 );
               })}
