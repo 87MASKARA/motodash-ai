@@ -186,6 +186,17 @@ export default function App() {
     }
   }, [userProfile]);
 
+  // Detectar enlace de recuperación de contraseña de Supabase Auth
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowIntroSplash(false);
+        setIsLoginModalOpen(true);
+      }
+    });
+    return () => subscription?.unsubscribe();
+  }, []);
+
   // Bandera de sincronización: impide que el estado inicial local sobreescriba Supabase por accidente
   const hasLoadedRemoteRef = useRef(false);
 
