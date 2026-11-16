@@ -320,6 +320,34 @@ export default function MotoMallModal({
     };
   }, [isOpen]);
 
+  const acquireRiderLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocatingRider(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = {
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+          accuracy: Math.round(pos.coords.accuracy || 15)
+        };
+        setRiderCoords(next);
+        setLocatingRider(false);
+        try {
+          localStorage.setItem('motodash_last_verified_gps', JSON.stringify(next));
+        } catch {}
+      },
+      () => {
+        setLocatingRider(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    acquireRiderLocation();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const identity = bike?.config?.bikeIdentity || {};
@@ -369,34 +397,6 @@ export default function MotoMallModal({
       setProdImageUrl(dataUrl);
     } catch {}
   };
-
-  const acquireRiderLocation = () => {
-    if (!navigator.geolocation) return;
-    setLocatingRider(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = {
-          lat: pos.coords.latitude.toFixed(6),
-          lng: pos.coords.longitude.toFixed(6),
-          accuracy: Math.round(pos.coords.accuracy || 15)
-        };
-        setRiderCoords(next);
-        setLocatingRider(false);
-        try {
-          localStorage.setItem('motodash_last_verified_gps', JSON.stringify(next));
-        } catch {}
-      },
-      () => {
-        setLocatingRider(false);
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    acquireRiderLocation();
-  }, [isOpen]);
 
   const handleSearchRiderZone = async (e) => {
     if (e) e.preventDefault();

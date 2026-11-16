@@ -32,17 +32,17 @@ export default function CertifiedMarketplaceModal({
   userProfile,
   onOpenHojaDeVida
 }) {
-  if (!isOpen || !bike) return null;
-
-  const identity = bike.config?.bikeIdentity || {};
-  const docs = hojaDeVida?.documentos || {};
-  const servicios = Array.isArray(hojaDeVida?.servicios) ? hojaDeVida.servicios : [];
-
   const [price, setPrice] = useState('11900000');
   const [currency, setCurrency] = useState('COP');
   const [selectedTier, setSelectedTier] = useState('free'); // 'free' | 'featured_499' | 'inspection_999'
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  if (!isOpen || !bike) return null;
+
+  const identity = bike.config?.bikeIdentity || {};
+  const docs = hojaDeVida?.documentos || {};
+  const servicios = Array.isArray(hojaDeVida?.servicios) ? hojaDeVida.servicios : [];
 
   // Cálculo automático de la Insignia de "Mantenimiento Verificado"
   const hasVerifiedBadge = servicios.length >= 1 || odometer > 0;

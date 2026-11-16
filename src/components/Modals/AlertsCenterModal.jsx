@@ -45,12 +45,8 @@ export default function AlertsCenterModal({
   hojaDeVida = {},
   userProfile
 }) {
-  if (!isOpen || !bike) return null;
-
-  const identity = bike.config?.bikeIdentity || {};
   const docs = hojaDeVida?.documentos || {};
   const globalDocs = hojaDeVida?.globalDocuments || {};
-  const countryLabels = getCountryDocumentLabels(userProfile?.country || hojaDeVida?.country || 'Colombia');
 
   const [activeTab, setActiveTab] = useState('vencimientos'); // 'vencimientos' | 'retenes_via'
   const [whatsappPhone, setWhatsappPhone] = useState(
@@ -61,21 +57,8 @@ export default function AlertsCenterModal({
   const [newAlertText, setNewAlertText] = useState('');
   const [sendingAlert, setSendingAlert] = useState(false);
 
-  const mandatoryExpiry =
-    globalDocs.mandatory_insurance?.expiryDate || docs.soatVencimiento || '';
-  const technicalExpiry =
-    globalDocs.technical_inspection?.expiryDate || docs.tecnoVencimiento || '';
-
-  const mandatoryEval = evaluateDocumentAlertStatus(
-    mandatoryExpiry,
-    countryLabels.mandatory_insurance.shortName
-  );
-  const technicalEval = evaluateDocumentAlertStatus(
-    technicalExpiry,
-    countryLabels.technical_inspection.shortName
-  );
-
   useEffect(() => {
+    if (!isOpen) return;
     let mounted = true;
     async function loadRoadAlerts() {
       const authUid = await getAuthenticatedUserId();
@@ -115,7 +98,26 @@ export default function AlertsCenterModal({
       mounted = false;
       supabase.removeChannel(sub);
     };
-  }, []);
+  }, [isOpen]);
+
+  if (!isOpen || !bike) return null;
+
+  const identity = bike.config?.bikeIdentity || {};
+  const countryLabels = getCountryDocumentLabels(userProfile?.country || hojaDeVida?.country || 'Colombia');
+
+  const mandatoryExpiry =
+    globalDocs.mandatory_insurance?.expiryDate || docs.soatVencimiento || '';
+  const technicalExpiry =
+    globalDocs.technical_inspection?.expiryDate || docs.tecnoVencimiento || '';
+
+  const mandatoryEval = evaluateDocumentAlertStatus(
+    mandatoryExpiry,
+    countryLabels.mandatory_insurance.shortName
+  );
+  const technicalEval = evaluateDocumentAlertStatus(
+    technicalExpiry,
+    countryLabels.technical_inspection.shortName
+  );
 
   const handleActivatePush = async () => {
     const ok = await triggerBrowserPushAlert(
