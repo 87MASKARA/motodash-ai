@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
   Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
-  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon
+  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon, Monitor
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -26,6 +26,7 @@ import CertifiedMarketplaceModal from '../Modals/CertifiedMarketplaceModal';
 import TrafficLawyerModal from '../Modals/TrafficLawyerModal';
 import SosEmergencyModal from '../Modals/SosEmergencyModal';
 import DoctorMotorModal from '../Modals/DoctorMotorModal';
+import CarPlayHudModal from '../Modals/CarPlayHudModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -67,6 +68,7 @@ export default function DynamicDashboard({
   const [isLawyerModalOpen, setIsLawyerModalOpen] = useState(false);
   const [isSosModalOpen, setIsSosModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
+  const [isCarPlayHudOpen, setIsCarPlayHudOpen] = useState(false);
   const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
@@ -552,6 +554,20 @@ export default function DynamicDashboard({
               <span>SOS</span>
             </button>
 
+            {/* Pill Modo CarPlay / Android Auto Multi-Tamaño (3.6", 5.0", 7.0" + Alto Contraste Solar) */}
+            <button
+              type="button"
+              onClick={() => setIsCarPlayHudOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/60 text-amber-200"
+              title="Modo CarPlay / Android Auto Multi-Tamaño (3.6″ Portátil, 5.0″ Estándar, 7.0″ Touring + Alto Contraste Solar)"
+            >
+              <Monitor className="w-3.5 h-3.5 text-amber-400" />
+              <span>CarPlay HUD</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono font-black">
+                3.6″•5″•7″
+              </span>
+            </button>
+
             {/* Selector Rápido de Carátula TFT (Street / Track Race / Night Stealth) */}
             <button
               type="button"
@@ -899,6 +915,23 @@ export default function DynamicDashboard({
         onClose={() => setIsDoctorModalOpen(false)}
         bike={effectiveBike}
         odometer={odometer}
+      />
+
+      {/* MODAL CARPLAY / ANDROID AUTO MULTI-TAMAÑO (3.6", 5.0", 7.0" + ALTO CONTRASTE SOLAR) */}
+      <CarPlayHudModal
+        isOpen={isCarPlayHudOpen}
+        onClose={() => setIsCarPlayHudOpen(false)}
+        bike={effectiveBike}
+        telemetry={telemetry}
+        odometer={odometer}
+        hojaDeVida={hojaDeVida}
+        displayUnit={displayUnit}
+        onOpenGlovebox={() => setIsGloveboxOpen(true)}
+        onOpenLawyer={() => setIsLawyerModalOpen(true)}
+        onOpenSos={() => setIsSosModalOpen(true)}
+        onOpenDoctor={() => setIsDoctorModalOpen(true)}
+        onOpenCommunity={() => setIsCommunityOpen(true)}
+        onOpenHardwareBridge={() => setIsHardwareBridgeOpen(true)}
       />
 
       {/* DOCK INFERIOR FIJO PARA CELULAR Y SOPORTE DE MANUBRIO (CON GUANTES) */}
