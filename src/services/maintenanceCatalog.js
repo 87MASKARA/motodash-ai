@@ -25,6 +25,18 @@ export const COMPONENTES_DESGASTE_OFICIALES = {
     icono: "Zap",
     especificacion: "12.6V reposo / 13.8V–14.4V en marcha (Sincronizable con TFT/OBD)"
   },
+  check_engine_service_ecu: {
+    id: "check_engine_service_ecu",
+    label: "Check Engine / Service & Escaneo ECU (TFT/OBD)",
+    shortLabel: "Check Engine / Service",
+    intervalo: 10000,
+    alertaPreventivaKm: 500,
+    costoSugerido: 45000,
+    categoria: "electrico",
+    impacto: "Monitorea códigos de falla DTC de la inyección electrónica FI, sensores (O2, TPS, CKP, temperatura), sistema ABS y testigo de llave de servicio del tablero TFT.",
+    icono: "Activity",
+    especificacion: "0 Fallas DTC • Sensores FI & ABS Al Día (Sincronizable con TFT/OBD)"
+  },
   aceite_motor: {
     id: "aceite_motor",
     label: "Aceite de Motor Sintético",

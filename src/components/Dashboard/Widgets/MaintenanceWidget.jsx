@@ -73,15 +73,19 @@ export default function MaintenanceWidget({
     let vidaPorcentaje = Math.max(0, Math.min(100, Math.round((kmRestantes / effectiveIntervalo) * 100)));
     const alertaMargin = custom.alertaPreventivaKm || comp.alertaPreventivaKm || 300;
 
-    // Sincronización Especial en Vivo para Batería desde Tablero TFT / Cable OBD-II
+    // Sincronización Especial en Vivo para Batería y Check Engine / Service desde Tablero TFT / Cable OBD-II
     const isBatteryComp = comp.id === 'bateria_sistema_carga';
+    const isCheckEngineComp = comp.id === 'check_engine_service_ecu';
     const syncedBatteryLevel = isBatteryComp
       ? (hardwareTelemetry?.batteryLevel ?? custom.batteryLevel ?? null)
       : null;
     const syncedBatteryVoltage = isBatteryComp
       ? (hardwareTelemetry?.batteryVoltage ?? custom.batteryVoltage ?? null)
       : null;
-    const syncedSource = isBatteryComp
+    const syncedCheckStatus = isCheckEngineComp
+      ? (hardwareTelemetry?.checkEngineStatus || custom.checkEngineStatus || '0 Fallas • Al Día')
+      : null;
+    const syncedSource = (isBatteryComp || isCheckEngineComp)
       ? (hardwareTelemetry?.sourceName ?? custom.syncedSource ?? null)
       : null;
 
@@ -90,10 +94,27 @@ export default function MaintenanceWidget({
       kmRestantes = Math.round((effectiveIntervalo * vidaPorcentaje) / 100);
     }
 
-    const isCritico = isBatteryComp && syncedBatteryVoltage !== null
+    if (isCheckEngineComp && syncedCheckStatus) {
+      if (String(syncedCheckStatus).includes('Alerta')) {
+        vidaPorcentaje = 15;
+        kmRestantes = 0;
+      } else if (String(syncedCheckStatus).includes('Service')) {
+        vidaPorcentaje = 50;
+        kmRestantes = 400;
+      } else {
+        vidaPorcentaje = 100;
+        kmRestantes = effectiveIntervalo;
+      }
+    }
+
+    const isCritico = isCheckEngineComp && syncedCheckStatus
+      ? String(syncedCheckStatus).includes('Alerta')
+      : isBatteryComp && syncedBatteryVoltage !== null
       ? (Number(syncedBatteryVoltage) < 12.1 || vidaPorcentaje <= 35 || kmRestantes <= alertaMargin)
       : (kmRestantes <= alertaMargin);
-    const isPreventivo = isBatteryComp && syncedBatteryVoltage !== null
+    const isPreventivo = isCheckEngineComp && syncedCheckStatus
+      ? (!isCritico && String(syncedCheckStatus).includes('Service'))
+      : isBatteryComp && syncedBatteryVoltage !== null
       ? (!isCritico && (Number(syncedBatteryVoltage) < 12.5 || vidaPorcentaje <= 65 || kmRestantes <= alertaMargin * 2))
       : (kmRestantes <= alertaMargin * 2 && !isCritico);
     const isOptimo = !isCritico && !isPreventivo;
@@ -110,8 +131,10 @@ export default function MaintenanceWidget({
       isPreventivo,
       isOptimo,
       isBatteryComp,
+      isCheckEngineComp,
       syncedBatteryLevel,
       syncedBatteryVoltage,
+      syncedCheckStatus,
       syncedSource
     };
   });
@@ -185,6 +208,81 @@ export default function MaintenanceWidget({
         </div>
       </div>
 
+      {/* BARRA PRINCIPAL DE TELEMETRÍA EN VIVO TFT / OBD-II (CHECK ENGINE / SERVICE & BATERÍA) */}
+      <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-neutral-900 via-neutral-900/95 to-emerald-950/25 border border-emerald-500/35 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1 font-mono">
+          {/* 1. Check Engine / Service ECU */}
+          <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-emerald-500/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-neutral-400 block">
+                  CHECK ENGINE / SERVICE
+                </span>
+                <span className={`text-xs font-black ${
+                  String(hardwareTelemetry?.checkEngineStatus || customComponents?.check_engine_service_ecu?.checkEngineStatus || '').includes('Alerta')
+                    ? 'text-red-400 animate-pulse'
+                    : String(hardwareTelemetry?.checkEngineStatus || customComponents?.check_engine_service_ecu?.checkEngineStatus || '').includes('Service')
+                    ? 'text-amber-400'
+                    : 'text-emerald-400'
+                }`}>
+                  {hardwareTelemetry?.checkEngineStatus || customComponents?.check_engine_service_ecu?.checkEngineStatus || '0 Fallas • Al Día'}
+                </span>
+              </div>
+            </div>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          </div>
+
+          {/* 2. Batería & Regulador TFT */}
+          <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-cyan-500/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                <Zap className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-neutral-400 block">
+                  BATERÍA & REGULADOR TFT
+                </span>
+                <span className="text-xs font-black text-cyan-300">
+                  {hardwareTelemetry?.batteryVoltage ?? customComponents?.bateria_sistema_carga?.batteryVoltage ?? '13.9'}V •{' '}
+                  {hardwareTelemetry?.batteryLevel ?? customComponents?.bateria_sistema_carga?.batteryLevel ?? 95}% Salud
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Sistema ABS & Temperatura Motor */}
+          <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-neutral-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <Disc className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase text-neutral-400 block">
+                  SISTEMA ABS & MOTOR
+                </span>
+                <span className="text-xs font-black text-white">
+                  {hardwareTelemetry?.absStatus || 'ABS SuperMoto OK'} • {hardwareTelemetry?.engineTempC || 84}°C
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {onOpenHardwareBridgeModal && (
+          <button
+            type="button"
+            onClick={onOpenHardwareBridgeModal}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-racing font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap transition"
+          >
+            <Bluetooth className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Actualizar con TFT / Cable</span>
+          </button>
+        )}
+      </div>
+
       {/* Selector de Categorías (Pestañas) */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 border-b border-neutral-800">
         {Object.values(CATEGORIAS_MANTENIMIENTO).map((cat) => (
@@ -243,11 +341,17 @@ export default function MaintenanceWidget({
                           {comp.syncedBatteryVoltage}V • {comp.vidaPorcentaje}% TFT/OBD
                         </span>
                       )}
+                      {comp.isCheckEngineComp && comp.syncedCheckStatus && (
+                        <span className="text-[9px] bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                          <Activity className="w-2.5 h-2.5 text-emerald-400" />
+                          {comp.syncedCheckStatus}
+                        </span>
+                      )}
                     </h4>
                     <span className="text-[10px] text-neutral-400 font-mono">
-                      {comp.isBatteryComp && comp.syncedSource ? (
+                      {(comp.isBatteryComp || comp.isCheckEngineComp) && comp.syncedSource ? (
                         <span className="text-cyan-400">
-                          Sincronizada con <strong>{comp.syncedSource}</strong> ({comp.intervalo.toLocaleString()} km ciclo)
+                          Sincronizado con <strong>{comp.syncedSource}</strong> ({comp.intervalo.toLocaleString()} km ciclo)
                         </span>
                       ) : (
                         <>
@@ -266,10 +370,18 @@ export default function MaintenanceWidget({
                       ? "text-amber-400" 
                       : "text-neutral-200"
                   }`}>
-                    {comp.isBatteryComp && comp.syncedBatteryVoltage ? `${comp.syncedBatteryVoltage}V • ${comp.vidaPorcentaje}%` : `${comp.kmRestantes.toLocaleString()} km`}
+                    {comp.isCheckEngineComp && comp.syncedCheckStatus
+                      ? comp.syncedCheckStatus
+                      : comp.isBatteryComp && comp.syncedBatteryVoltage
+                      ? `${comp.syncedBatteryVoltage}V • ${comp.vidaPorcentaje}%`
+                      : `${comp.kmRestantes.toLocaleString()} km`}
                   </span>
                   <span className="text-[9px] text-neutral-500 block">
-                    {comp.isBatteryComp && comp.syncedBatteryVoltage ? `≈ ${comp.kmRestantes.toLocaleString()} km est.` : `${comp.vidaPorcentaje}% ${t('widgets.maintenance.remaining')}`}
+                    {comp.isCheckEngineComp
+                      ? 'Escaneo ECU Activo'
+                      : comp.isBatteryComp && comp.syncedBatteryVoltage
+                      ? `≈ ${comp.kmRestantes.toLocaleString()} km est.`
+                      : `${comp.vidaPorcentaje}% ${t('widgets.maintenance.remaining')}`}
                   </span>
                 </div>
               </div>
@@ -295,7 +407,7 @@ export default function MaintenanceWidget({
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                  {comp.isBatteryComp && onOpenHardwareBridgeModal && (
+                  {(comp.isBatteryComp || comp.isCheckEngineComp) && onOpenHardwareBridgeModal && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -303,7 +415,7 @@ export default function MaintenanceWidget({
                         onOpenHardwareBridgeModal();
                       }}
                       className="flex items-center gap-1 text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/70 px-2 py-0.5 rounded-lg border border-cyan-500/40 transition font-bold"
-                      title="Actualizar batería desde el Tablero TFT o Cable OBD-II"
+                      title="Actualizar desde el Tablero TFT o Cable OBD-II"
                     >
                       <Bluetooth className="w-3 h-3 text-cyan-400" />
                       <span>TFT/OBD</span>

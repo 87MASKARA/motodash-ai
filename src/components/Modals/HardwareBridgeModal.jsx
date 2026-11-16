@@ -54,7 +54,9 @@ export default function HardwareBridgeModal({
     zeroToSixtySec: existingHw.zeroToSixtySec ?? 4.5,
     maxLeanAngle: existingHw.maxLeanAngle ?? 32,
     tripAKm: existingHw.tripAKm ?? 148.4,
-    tripBKm: existingHw.tripBKm ?? 92.1
+    tripBKm: existingHw.tripBKm ?? 92.1,
+    checkEngineStatus: existingHw.checkEngineStatus || '0 Fallas • Al Día',
+    absStatus: existingHw.absStatus || 'ABS SuperMoto OK'
   });
 
   // Inicializar solo al abrir el modal para no pisar lo que el tablero o el usuario actualicen
@@ -70,7 +72,9 @@ export default function HardwareBridgeModal({
         realKmPerLiter: hw.realKmPerLiter ?? prev.realKmPerLiter,
         rideMode: hw.rideMode || prev.rideMode,
         engineTempC: hw.engineTempC ?? prev.engineTempC,
-        topSpeedRecorded: hw.topSpeedRecorded ?? prev.topSpeedRecorded
+        topSpeedRecorded: hw.topSpeedRecorded ?? prev.topSpeedRecorded,
+        checkEngineStatus: hw.checkEngineStatus || prev.checkEngineStatus,
+        absStatus: hw.absStatus || prev.absStatus
       }));
     }
   }, [isOpen]);
@@ -425,16 +429,23 @@ export default function HardwareBridgeModal({
         <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
           <span className="text-[10px] text-neutral-400 block">11. Sistema ABS</span>
           <span className="text-xs font-black text-emerald-400">
-            ABS SuperMoto OK
+            {liveParams.absStatus || 'ABS SuperMoto OK'}
           </span>
         </div>
 
-        {/* 12. Diagnóstico / Llave de Servicio */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
+        {/* 12. Diagnóstico / Llave de Servicio (Va al Mantenimiento Predictivo) */}
+        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-emerald-500/50">
           <span className="text-[10px] text-neutral-400 block">12. Check Engine / Service</span>
-          <span className="text-xs font-black text-emerald-400">
-            0 Fallas • Al Día
+          <span className={`text-xs font-black ${
+            String(liveParams.checkEngineStatus || '').includes('Alerta')
+              ? 'text-red-400 animate-pulse'
+              : String(liveParams.checkEngineStatus || '').includes('Service')
+              ? 'text-amber-400'
+              : 'text-emerald-400'
+          }`}>
+            {liveParams.checkEngineStatus || '0 Fallas • Al Día'}
           </span>
+          <span className="text-[9px] text-emerald-300 block">⚡ Va a Mantenimiento Predictivo</span>
         </div>
       </div>
 
@@ -511,6 +522,21 @@ export default function HardwareBridgeModal({
                 <option value="SPORT">SPORT (Potencia Máx)</option>
                 <option value="URBAN">URBAN (Ciudad)</option>
                 <option value="RAIN">RAIN (Lluvia / ABS Máx)</option>
+              </select>
+            </div>
+
+            <div className="col-span-2 sm:col-span-3">
+              <label className="text-[10px] text-neutral-400 block mb-1">
+                12. Estado Check Engine / Testigo Service (Se sincroniza en Mantenimiento Predictivo)
+              </label>
+              <select
+                value={liveParams.checkEngineStatus}
+                onChange={(e) => setLiveParams({ ...liveParams, checkEngineStatus: e.target.value })}
+                className="w-full bg-neutral-950 border border-emerald-500/50 rounded-lg px-2.5 py-1.5 text-emerald-300"
+              >
+                <option value="0 Fallas • Al Día">✅ 0 Fallas • Al Día (Inyección FI & Sensores OK)</option>
+                <option value="Llave Service Activa (Revisión)">🔧 Llave Service Activa en Tablero (Toca Mantenimiento)</option>
+                <option value="Alerta Check Engine (Código DTC)">🚨 Alerta Check Engine Activa (Revisar Código DTC)</option>
               </select>
             </div>
           </div>

@@ -40,6 +40,12 @@ export default function CriticalAlertBanner({
       return { ...comp, ...custom, kmRestantes, isCritico: isCriticoBat };
     }
 
+    if (comp.id === 'check_engine_service_ecu') {
+      const checkStatus = custom.checkEngineStatus || '0 Fallas • Al Día';
+      const isCriticoEcu = String(checkStatus).includes('Alerta');
+      return { ...comp, ...custom, kmRestantes: isCriticoEcu ? 0 : intervalo, isCritico: isCriticoEcu };
+    }
+
     const isCritico = kmRestantes <= alertaMargin;
     return { ...comp, ...custom, kmRestantes, isCritico };
   }).filter(c => c.isCritico);

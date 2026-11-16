@@ -477,6 +477,17 @@ export default function App() {
             syncedAt: fullTelemetry.syncedAt || new Date().toISOString(),
             especificacion: `${syncedVoltage}V (${syncedLevel}% Salud) • Sincronizado con ${sourceName}`
           };
+
+          const existingCheckEngine = currentCustom.check_engine_service_ecu || {};
+          const syncedCheckStatus = fullTelemetry.checkEngineStatus || existingCheckEngine.checkEngineStatus || '0 Fallas • Al Día';
+          currentCustom.check_engine_service_ecu = {
+            ...existingCheckEngine,
+            id: 'check_engine_service_ecu',
+            checkEngineStatus: syncedCheckStatus,
+            syncedSource: sourceName,
+            syncedAt: fullTelemetry.syncedAt || new Date().toISOString(),
+            especificacion: `${syncedCheckStatus} • Sincronizado con ${sourceName}`
+          };
         }
 
         return {
