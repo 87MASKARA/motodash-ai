@@ -408,26 +408,6 @@ export default function DynamicDashboard({
               <span className="hidden md:inline">{t('dashboard.adjustKm')}</span>
             </button>
 
-            {/* Audio Shift Light */}
-            <button
-              onClick={handleSoundClick}
-              className={`p-2 rounded-xl text-xs border transition ${
-                soundEnabled 
-                  ? "bg-neutral-800 text-neutral-200 border-neutral-700" 
-                  : "bg-red-950/40 text-red-400 border-red-800/40"
-              }`}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-
-            {/* Pantalla Completa */}
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 rounded-xl text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 transition"
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-
             {/* Simulación Aceleración Demo */}
             <button
               onClick={telemetry.toggleSimulation}
