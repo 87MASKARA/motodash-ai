@@ -266,13 +266,29 @@ export default function CommunityChatModal({
     };
   }, [isOpen]);
 
+  const getLocalChannelHistory = (channelKey) => {
+    try {
+      const raw = localStorage.getItem(`motodash_chat_${channelKey}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  };
+
+  const saveLocalChannelHistory = (channelKey, msgList) => {
+    try {
+      localStorage.setItem(`motodash_chat_${channelKey}`, JSON.stringify(msgList.slice(-80)));
+    } catch {}
+  };
+
   // Cargar mensajes del canal o clan activo + suscripción Realtime
   useEffect(() => {
     if (!isOpen) return;
     let isMounted = true;
 
     async function loadChannelMessages() {
-      const authUid = await getAuthenticatedUserId();
       const defaultMsgs = FALLBACK_MESSAGES[effectiveChannelId] || [
         {
           id: `welcome_${effectiveChannelId}`,
@@ -283,28 +299,41 @@ export default function CommunityChatModal({
           author_verified: true,
           is_founder: true,
           content: `👑 Sala privada del clan activada. Por política oficial de MotoDash AI, ${OFFICIAL_FOUNDER_NAME} hace parte de este grupo como miembro fundador garante.`,
-          created_at: new Date().toISOString()
+          created_at: new Date(Date.now() - 600000).toISOString()
         }
       ];
 
-      if (!authUid) {
-        if (isMounted) setMessages(defaultMsgs);
-        return;
+      const cachedLocal = getLocalChannelHistory(effectiveChannelId);
+      const initialMerged = [...defaultMsgs];
+      cachedLocal.forEach((m) => {
+        if (!initialMerged.some((x) => x.id === m.id || (x.content === m.content && x.author_name === m.author_name))) {
+          initialMerged.push(m);
+        }
+      });
+
+      if (isMounted) {
+        setMessages(initialMerged);
       }
+
+      const authUid = await getAuthenticatedUserId();
+      if (!authUid) return;
 
       const { data, error } = await supabase
         .from('community_messages')
         .select('*')
         .eq('channel_id', effectiveChannelId)
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(60);
 
-      if (isMounted) {
-        if (!error && Array.isArray(data) && data.length > 0) {
-          setMessages(data);
-        } else {
-          setMessages(defaultMsgs);
-        }
+      if (isMounted && !error && Array.isArray(data) && data.length > 0) {
+        const merged = [...data];
+        cachedLocal.forEach((m) => {
+          if (!merged.some((x) => x.id === m.id || (x.content === m.content && x.author_name === m.author_name))) {
+            merged.push(m);
+          }
+        });
+        setMessages(merged);
+        saveLocalChannelHistory(effectiveChannelId, merged);
       }
     }
 
@@ -499,6 +528,28 @@ export default function CommunityChatModal({
       : userProfile?.fullName || 'Piloto MotoDash';
     const currentChannelObj = COMMUNITY_CHANNELS.find((c) => c.id === activeChannel);
 
+    // 1. Mostrar inmediatamente el mensaje en la sala del clan y guardarlo en caché local
+    const optimisticMsg = {
+      id: `local_${Date.now()}`,
+      channel_id: effectiveChannelId,
+      category: selectedCategory,
+      author_name: authorName,
+      author_bike: bikeLabel,
+      author_verified: Boolean(userProfile || isFounderUser),
+      is_founder: isFounderUser,
+      content: cleanText,
+      city: viewMode === 'clans' ? currentClan?.city || 'Medellín' : currentChannelObj?.city || 'Medellín',
+      created_at: new Date().toISOString()
+    };
+
+    setMessages((prev) => {
+      const updated = [...prev, optimisticMsg];
+      saveLocalChannelHistory(effectiveChannelId, updated);
+      return updated;
+    });
+    setNewMessage('');
+
+    // 2. Sincronizar también en Supabase Realtime si hay sesión activa
     try {
       const authUid = await getAuthenticatedUserId();
       if (authUid) {
@@ -512,31 +563,21 @@ export default function CommunityChatModal({
             author_bike: bikeLabel,
             author_verified: true,
             content: cleanText,
-            city: viewMode === 'clans' ? currentClan?.city || 'Medellín' : currentChannelObj?.city || 'Medellín'
+            city: optimisticMsg.city
           })
           .select()
           .single();
 
         if (!error && data) {
-          setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
-          setNewMessage('');
-          setSending(false);
-          return;
+          setMessages((prev) => {
+            const replaced = prev.map((m) => (m.id === optimisticMsg.id ? data : m));
+            saveLocalChannelHistory(effectiveChannelId, replaced);
+            return replaced;
+          });
         }
       }
-
-      const localMsg = {
-        id: `local_${Date.now()}`,
-        channel_id: effectiveChannelId,
-        category: selectedCategory,
-        author_name: authorName,
-        author_bike: bikeLabel,
-        author_verified: Boolean(userProfile || isFounderUser),
-        content: cleanText,
-        created_at: new Date().toISOString()
-      };
-      setMessages((prev) => [...prev, localMsg]);
-      setNewMessage('');
+    } catch {
+      // Queda persistido localmente en la sala del clan
     } finally {
       setSending(false);
     }
@@ -544,7 +585,7 @@ export default function CommunityChatModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto animate-fadeIn">
-      <div className="bg-neutral-950 border-2 border-amber-500/40 rounded-3xl max-w-5xl w-full p-4 sm:p-6 shadow-[0_0_50px_rgba(245,158,11,0.16)] text-white flex flex-col h-[92vh] max-h-[840px]">
+      <div className="bg-neutral-950 border-2 border-amber-500/40 rounded-3xl max-w-5xl w-full p-4 sm:p-6 shadow-[0_0_50px_rgba(245,158,11,0.16)] text-white flex flex-col max-h-[94vh] overflow-y-auto my-auto">
         {/* ENCABEZADO DE COMUNIDAD Y CLANES MOTEROS */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-3">
@@ -1005,7 +1046,7 @@ export default function CommunityChatModal({
         ) : (
           <>
             {/* FEED DE MENSAJES EN TIEMPO REAL DEL CLAN O CANAL */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-3 pr-1">
+            <div className="flex-1 min-h-[240px] sm:min-h-[300px] max-h-[380px] overflow-y-auto py-3 px-3 space-y-2.5 bg-neutral-900/50 rounded-2xl border border-neutral-800/90 my-2.5">
               {messages.map((msg) => {
                 const cat = MESSAGE_CATEGORIES.find((c) => c.id === msg.category) || MESSAGE_CATEGORIES[2];
                 const isMsgFromFounder =
@@ -1021,8 +1062,8 @@ export default function CommunityChatModal({
                     key={msg.id}
                     className={`p-3.5 rounded-2xl border transition ${
                       isMsgFromFounder
-                        ? 'bg-gradient-to-r from-amber-950/35 via-neutral-900 to-neutral-900 border-amber-500/50'
-                        : 'bg-neutral-900/90 border-neutral-800/90 hover:border-neutral-700'
+                        ? 'bg-gradient-to-r from-amber-950/45 via-neutral-900 to-neutral-900 border-amber-500/60 shadow-md'
+                        : 'bg-neutral-950/95 border-neutral-800 hover:border-neutral-700'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
@@ -1039,7 +1080,7 @@ export default function CommunityChatModal({
                             FUNDADOR OFICIAL
                           </span>
                         )}
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-950 text-amber-400 border border-neutral-800 flex items-center gap-1">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-900 text-amber-400 border border-neutral-800 flex items-center gap-1">
                           <Bike className="w-3 h-3" />
                           {msg.author_bike}
                         </span>
@@ -1047,9 +1088,9 @@ export default function CommunityChatModal({
                           {cat.label}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono text-neutral-500">{timeStr}</span>
+                      <span className="text-[10px] font-mono text-neutral-400">{timeStr}</span>
                     </div>
-                    <p className="text-xs sm:text-sm text-neutral-200 leading-relaxed">{msg.content}</p>
+                    <p className="text-xs sm:text-sm text-white font-medium leading-relaxed break-words">{msg.content}</p>
                   </div>
                 );
               })}
@@ -1057,9 +1098,9 @@ export default function CommunityChatModal({
             </div>
 
             {/* COMPOSITOR DE MENSAJES EN SALA PRIVADA DE CLAN O CANAL PÚBLICO */}
-            <form onSubmit={handleSendMessage} className="pt-3 border-t border-neutral-800 space-y-2.5">
+            <form onSubmit={handleSendMessage} className="pt-2 border-t border-neutral-800 space-y-2.5 flex-shrink-0">
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase mr-1">Etiqueta:</span>
+                <span className="text-[10px] font-mono text-neutral-400 uppercase mr-1">Etiqueta:</span>
                 {MESSAGE_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
@@ -1068,7 +1109,7 @@ export default function CommunityChatModal({
                     className={`px-2.5 py-1 rounded-full text-[10px] font-mono border whitespace-nowrap transition ${
                       selectedCategory === cat.id
                         ? cat.color
-                        : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:text-neutral-300'
+                        : 'bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white'
                     }`}
                   >
                     {cat.label}
@@ -1087,7 +1128,7 @@ export default function CommunityChatModal({
                       : 'Escribe al canal de tu ciudad o convoca una rodada...'
                   }
                   maxLength={500}
-                  className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
+                  className="flex-1 bg-neutral-900 border-2 border-amber-500/40 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-neutral-400 focus:outline-none focus:border-amber-400"
                 />
                 <button
                   type="submit"

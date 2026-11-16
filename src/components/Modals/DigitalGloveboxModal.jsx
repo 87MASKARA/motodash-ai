@@ -52,11 +52,37 @@ export default function DigitalGloveboxModal({
 
   const [selectedCountry, setSelectedCountry] = useState(resolvedCountry);
 
+  // Estado de escaneo IA, compresión, bóveda offline y bloqueo PIN para agente
+  const [scanningSlot, setScanningSlot] = useState(null);
+  const [aiDraft, setAiDraft] = useState(null);
+  const [compressionStats, setCompressionStats] = useState(null);
+  const [fullscreenView, setFullscreenView] = useState(null);
+  const [offlinePhotos, setOfflinePhotos] = useState({});
+  const [isPinLocked, setIsPinLocked] = useState(false);
+  const [showPinPrompt, setShowPinPrompt] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const fileInputRef = useRef(null);
+  const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
+
+  // Filtro rápido por documento en el retén
+  const [activeDocFilter, setActiveDocFilter] = useState('all');
+
   useEffect(() => {
     if (isOpen && resolvedCountry && COUNTRY_DOCUMENT_TERMINOLOGY[resolvedCountry]) {
       setSelectedCountry(resolvedCountry);
     }
   }, [isOpen, resolvedCountry]);
+
+  useEffect(() => {
+    if (isOpen && bike?.id) {
+      loadOfflineCheckpointPhotos(bike.id).then((cached) => {
+        if (cached && typeof cached === 'object') {
+          setOfflinePhotos(cached);
+        }
+      });
+    }
+  }, [isOpen, bike?.id]);
 
   if (!isOpen || !bike) return null;
 
@@ -72,32 +98,6 @@ export default function DigitalGloveboxModal({
     categoryDefault: 'A2 (Motocicletas > 125 cc)',
     issuerPlaceholder: 'Ministerio de Transporte / RUNT'
   };
-
-  // Estado de escaneo IA, compresión, bóveda offline y bloqueo PIN para agente
-  const [scanningSlot, setScanningSlot] = useState(null);
-  const [aiDraft, setAiDraft] = useState(null);
-  const [compressionStats, setCompressionStats] = useState(null);
-  const [fullscreenView, setFullscreenView] = useState(null);
-  const [offlinePhotos, setOfflinePhotos] = useState({});
-  const [isPinLocked, setIsPinLocked] = useState(false);
-  const [showPinPrompt, setShowPinPrompt] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
-  const fileInputRef = useRef(null);
-  const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
-
-  useEffect(() => {
-    if (isOpen && bike?.id) {
-      loadOfflineCheckpointPhotos(bike.id).then((cached) => {
-        if (cached && typeof cached === 'object') {
-          setOfflinePhotos(cached);
-        }
-      });
-    }
-  }, [isOpen, bike?.id]);
-
-  // Filtro rápido por documento en el retén
-  const [activeDocFilter, setActiveDocFilter] = useState('all');
 
   // 1. PASE / LICENCIA DE CONDUCCIÓN (AMBOS LADOS: FRONTAL Y POSTERIOR)
   const driverLicenseRaw = globalDocs.driver_license || {};
@@ -404,8 +404,8 @@ export default function DigitalGloveboxModal({
       // Guardar inmediatamente en la Bóveda Offline IndexedDB para funcionar con 0% señal en carretera
       if (bike?.id && compressed.dataUrl) {
         await saveOfflineCheckpointPhoto(bike.id, slot, compressed.dataUrl, {
-          expiryDate: extracted.expiryDate,
-          policyOrCertNumber: extracted.policyOrCertNumber
+          expiryDate: aiResult.expiryDate,
+          policyOrCertNumber: aiResult.policyOrCertNumber
         });
         setOfflinePhotos((prev) => ({ ...prev, [slot]: compressed.dataUrl }));
       }
