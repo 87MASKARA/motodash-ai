@@ -7,23 +7,17 @@ import {
   CheckCircle2,
   RotateCw,
   Gauge,
-  Battery,
-  Activity,
   Zap,
   X,
   HelpCircle,
   Lock,
   ArrowRight,
-  Fuel,
-  Thermometer,
-  Compass,
   Sliders
 } from 'lucide-react';
 import {
   connectBleCluster,
   connectObd2Scanner,
-  simulateClusterTelemetry,
-  simulateObd2Diagnostic
+  refreshActiveHardwareTelemetry
 } from '../../services/hardwareBridgeService';
 import { isFounderVipEmail } from '../Auth/LoginModal';
 
@@ -48,7 +42,7 @@ export default function HardwareBridgeModal({
 
   // Parámetros editables/sincronizables en tiempo real con la moto
   const [liveParams, setLiveParams] = useState({
-    odometerKm: Number(bike?.odometer) || 5040,
+    odometerKm: Number(existingHw.odometerKm || bike?.odometer) || 5040,
     batteryVoltage: existingHw.batteryVoltage ?? 13.9,
     batteryLevel: existingHw.batteryLevel ?? 95,
     fuelLevelPercent: existingHw.fuelLevelPercent ?? 82,
@@ -63,12 +57,13 @@ export default function HardwareBridgeModal({
     tripBKm: existingHw.tripBKm ?? 92.1
   });
 
+  // Inicializar solo al abrir el modal para no pisar lo que el tablero o el usuario actualicen
   useEffect(() => {
     if (isOpen && bike) {
       const hw = bike?.hojaDeVida?.hardwareTelemetry || {};
       setLiveParams((prev) => ({
         ...prev,
-        odometerKm: Number(bike?.odometer) || prev.odometerKm,
+        odometerKm: Number(hw.odometerKm || bike?.odometer) || prev.odometerKm,
         batteryVoltage: hw.batteryVoltage ?? prev.batteryVoltage,
         batteryLevel: hw.batteryLevel ?? prev.batteryLevel,
         fuelLevelPercent: hw.fuelLevelPercent ?? prev.fuelLevelPercent,
@@ -78,7 +73,7 @@ export default function HardwareBridgeModal({
         topSpeedRecorded: hw.topSpeedRecorded ?? prev.topSpeedRecorded
       }));
     }
-  }, [isOpen, bike?.id, bike?.odometer]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -98,34 +93,84 @@ export default function HardwareBridgeModal({
   const fuelLiters = Number(((tankCap * (Number(liveParams.fuelLevelPercent) || 0)) / 100).toFixed(1));
   const rangeKm = Math.round(fuelLiters * (Number(liveParams.realKmPerLiter) || 38));
 
-  // 1. Conectar Clúster TFT BLE
+  // Función central que construye el paquete de telemetría y refresca toda la aplicación de inmediato
+  const pushTelemetryToApp = (paramsToPush, sourceName, customBannerMsg = '') => {
+    const cleanKm = Math.max(0, Math.round(Number(paramsToPush.odometerKm) || 0));
+    const pctFuel = Math.min(100, Math.max(0, Number(paramsToPush.fuelLevelPercent) || 80));
+    const kml = Number(paramsToPush.realKmPerLiter) || 40;
+    const liters = Number(((tankCap * pctFuel) / 100).toFixed(1));
+    const estRange = Math.round(liters * kml);
+
+    const fullTelemetryPayload = {
+      ...paramsToPush,
+      odometerKm: cleanKm,
+      batteryVoltage: Number(paramsToPush.batteryVoltage) || 13.9,
+      batteryLevel: Math.min(100, Math.max(5, Number(paramsToPush.batteryLevel) || 95)),
+      fuelLevelPercent: pctFuel,
+      fuelLitersRemaining: liters,
+      estimatedRangeKm: estRange,
+      realKmPerLiter: kml,
+      engineTempC: Number(paramsToPush.engineTempC) || 84,
+      rpmIdle: Number(paramsToPush.rpmIdle) || 1450,
+      topSpeedRecorded: Number(paramsToPush.topSpeedRecorded) || 121,
+      source: sourceName,
+      sourceName,
+      syncedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (onSyncOdometer) {
+      onSyncOdometer(cleanKm, sourceName, fullTelemetryPayload);
+    }
+
+    setSyncSuccessMsg(
+      customBannerMsg ||
+        `✅ ¡Aplicación refrescada con tu moto! Odómetro: ${cleanKm.toLocaleString()} KM • Batería: ${fullTelemetryPayload.batteryVoltage}V (${fullTelemetryPayload.batteryLevel}% en Mantenimiento Predictivo) • Gasolina: ${fullTelemetryPayload.fuelLevelPercent}% (${liters}L) • Modo ${fullTelemetryPayload.rideMode}.`
+    );
+  };
+
+  // 1. Conectar Clúster TFT BLE y sincronizar automáticamente con la App
   const handleConnectBle = async () => {
     setIsScanning(true);
     setSyncSuccessMsg('');
-    const res = await connectBleCluster({ bike });
+    const res = await connectBleCluster({
+      bike,
+      customOverrides: liveParams
+    });
     setIsScanning(false);
+
     if (res.success && res.telemetry) {
       setBleStatus(res);
-      setLiveParams((prev) => ({
-        ...prev,
-        odometerKm: res.telemetry.odometerKm ?? prev.odometerKm,
-        batteryVoltage: res.telemetry.batteryVoltage ?? prev.batteryVoltage,
-        batteryLevel: res.telemetry.batteryLevel ?? prev.batteryLevel,
-        fuelLevelPercent: res.telemetry.fuelLevelPercent ?? prev.fuelLevelPercent,
-        realKmPerLiter: res.telemetry.realKmPerLiter ?? prev.realKmPerLiter,
-        rideMode: res.telemetry.rideMode || prev.rideMode,
-        engineTempC: res.telemetry.engineTempC ?? prev.engineTempC,
-        rpmIdle: res.telemetry.rpmIdle ?? prev.rpmIdle,
-        topSpeedRecorded: res.telemetry.topSpeedRecorded ?? prev.topSpeedRecorded,
-        zeroToSixtySec: res.telemetry.zeroToSixtySec ?? prev.zeroToSixtySec,
-        maxLeanAngle: res.telemetry.maxLeanAngle ?? prev.maxLeanAngle,
-        tripAKm: res.telemetry.tripAKm ?? prev.tripAKm,
-        tripBKm: res.telemetry.tripBKm ?? prev.tripBKm
-      }));
+      const nextParams = {
+        ...liveParams,
+        odometerKm: res.telemetry.odometerKm ?? liveParams.odometerKm,
+        batteryVoltage: res.telemetry.batteryVoltage ?? liveParams.batteryVoltage,
+        batteryLevel: res.telemetry.batteryLevel ?? liveParams.batteryLevel,
+        fuelLevelPercent: res.telemetry.fuelLevelPercent ?? liveParams.fuelLevelPercent,
+        realKmPerLiter: res.telemetry.realKmPerLiter ?? liveParams.realKmPerLiter,
+        rideMode: res.telemetry.rideMode || liveParams.rideMode,
+        engineTempC: res.telemetry.engineTempC ?? liveParams.engineTempC,
+        rpmIdle: res.telemetry.rpmIdle ?? liveParams.rpmIdle,
+        topSpeedRecorded: res.telemetry.topSpeedRecorded ?? liveParams.topSpeedRecorded,
+        zeroToSixtySec: res.telemetry.zeroToSixtySec ?? liveParams.zeroToSixtySec,
+        maxLeanAngle: res.telemetry.maxLeanAngle ?? liveParams.maxLeanAngle,
+        tripAKm: res.telemetry.tripAKm ?? liveParams.tripAKm,
+        tripBKm: res.telemetry.tripBKm ?? liveParams.tripBKm
+      };
+      setLiveParams(nextParams);
+
+      // Refrescar inmediatamente la app al conectar
+      pushTelemetryToApp(
+        nextParams,
+        res.telemetry.deviceName || 'Clúster TFT SmartXonnect',
+        res.telemetry.odometerReadFromGatt
+          ? `✅ ¡Tablero ${res.telemetry.deviceName} enlazado! Odómetro leído directo por GATT (${nextParams.odometerKm.toLocaleString()} KM) y sincronizado en toda la app.`
+          : `✅ ¡Tablero ${res.telemetry.deviceName} enlazado! Batería (${nextParams.batteryVoltage}V / ${nextParams.batteryLevel}%) sincronizada. Si el firmware SmartXonnect cifra el registro de KM, verifica o escribe el KM exacto de tu pantalla en la casilla #1 y pulsa Actualizar.`
+      );
     }
   };
 
-  // 2. Conectar Escáner OBD-II ECU
+  // 2. Conectar Escáner OBD-II ECU y sincronizar automáticamente con la App
   const handleConnectObd = async () => {
     if (!hasProAccess) {
       if (onOpenPaywall) onOpenPaywall('pro_monthly');
@@ -134,77 +179,69 @@ export default function HardwareBridgeModal({
 
     setIsScanning(true);
     setSyncSuccessMsg('');
-    const res = await connectObd2Scanner(userProfile, { bike });
+    const res = await connectObd2Scanner(userProfile, {
+      bike,
+      customOverrides: liveParams
+    });
     setIsScanning(false);
+
     if (res.success && res.diagnostic) {
       setObdStatus(res);
-      setLiveParams((prev) => ({
-        ...prev,
-        odometerKm: res.diagnostic.odometerEcuKm ?? prev.odometerKm,
-        batteryVoltage: res.diagnostic.batteryVoltage ?? prev.batteryVoltage,
-        batteryLevel: res.diagnostic.batteryLevel ?? prev.batteryLevel,
-        fuelLevelPercent: res.diagnostic.fuelLevelPercent ?? prev.fuelLevelPercent,
-        realKmPerLiter: res.diagnostic.realKmPerLiter ?? prev.realKmPerLiter,
-        rideMode: res.diagnostic.rideMode || prev.rideMode,
-        engineTempC: res.diagnostic.engineCoolantTempC ?? prev.engineTempC,
-        rpmIdle: res.diagnostic.rpmReal ?? prev.rpmIdle
-      }));
+      const nextParams = {
+        ...liveParams,
+        odometerKm: res.diagnostic.odometerEcuKm ?? liveParams.odometerKm,
+        batteryVoltage: res.diagnostic.batteryVoltage ?? liveParams.batteryVoltage,
+        batteryLevel: res.diagnostic.batteryLevel ?? liveParams.batteryLevel,
+        fuelLevelPercent: res.diagnostic.fuelLevelPercent ?? liveParams.fuelLevelPercent,
+        realKmPerLiter: res.diagnostic.realKmPerLiter ?? liveParams.realKmPerLiter,
+        rideMode: res.diagnostic.rideMode || liveParams.rideMode,
+        engineTempC: res.diagnostic.engineCoolantTempC ?? liveParams.engineTempC,
+        rpmIdle: res.diagnostic.rpmReal ?? liveParams.rpmIdle
+      };
+      setLiveParams(nextParams);
+      pushTelemetryToApp(nextParams, res.diagnostic.ecuName || 'Cable OBD-II ECU');
     } else if (res.proRequired && onOpenPaywall) {
       onOpenPaywall('pro_monthly');
     }
   };
 
-  // 3. Refrescar lectura en vivo del Tablero / Cable
-  const handleRefreshLiveParameters = () => {
-    const jitterV = Number((13.8 + (Math.random() * 0.4 - 0.1)).toFixed(1));
-    const jitterTemp = Math.round(82 + Math.random() * 5);
-    const jitterRpm = Math.round(1420 + Math.random() * 60);
-
-    setLiveParams((prev) => ({
-      ...prev,
-      batteryVoltage: jitterV,
-      engineTempC: jitterTemp,
-      rpmIdle: jitterRpm
-    }));
-    setSyncSuccessMsg('¡Lectura de sensores refrescada en tiempo real desde la moto!');
-    setTimeout(() => setSyncSuccessMsg(''), 3000);
-  };
-
-  // 4. Botón Maestro: Actualizar TODOS los Parámetros en la Moto (Odómetro + Gasolina + Batería en Mantenimiento Predictivo + Telemetría)
-  const handleApplyAllParameters = (sourceName) => {
-    const cleanKm = Math.max(0, Number(liveParams.odometerKm) || 0);
-    const fullTelemetryPayload = {
-      ...liveParams,
-      odometerKm: cleanKm,
-      batteryVoltage: Number(liveParams.batteryVoltage) || 13.9,
-      batteryLevel: Math.min(100, Math.max(5, Number(liveParams.batteryLevel) || 95)),
-      fuelLevelPercent: Math.min(100, Math.max(0, Number(liveParams.fuelLevelPercent) || 80)),
-      fuelLitersRemaining: fuelLiters,
-      estimatedRangeKm: rangeKm,
-      realKmPerLiter: Number(liveParams.realKmPerLiter) || 40,
-      engineTempC: Number(liveParams.engineTempC) || 84,
-      rpmIdle: Number(liveParams.rpmIdle) || 1450,
-      topSpeedRecorded: Number(liveParams.topSpeedRecorded) || 121,
-      source: sourceName,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (onSyncOdometer) {
-      onSyncOdometer(cleanKm, sourceName, fullTelemetryPayload);
-      setSyncSuccessMsg(
-        `✅ ¡Parámetros actualizados en tu moto! Odómetro (${cleanKm.toLocaleString()} KM), Batería (${fullTelemetryPayload.batteryVoltage}V / ${fullTelemetryPayload.batteryLevel}% en Mantenimiento Predictivo), Gasolina (${fullTelemetryPayload.fuelLevelPercent}% • ${fuelLiters}L) y Modo ${fullTelemetryPayload.rideMode} sincronizados.`
+  // 3. Refrescar lectura en vivo del Tablero / Cable Y actualizar inmediatamente la aplicación
+  const handleRefreshLiveParameters = async (sourceName = 'Clúster TFT SmartXonnect') => {
+    setIsScanning(true);
+    try {
+      const refreshed = await refreshActiveHardwareTelemetry(bike, liveParams);
+      const nextParams = {
+        ...liveParams,
+        odometerKm: refreshed.odometerKm ?? liveParams.odometerKm,
+        batteryVoltage: refreshed.batteryVoltage ?? liveParams.batteryVoltage,
+        batteryLevel: refreshed.batteryLevel ?? liveParams.batteryLevel,
+        fuelLevelPercent: refreshed.fuelLevelPercent ?? liveParams.fuelLevelPercent,
+        engineTempC: refreshed.engineTempC ?? liveParams.engineTempC,
+        rpmIdle: refreshed.rpmIdle ?? liveParams.rpmIdle
+      };
+      setLiveParams(nextParams);
+      pushTelemetryToApp(
+        nextParams,
+        sourceName,
+        `🔄 ¡Sensores refrescados en vivo y sincronizados con la App! Odómetro: ${Number(nextParams.odometerKm).toLocaleString()} KM • Batería: ${nextParams.batteryVoltage}V (${nextParams.batteryLevel}%).`
       );
-      setTimeout(() => setSyncSuccessMsg(''), 6000);
+    } finally {
+      setIsScanning(false);
     }
   };
 
-  const renderFullTelemetryDashboard = (sourceTitle, accentColor = 'amber') => (
+  // 4. Botón Maestro: Actualizar TODOS los Parámetros en la Moto
+  const handleApplyAllParameters = (sourceName) => {
+    pushTelemetryToApp(liveParams, sourceName);
+  };
+
+  const renderFullTelemetryDashboard = (sourceTitle) => (
     <div className="p-4 bg-neutral-950/90 border-2 border-amber-500/40 rounded-2xl space-y-4 animate-fadeIn">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800">
         <div>
           <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            ENLACE DE TELEMETRÍA COMPLETA ACTIVO • 12 PARÁMETROS LEÍDOS
+            ENLACE DE TELEMETRÍA COMPLETA ACTIVO • 12 PARÁMETROS EN VIVO
           </span>
           <h4 className="text-sm font-black font-racing uppercase text-white mt-0.5">
             {sourceTitle}
@@ -214,12 +251,13 @@ export default function HardwareBridgeModal({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={handleRefreshLiveParameters}
-            className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[11px] font-mono text-cyan-300 flex items-center gap-1"
-            title="Volver a interrogar los sensores del tablero/ECU"
+            onClick={() => handleRefreshLiveParameters(sourceTitle)}
+            disabled={isScanning}
+            className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-cyan-500/50 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 transition"
+            title="Interrogar de nuevo los sensores de la moto y refrescar toda la aplicación"
           >
-            <RotateCw className="w-3.5 h-3.5" />
-            <span>Refrescar Sensores</span>
+            <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+            <span>Refrescar Sensores y App</span>
           </button>
 
           <button
@@ -232,16 +270,72 @@ export default function HardwareBridgeModal({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>{showCalibrator ? 'Ocultar Ajuste Fino' : 'Ajustar Valores'}</span>
+            <span>{showCalibrator ? 'Ocultar Más Ajustes' : 'Más Ajustes'}</span>
           </button>
         </div>
       </div>
 
-      {/* GRILLA COMPLETA DE 12 PARÁMETROS DEL TABLERO TFT / CABLE OBD-II */}
+      {/* TARJETA DESTACADA #1: ODÓMETRO EN VIVO DEL TABLERO TFT (DIRECTAMENTE EDITABLE Y SINCRONIZABLE) */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border-2 border-amber-500/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <span className="text-[10px] font-mono uppercase text-amber-300 font-bold flex items-center gap-1.5">
+            <Gauge className="w-3.5 h-3.5 text-amber-400" />
+            1. KILOMETRAJE ACTUAL EN EL TABLERO DE TU MOTO (ODÓMETRO TOTAL)
+          </span>
+          <p className="text-[11px] font-mono text-neutral-300 mt-0.5">
+            Si el módulo Bluetooth SmartXonnect de tu Apache protege el byte de odómetro, verifica o escribe aquí el KM exacto que marca tu pantalla física y se actualizará en toda la app:
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <input
+            type="number"
+            min="0"
+            value={liveParams.odometerKm}
+            onChange={(e) =>
+              setLiveParams((prev) => ({
+                ...prev,
+                odometerKm: Math.max(0, Number(e.target.value) || 0)
+              }))
+            }
+            className="w-28 sm:w-32 bg-neutral-950 border-2 border-amber-400 rounded-xl px-3 py-2 text-base sm:text-lg font-black font-telemetry text-white text-center focus:outline-none"
+          />
+          <span className="text-xs font-mono font-bold text-amber-400">KM</span>
+
+          <div className="flex flex-col gap-1 ml-1">
+            <button
+              type="button"
+              onClick={() =>
+                setLiveParams((prev) => ({
+                  ...prev,
+                  odometerKm: Number(prev.odometerKm || 0) + 10
+                }))
+              }
+              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-[10px] font-mono text-amber-300 border border-neutral-700"
+            >
+              +10 km
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setLiveParams((prev) => ({
+                  ...prev,
+                  odometerKm: Number(prev.odometerKm || 0) + 100
+                }))
+              }
+              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-[10px] font-mono text-amber-300 border border-neutral-700"
+            >
+              +100 km
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* GRILLA COMPLETA DE LOS 12 PARÁMETROS DEL TABLERO TFT / CABLE OBD-II */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono">
-        {/* 1. Odómetro */}
+        {/* 1. Odómetro Resumen */}
         <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-amber-500/40">
-          <span className="text-[10px] text-neutral-400 block">1. Odómetro Total</span>
+          <span className="text-[10px] text-neutral-400 block">1. Odómetro TFT</span>
           <span className="text-sm sm:text-base font-black text-white">
             {Number(liveParams.odometerKm).toLocaleString()} KM
           </span>
@@ -348,7 +442,7 @@ export default function HardwareBridgeModal({
       {showCalibrator && (
         <div className="p-3.5 rounded-xl bg-neutral-900 border border-amber-500/40 space-y-2.5">
           <span className="text-[10px] font-mono uppercase text-amber-300 font-bold block">
-            🔧 Calibración Exacta con tu Tablero Físico (Ajusta si deseas cuadrar algún dato antes de actualizar):
+            🔧 Calibración Exacta con tu Tablero Físico (Voltaje, Batería, Gasolina y Modo):
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
             <div>
@@ -427,11 +521,11 @@ export default function HardwareBridgeModal({
       <button
         type="button"
         onClick={() => handleApplyAllParameters(sourceTitle)}
-        className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 hover:opacity-95 text-black font-racing font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2"
+        className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 hover:opacity-95 text-black font-racing font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 active:scale-[0.99]"
       >
         <Zap className="w-4 h-4 fill-black" />
         <span>
-          ⚡ Actualizar Parámetros en mi Moto (Odómetro, Batería en Mantenimiento y Gasolina)
+          ⚡ Actualizar Parámetros en mi Moto (Odómetro: {Number(liveParams.odometerKm).toLocaleString()} KM, Batería y Gasolina)
         </span>
       </button>
     </div>
@@ -517,7 +611,7 @@ export default function HardwareBridgeModal({
                   Enlace Inalámbrico SmartXonnect / Tablero TFT
                 </h3>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Lee los 12 parámetros del tablero de tu Apache y actualiza automáticamente kilómetros, gasolina y salud de batería en tu Mantenimiento Predictivo.
+                  Lee los servicios GATT Bluetooth del tablero de tu Apache y refresca automáticamente el odómetro, batería y gasolina en la aplicación.
                 </p>
               </div>
               <button
