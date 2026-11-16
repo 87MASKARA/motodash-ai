@@ -15,6 +15,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, onOpenLega
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newRecoveryPassword, setNewRecoveryPassword] = useState('');
+  const [pastedRecoveryUrl, setPastedRecoveryUrl] = useState('');
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register' | 'forgot' | 'update_password'
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -142,6 +143,53 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, onOpenLega
     onClose();
   };
 
+  const handleApplyPastedRecoveryUrl = async () => {
+    const raw = pastedRecoveryUrl.trim();
+    if (!raw) return;
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const hashPart = raw.includes('#') ? raw.split('#')[1] : '';
+      const queryPart = raw.includes('?') ? raw.split('?')[1].split('#')[0] : '';
+      const hashParams = new URLSearchParams(hashPart);
+      const queryParams = new URLSearchParams(queryPart);
+
+      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+      const code = queryParams.get('code') || hashParams.get('code');
+      const tokenHash = queryParams.get('token_hash') || hashParams.get('token_hash');
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        if (error) throw error;
+      } else if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery'
+        });
+        if (error) throw error;
+      } else if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+      } else {
+        throw new Error('Pega la URL completa que abrió el enlace (debe contener #access_token=..., ?token_hash=... o ?code=...).');
+      }
+
+      setAuthMode('update_password');
+      setSuccessMsg('✅ ¡Token de recuperación validado! Ahora escribe tu nueva contraseña abajo.');
+      setPastedRecoveryUrl('');
+    } catch (err) {
+      setErrorMsg(err.message || 'El enlace pegado expiró o no es válido. Solicita uno nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-white">
@@ -252,6 +300,34 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, onOpenLega
                   minLength={6}
                   required
                 />
+              </div>
+            </div>
+          )}
+
+          {authMode === 'forgot' && (
+            <div className="p-3 rounded-2xl bg-neutral-950 border border-amber-500/40 space-y-2">
+              <span className="text-[11px] font-mono font-bold text-amber-300 block">
+                💡 ¿El correo te mandó a localhost:3000?
+              </span>
+              <p className="text-[10px] font-mono text-neutral-400 leading-relaxed">
+                Copia la dirección completa de la barra del navegador (aunque diga <code className="text-amber-300">localhost:3000/#access_token=...</code>) y pégala aquí para cambiar tu clave al instante:
+              </p>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={pastedRecoveryUrl}
+                  onChange={(e) => setPastedRecoveryUrl(e.target.value)}
+                  placeholder="Pega aquí http://localhost:3000/#access_token=..."
+                  className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-emerald-300 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPastedRecoveryUrl}
+                  disabled={loading || !pastedRecoveryUrl.trim()}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-bold text-[11px] uppercase disabled:opacity-50"
+                >
+                  Validar
+                </button>
               </div>
             </div>
           )}
