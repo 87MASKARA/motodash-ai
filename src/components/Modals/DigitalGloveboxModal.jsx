@@ -62,11 +62,30 @@ export default function DigitalGloveboxModal({
   const [showPinPrompt, setShowPinPrompt] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+  const [savedPin, setSavedPin] = useState(() => {
+    try {
+      return localStorage.getItem('motodash_checkpoint_pin') || hojaDeVida?.checkpointPin || '1234';
+    } catch {
+      return '1234';
+    }
+  });
+  const [showChangePinPanel, setShowChangePinPanel] = useState(false);
+  const [newPinValue, setNewPinValue] = useState('');
+  const [pinSavedSuccess, setPinSavedSuccess] = useState(false);
   const fileInputRef = useRef(null);
   const [activeUploadSlot, setActiveUploadSlot] = useState('mandatory_insurance');
 
   // Filtro rápido por documento en el retén
   const [activeDocFilter, setActiveDocFilter] = useState('all');
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const currentPin = localStorage.getItem('motodash_checkpoint_pin') || hojaDeVida?.checkpointPin || '1234';
+        setSavedPin(currentPin);
+      } catch {}
+    }
+  }, [isOpen, hojaDeVida?.checkpointPin]);
 
   useEffect(() => {
     if (isOpen && resolvedCountry && COUNTRY_DOCUMENT_TERMINOLOGY[resolvedCountry]) {
@@ -599,6 +618,19 @@ export default function DigitalGloveboxModal({
               <span>{isEn ? 'Show All to Officer' : 'Mostrar Todo al Agente'}</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => {
+                setNewPinValue(savedPin);
+                setShowChangePinPanel(!showChangePinPanel);
+              }}
+              className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-amber-500/40 text-amber-300 font-mono font-bold text-xs flex items-center gap-1.5 transition"
+              title={isEn ? 'Change your 4-digit Checkpoint Lock PIN' : 'Cambiar tu PIN de 4 dígitos para bloqueo en retenes'}
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isEn ? 'Change PIN' : 'Cambiar PIN'}</span>
+            </button>
+
             <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-700 rounded-xl px-2.5 py-1.5">
               <Globe2 className="w-3.5 h-3.5 text-amber-400" />
               <select
@@ -623,6 +655,66 @@ export default function DigitalGloveboxModal({
             </button>
           </div>
         </div>
+
+        {/* PANEL RÁPIDO PARA CAMBIAR EL PIN DE 4 DÍGITOS DE BLOQUEO POLICIAL */}
+        {showChangePinPanel && (
+          <div className="mt-3 p-4 rounded-2xl bg-neutral-900 border-2 border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div>
+              <h3 className="text-xs sm:text-sm font-black font-racing uppercase text-amber-300 flex items-center gap-1.5">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <span>
+                  {isEn
+                    ? 'Customize Your 4-Digit Officer Screen Lock PIN'
+                    : 'Configurar tu PIN Personal de 4 Dígitos (Modo Retén)'}
+                </span>
+              </h3>
+              <p className="text-[11px] font-mono text-neutral-400 mt-0.5">
+                {isEn
+                  ? `Current PIN: ${savedPin} • Used to lock the screen before handing your phone to an officer.`
+                  : `PIN actual: ${savedPin} • Se usa para bloquear la pantalla antes de entregarle el celular al agente de tránsito.`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={newPinValue}
+                onChange={(e) => setNewPinValue(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                placeholder="Ej: 2580"
+                className="w-28 bg-neutral-950 border-2 border-amber-500/50 rounded-xl px-3 py-2 text-center font-mono font-bold text-sm text-white tracking-widest focus:outline-none focus:border-amber-400"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (newPinValue.length !== 4) {
+                    alert(isEn ? 'Please enter exactly 4 digits.' : 'El PIN debe tener exactamente 4 números.');
+                    return;
+                  }
+                  setSavedPin(newPinValue);
+                  try {
+                    localStorage.setItem('motodash_checkpoint_pin', newPinValue);
+                  } catch {}
+                  if (onUpdateHojaDeVida) {
+                    onUpdateHojaDeVida({
+                      ...hojaDeVida,
+                      checkpointPin: newPinValue
+                    });
+                  }
+                  setPinSavedSuccess(true);
+                  setTimeout(() => {
+                    setPinSavedSuccess(false);
+                    setShowChangePinPanel(false);
+                  }, 1500);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black uppercase text-xs transition shadow-md"
+              >
+                {pinSavedSuccess ? (isEn ? '✓ PIN Saved!' : '✓ ¡PIN Guardado!') : (isEn ? 'Save PIN' : 'Guardar PIN')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* BARRA DE FILTRO RÁPIDO ENTRE LOS 4 DOCUMENTOS EXIGIDOS EN UN RETÉN */}
         <div className="flex gap-1.5 overflow-x-auto py-3 border-b border-neutral-800/80">
@@ -909,7 +1001,7 @@ export default function DigitalGloveboxModal({
                     <span>
                       {isPinLocked
                         ? (isEn ? '🔒 Screen Locked (Tap to Unlock PIN)' : '🔒 Modo Agente Bloqueado (Desbloquear PIN)')
-                        : (isEn ? 'Lock Screen for Officer (PIN 1234)' : 'Bloquear Pantalla para Agente (PIN 1234)')}
+                        : (isEn ? 'Lock Screen for Officer (PIN)' : 'Bloquear Pantalla para Agente (Con tu PIN)')}
                     </span>
                   </button>
 
@@ -924,36 +1016,37 @@ export default function DigitalGloveboxModal({
                 </div>
               </div>
 
-              {/* Mini Modal de Desbloqueo con PIN (1234) */}
+              {/* Mini Modal de Desbloqueo con PIN Personalizado */}
               {isPinLocked && showPinPrompt && (
                 <div className="my-2 p-3.5 rounded-2xl bg-neutral-950 border-2 border-red-500/60 flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs font-mono text-red-300">
-                    🔐 Ingresa tu PIN de seguridad (Por defecto: <strong>1234</strong>) para salir del Modo Agente:
+                    🔐 {isEn ? 'Enter your 4-digit security PIN to exit Officer Mode:' : 'Ingresa tu PIN de seguridad de 4 dígitos para salir del Modo Agente:'}
                   </span>
                   <div className="flex items-center gap-2">
                     <input
                       type="password"
+                      inputMode="numeric"
                       maxLength={4}
                       value={pinInput}
-                      onChange={(e) => setPinInput(e.target.value)}
-                      placeholder="1234"
+                      onChange={(e) => setPinInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                      placeholder="••••"
                       className="w-24 bg-neutral-900 border border-red-500/50 rounded-xl px-3 py-1.5 text-center font-mono text-sm text-white"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        if (pinInput === '1234') {
+                        if (pinInput === savedPin) {
                           setIsPinLocked(false);
                           setShowPinPrompt(false);
                           setPinInput('');
                           setPinError('');
                         } else {
-                          setPinError('PIN incorrecto');
+                          setPinError(isEn ? 'Invalid PIN' : 'PIN incorrecto');
                         }
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-black font-racing font-bold text-xs uppercase"
                     >
-                      Desbloquear
+                      {isEn ? 'Unlock' : 'Desbloquear'}
                     </button>
                     {pinError && <span className="text-xs font-mono text-red-400">{pinError}</span>}
                   </div>

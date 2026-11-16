@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, X, Download, Upload, Volume2, Globe, DollarSign, 
-  Check, Database, Trash2, Languages
+  Check, Database, Trash2, Languages, Lock
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -19,15 +19,37 @@ export default function SettingsModal({
   const [currency, setCurrency] = useState(globalSettings.currency || 'USD'); // 'USD' | 'COP' | 'EUR' | 'MXN' | 'BRL'
   const [soundEnabled, setSoundEnabled] = useState(globalSettings.soundEnabled !== false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(globalSettings.wakeLockEnabled !== false);
+  const [checkpointPin, setCheckpointPin] = useState(() => {
+    try {
+      return localStorage.getItem('motodash_checkpoint_pin') || '1234';
+    } catch {
+      return '1234';
+    }
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        setCheckpointPin(localStorage.getItem('motodash_checkpoint_pin') || '1234');
+      } catch {}
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
+    const cleanPin = checkpointPin.replace(/[^0-9]/g, '').slice(0, 4);
+    if (cleanPin.length === 4) {
+      try {
+        localStorage.setItem('motodash_checkpoint_pin', cleanPin);
+      } catch {}
+    }
     onSaveSettings({
       unitSystem,
       currency,
       soundEnabled,
-      wakeLockEnabled
+      wakeLockEnabled,
+      checkpointPin: cleanPin.length === 4 ? cleanPin : '1234'
     });
     onClose();
   };
@@ -200,6 +222,22 @@ export default function SettingsModal({
                 className="rounded border-neutral-700 text-amber-500 focus:ring-0 w-4 h-4"
               />
             </label>
+
+            <div className="flex items-center justify-between text-xs text-neutral-200 pt-2 border-t border-neutral-800/60">
+              <span className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <span>{lang === 'en' ? 'Officer Mode 4-Digit PIN' : 'PIN de 4 Dígitos (Modo Retén)'}</span>
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={checkpointPin}
+                onChange={(e) => setCheckpointPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                placeholder="1234"
+                className="w-24 bg-neutral-900 border border-amber-500/50 rounded-xl px-2.5 py-1 text-center font-mono font-bold text-xs text-amber-300 tracking-widest focus:outline-none focus:border-amber-400"
+              />
+            </div>
           </div>
 
           {/* 4. Copia de Seguridad & Respaldo JSON */}
