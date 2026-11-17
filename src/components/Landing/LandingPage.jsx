@@ -4,7 +4,8 @@ import LanguageSwitcher from '../Common/LanguageSwitcher';
 import { 
   Sparkles, Crown, Gauge, ArrowRight, CheckCircle2, 
   FileText, Wrench, Play, LogIn, ShieldCheck, Radar, Scale,
-  Bluetooth, HeartPulse, Users, Lock, Zap, Film, Store, Building2
+  Bluetooth, HeartPulse, Users, Lock, Zap, Film, Store, Building2,
+  MapPin, Navigation, ShoppingBag, Monitor
 } from 'lucide-react';
 import { BRAND_LOGOS, BrandLogo } from '../Common/BrandLogos';
 import { MOTO_CATALOG } from '../../services/motoCatalog';
@@ -99,8 +100,8 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           <span>
             {isEn
-              ? 'NEW V2.5 PRO • TFT 12-PARAM SYNC • AI TRAFFIC LAWYER • DOCTOR MOTOR AI • BIKER CLANS'
-              : 'NUEVO V2.5 PRO • ENLACE TFT 12 PARÁMETROS • ABOGADO VIAL IA • DOCTOR MOTOR IA • CLANES MOTEROS'}
+              ? 'NEW V3.0 PRO • MOTOMALL B2B2C • STRANDED GPS RESCUE MAP • CARPLAY HUD • AI LAWYER'
+              : 'NUEVO V3.0 PRO • MOTOMALL B2B2C • AUXILIO GPS CERCANO • MODO CARPLAY HUD • ABOGADO IA'}
           </span>
         </div>
 
@@ -114,12 +115,12 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
 
         <p className="text-sm sm:text-base text-neutral-300 max-w-3xl mx-auto mt-5 font-sans leading-relaxed">
           {isEn
-            ? 'Link your Apache TFT cluster or OBD-II cable to update Odometer, Fuel, and Battery Health in Predictive Maintenance. Defend yourself at checkpoints with the 2-sided PIN-locked Digital Glovebox and AI Traffic Lawyer, diagnose mechanical noises with Doctor Motor AI, and ride with Private Biker Clans.'
-            : 'Enlaza el tablero TFT de tu moto o cable OBD-II para actualizar Kilometraje, Gasolina y Salud de Batería en el Mantenimiento Predictivo. Defiéndete en retenes con la Guantera Digital de 2 lados con bloqueo PIN y el Abogado Vial IA, diagnostica fallas con Doctor Motor IA y crea tu Clan Motero con logo propio.'}
+            ? 'Link your TFT cluster or OBD-II cable, protect yourself at checkpoints with 2-sided PIN-locked Docs and AI Traffic Lawyer, diagnose issues with Doctor Motor AI, mount your phone in CarPlay / Android Auto HUD mode, and shop verified spare parts or find the nearest workshop via GPS inside MotoMall.'
+            : 'Enlaza tu tablero TFT o cable OBD-II, protégete en retenes con la Guantera PIN de 2 lados y el Abogado Vial IA, diagnostica fallas con Doctor Motor IA, usa el modo CarPlay / Android Auto HUD y compra repuestos, motos 0 KM o ubica el taller aliado más cercano por GPS en MotoMall.'}
         </p>
 
         {/* Botones de Conversión Hero */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mt-8">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3.5 mt-8">
           <button
             onClick={() => onStartOnboarding('pro_monthly')}
             className="w-full sm:w-auto py-3.5 px-8 rounded-2xl font-black font-racing uppercase tracking-wider text-sm bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition active:scale-95"
@@ -135,6 +136,17 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             <Play className="w-4 h-4 text-amber-400 fill-amber-400/30" />
             <span>{t('landing.ctaDemo')}</span>
           </button>
+
+          {onOpenMotoMall && (
+            <button
+              type="button"
+              onClick={() => onOpenMotoMall('home')}
+              className="w-full sm:w-auto py-3.5 px-6 rounded-2xl font-bold font-racing uppercase tracking-wider text-sm bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/50 hover:border-emerald-400 shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2 transition active:scale-95"
+            >
+              <Store className="w-4 h-4 text-emerald-400" />
+              <span>{isEn ? 'Explore MotoMall & Allies' : 'Explorar MotoMall & Aliados'}</span>
+            </button>
+          )}
 
           {onReplayIntro && (
             <button
@@ -231,6 +243,26 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             <Users className="w-4 h-4 text-amber-400 flex-shrink-0" />
             {isEn ? 'Private Biker Clans with Custom Logos' : 'Clanes Moteros con Logo Propio'}
           </span>
+          <button
+            type="button"
+            onClick={() => onOpenMotoMall && onOpenMotoMall('stores')}
+            className="flex items-center gap-1.5 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 px-3 py-1.5 rounded-xl font-bold transition"
+          >
+            <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            {isEn ? 'Stranded? Nearest Ally GPS Radar' : '¿Te Varaste? Aliado Más Cercano GPS'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenMotoMall && onOpenMotoMall('catalog')}
+            className="flex items-center gap-1.5 bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/50 text-amber-300 px-3 py-1.5 rounded-xl font-bold transition"
+          >
+            <Store className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            {isEn ? 'MotoMall: Parts Stores & 0 KM Dealers' : 'MotoMall: Repuestos y Concesionarios 0 KM'}
+          </button>
+          <span className="flex items-center gap-1.5 bg-sky-950/60 border border-sky-500/40 text-sky-300 px-3 py-1.5 rounded-xl font-bold">
+            <Monitor className="w-4 h-4 text-sky-400 flex-shrink-0" />
+            {isEn ? 'CarPlay & Android Auto HUD Mode' : 'Modo CarPlay & Android Auto HUD'}
+          </span>
         </div>
       </section>
 
@@ -258,7 +290,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
       <section className="py-20 px-4 max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <span className="text-xs font-mono text-amber-500 font-bold uppercase tracking-widest block mb-2">
-            {isEn ? 'COMPLETE BIKER ECOSYSTEM V2.5' : 'ECOSISTEMA MOTERO COMPLETO V2.5'}
+            {isEn ? 'COMPLETE BIKER ECOSYSTEM V3.0' : 'ECOSISTEMA MOTERO COMPLETO V3.0'}
           </span>
           <h2 className="text-3xl sm:text-5xl font-black font-racing uppercase tracking-tight text-white">
             {isEn
@@ -475,6 +507,109 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             </div>
           </div>
         </div>
+
+        {/* Fila 4 Nueva V3.0: MotoMall B2B2C, Mapa Auxilio GPS y Modo CarPlay HUD */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          {/* Card 9: MotoMall Oficial (Tiendas de Repuestos & Concesionarios 0 KM) */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/95 to-amber-950/30 border-2 border-amber-500/45 hover:border-amber-400 transition relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <Store className="w-6 h-6" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-300">
+                  B2B2C • 0% COMISIÓN
+                </span>
+              </div>
+              <h3 className="text-lg font-bold font-racing uppercase text-white mb-2">
+                {isEn
+                  ? 'MotoMall: Spare Parts & 0 KM Dealerships'
+                  : 'MotoMall: Almacenes de Repuestos y Concesionarios'}
+              </h3>
+              <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-4">
+                {isEn
+                  ? 'Commercial marketplace connected to your motorcycle maintenance alerts. Buy OEM oils, batteries, tires, or new motorcycles directly via WhatsApp from verified partner dealers.'
+                  : 'Centro comercial conectado al Mantenimiento Predictivo de tu moto. Compra aceites, baterías AGM, frenos, cascos o cotiza motos 0 KM directo por WhatsApp con almacenes y concesionarios verificados.'}
+              </p>
+            </div>
+            {onOpenMotoMall && (
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall('catalog')}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-racing font-bold uppercase text-[11px] flex items-center justify-center gap-1.5 transition"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Browse MotoMall Catalog →' : 'Ver Catálogo MotoMall →'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Card 10: Radar GPS de Auxilio (Si te varas, Aliado Más Cercano) */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/95 to-emerald-950/30 border-2 border-emerald-500/45 hover:border-emerald-400 transition relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] font-mono font-bold text-emerald-300">
+                  AUXILIO GPS EN VIVO
+                </span>
+              </div>
+              <h3 className="text-lg font-bold font-racing uppercase text-white mb-2">
+                {isEn
+                  ? 'Stranded Rescue: Nearest Workshop & Store GPS'
+                  : '¿Te Varaste? Aliado Más Cercano con GPS'}
+              </h3>
+              <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-4">
+                {isEn
+                  ? 'Every partner workshop and parts store registers its exact GPS coordinates. In one tap, MotoDash ranks the closest open allies in km/meters and opens Google Maps / Waze routes or SOS WhatsApp.'
+                  : 'Cada tienda y taller aliado registra su ubicación GPS exacta. Si te varas en carretera o ciudad, detectamos tu posición y te mostramos el aliado más cercano en km/metros con ruta en Google Maps y WhatsApp directo.'}
+              </p>
+            </div>
+            {onOpenMotoMall && (
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall('stores')}
+                className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-racing font-bold uppercase text-[11px] flex items-center justify-center gap-1.5 transition"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Find Nearest Ally Now →' : 'Buscar Aliado Cercano GPS →'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Card 11: Modo CarPlay / Android Auto HUD Pantalla Moto */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-900/95 to-sky-950/30 border-2 border-sky-500/45 hover:border-sky-400 transition relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-sky-500/15 text-sky-400 flex items-center justify-center border border-sky-500/30">
+                  <Monitor className="w-6 h-6" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 border border-sky-500/40 text-[10px] font-mono font-bold text-sky-300">
+                  PANTALLA 5" • 6" • 7"
+                </span>
+              </div>
+              <h3 className="text-lg font-bold font-racing uppercase text-white mb-2">
+                {isEn
+                  ? 'Moto CarPlay & Android Auto HUD Mode'
+                  : 'Modo CarPlay / Android Auto para Manillar'}
+              </h3>
+              <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-4">
+                {isEn
+                  ? 'Mount your phone or handlebar screen horizontally with glove-friendly mega buttons, sunlight boost, live speed/RPM bar, embedded GPS navigation, and 1-tap access to Checkpoint Mode, SOS, and Doctor Motor.'
+                  : 'Diseño horizontal de alto contraste para pantallas de 5", 6" y 7" en el manillar con botones gigantes para guantes, brillo solar, mapa GPS integrado y acceso en 1 toque a Retén, Abogado IA, SOS y Doctor Motor.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onEnterDemo('bike_tvs_apache160')}
+              className="w-full py-2.5 px-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 font-racing font-bold uppercase text-[11px] flex items-center justify-center gap-1.5 transition"
+            >
+              <Play className="w-3.5 h-3.5" />
+              <span>{isEn ? 'Try HUD Cockpit in Demo →' : 'Probar HUD en Demo →'}</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* 5. Planes de Suscripción (7 Días Gratis en Todos los Planes) */}
@@ -645,40 +780,137 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
         </div>
       </section>
 
-      {/* 5B. SECCIÓN OFICIAL B2B2C: MOTOMALL PARA TIENDAS DE REPUESTOS Y CONCESIONARIOS */}
-      <section className="py-12 px-4 bg-gradient-to-b from-neutral-950 to-black border-t border-neutral-900">
-        <div className="max-w-5xl mx-auto p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-950/35 via-neutral-900 to-emerald-950/30 border-2 border-amber-500/40 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-2xl">
-          <div className="text-left space-y-2 max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[11px] font-mono font-bold text-amber-300">
-              <Store className="w-3.5 h-3.5 text-amber-400" />
-              NUEVO ECOSISTEMA COMERCIAL B2B2C • MOTOMALL OFICIAL
-            </span>
-            <h3 className="text-2xl sm:text-3xl font-black font-racing uppercase text-white">
-              ¿Tienes un Almacén de Repuestos, Boutique o Concesionario?
-            </h3>
-            <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
-              Regístrate en el <strong>Portal Empresas (B2B)</strong> con tu NIT y el logo de tu negocio. Tus repuestos, aceites, baterías y motos 0 KM aparecerán conectados directamente con el <strong>Mantenimiento Predictivo</strong> de los pilotos cuando necesiten cambiar una pieza.
-            </p>
+      {/* 5B. SECCIÓN OFICIAL B2B2C: MOTOMALL (INICIO, SUSCRIPCIONES B2B, GPS Y REGISTRO) */}
+      <section className="py-16 px-4 bg-gradient-to-b from-neutral-950 via-[#0a0d0f] to-black border-t border-neutral-900">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Banner Principal del Mall */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-950/35 via-neutral-900 to-emerald-950/30 border-2 border-amber-500/40 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-2xl">
+            <div className="text-left space-y-2 max-w-2xl">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[11px] font-mono font-bold text-amber-300">
+                <Store className="w-3.5 h-3.5 text-amber-400" />
+                ECOSISTEMA COMERCIAL B2B2C • MOTOMALL OFICIAL V3.0
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black font-racing uppercase text-white">
+                {isEn
+                  ? 'Do You Own a Spare Parts Store, Workshop or Dealership?'
+                  : '¿Tienes un Almacén de Repuestos, Taller o Concesionario?'}
+              </h3>
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                {isEn
+                  ? 'Register your business in our dedicated B2B Merchant Portal with your Tax ID, logo, and exact GPS location. Your parts and 0 KM bikes connect directly to riders’ Predictive Maintenance alerts and nearest-ally roadside rescue radar with 0% sales commission.'
+                  : 'Regístrate en nuestro Portal Empresas (B2B) diferenciado con tu NIT, logo y ubicación GPS exacta. Tus repuestos, aceites, baterías y motos 0 KM aparecen conectados al Mantenimiento Predictivo y al Radar de Auxilio GPS cuando un motero se vara cerca de tu local — con 0% comisión por venta.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5 w-full lg:w-72 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
+                className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 transition"
+              >
+                <Store className="w-4 h-4 text-emerald-400" />
+                <span>🏪 Inicio & Planes MotoMall</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('stores')}
+                className="px-4 py-3 rounded-2xl bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-200 font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 transition"
+              >
+                <MapPin className="w-4 h-4 text-emerald-400" />
+                <span>📍 Mapa Auxilio GPS Cercano</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('merchant_portal')}
+                className="sm:col-span-2 lg:col-span-1 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 transition"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>🏢 Registrar Mi Tienda / Concesionario</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
-              className="px-5 py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 transition"
-            >
-              <Store className="w-4 h-4 text-emerald-400" />
-              <span>🏪 Inicio & Planes MotoMall</span>
-            </button>
+          {/* Resumen Visual de las 3 Membresías B2B del MotoMall directamente en el Inicio */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-5 rounded-3xl bg-neutral-900/75 border border-neutral-800 hover:border-neutral-700 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[11px] font-mono font-bold text-neutral-300 uppercase">🏪 Vitrina Repuestera / Taller</span>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/40">14 DÍAS GRATIS</span>
+                </div>
+                <div className="text-2xl font-black font-telemetry text-white">
+                  $49.900 <span className="text-[11px] font-mono text-neutral-400 font-normal">COP/mes</span>
+                </div>
+                <p className="text-[11px] font-mono text-emerald-400 mb-3">($39.900/mes plan anual · 0% comisión)</p>
+                <ul className="text-xs text-neutral-400 space-y-1.5">
+                  <li>✓ Hasta 25 repuestos o servicios con tu NIT</li>
+                  <li>✓ Ubicación GPS en Radar de Auxilio Vial</li>
+                  <li>✓ Pedidos directos a WhatsApp Business</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
+                className="mt-4 w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-racing font-bold uppercase text-[11px] transition"
+              >
+                Ver Detalles Plan Básico →
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => onOpenMotoMall && onOpenMotoMall('merchant_portal')}
-              className="px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-racing font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20 transition"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>🏢 Registrar Mi Tienda / Concesionario</span>
-            </button>
+            <div className="p-5 rounded-3xl bg-neutral-900 border-2 border-amber-500/80 shadow-xl shadow-amber-950/30 flex flex-col justify-between relative">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-[9px] font-black uppercase px-3 py-0.5 rounded-full whitespace-nowrap">
+                🔥 MÁS POPULAR • ALMACENES & BOUTIQUES
+              </span>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5 mt-1">
+                  <span className="text-[11px] font-mono font-bold text-amber-400 uppercase">👑 Almacén & Boutique PRO</span>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">14 DÍAS GRATIS</span>
+                </div>
+                <div className="text-2xl font-black font-telemetry text-amber-400">
+                  $119.900 <span className="text-[11px] font-mono text-neutral-300 font-normal">COP/mes</span>
+                </div>
+                <p className="text-[11px] font-mono text-amber-200 mb-3">($89.900/mes plan anual · Prioridad IA)</p>
+                <ul className="text-xs text-neutral-200 space-y-1.5">
+                  <li>✓ Hasta 150 productos con referencia OEM</li>
+                  <li>✓ Recomendado en Mantenimiento Predictivo y Doctor Motor</li>
+                  <li>✓ Sello Dorado «Comercio Oficial Verificado ✅»</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
+                className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-racing font-black uppercase text-[11px] transition"
+              >
+                Activar Plan Almacén PRO →
+              </button>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-neutral-900/75 border border-cyan-500/40 hover:border-cyan-400 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase">🏢 Concesionario Oficial VIP</span>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">14 DÍAS GRATIS</span>
+                </div>
+                <div className="text-2xl font-black font-telemetry text-cyan-400">
+                  $249.900 <span className="text-[11px] font-mono text-neutral-400 font-normal">COP/mes</span>
+                </div>
+                <p className="text-[11px] font-mono text-cyan-300 mb-3">($189.900/mes plan anual · Red Multisede)</p>
+                <ul className="text-xs text-neutral-300 space-y-1.5">
+                  <li>✓ Catálogo ilimitado OEM + Vitrina Motos 0 KM</li>
+                  <li>✓ Integrado al Guardián de Garantía Oficial</li>
+                  <li>✓ Cobertura Nacional o múltiples sedes por ciudad</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenMotoMall && onOpenMotoMall('home')}
+                className="mt-4 w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-black uppercase text-[11px] transition"
+              >
+                Ver Plan Concesionario →
+              </button>
+            </div>
           </div>
         </div>
       </section>
