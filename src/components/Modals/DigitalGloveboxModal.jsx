@@ -112,15 +112,27 @@ export default function DigitalGloveboxModal({
     }
   }, [isOpen, resolvedCountry]);
 
+  const isDemoBike = Boolean(
+    bike?.isDemo ||
+    !userProfile?.id ||
+    userProfile?.email === 'demo@motodash.com'
+  );
+
   useEffect(() => {
-    if (isOpen && bike?.id) {
-      loadOfflineCheckpointPhotos(bike.id).then((cached) => {
-        if (cached && typeof cached === 'object') {
-          setOfflinePhotos(cached);
-        }
-      });
+    if (!isOpen || !bike?.id) return;
+    if (isDemoBike) {
+      // Aislamiento estricto: el modo Demo nunca lee documentos ni fotos offline reales de IndexedDB
+      setOfflinePhotos({});
+      return;
     }
-  }, [isOpen, bike?.id]);
+    loadOfflineCheckpointPhotos(bike.id).then((cached) => {
+      if (cached && typeof cached === 'object') {
+        setOfflinePhotos(cached);
+      } else {
+        setOfflinePhotos({});
+      }
+    });
+  }, [isOpen, bike?.id, isDemoBike]);
 
   if (!isOpen || !bike) return null;
 
@@ -418,10 +430,12 @@ export default function DigitalGloveboxModal({
       });
 
       let storagePath = null;
-      try {
-        storagePath = await uploadMotoDocument(compressed.compressedFile, slot);
-      } catch {
-        // Modo demo o sin sesión
+      if (!isDemoBike) {
+        try {
+          storagePath = await uploadMotoDocument(compressed.compressedFile, slot);
+        } catch {
+          // Sin sesión o sin conexión
+        }
       }
 
       const baseDocSlot = slot.startsWith('vehicle_registration')
@@ -439,12 +453,14 @@ export default function DigitalGloveboxModal({
         bikeModel: identity.model || ''
       });
 
-      // Guardar inmediatamente en la Bóveda Offline IndexedDB para funcionar con 0% señal en carretera
+      // Guardar inmediatamente en la Bóveda Offline IndexedDB para funcionar con 0% señal en carretera (solo cuentas reales)
       if (bike?.id && compressed.dataUrl) {
-        await saveOfflineCheckpointPhoto(bike.id, slot, compressed.dataUrl, {
-          expiryDate: aiResult.expiryDate,
-          policyOrCertNumber: aiResult.policyOrCertNumber
-        });
+        if (!isDemoBike) {
+          await saveOfflineCheckpointPhoto(bike.id, slot, compressed.dataUrl, {
+            expiryDate: aiResult.expiryDate,
+            policyOrCertNumber: aiResult.policyOrCertNumber
+          });
+        }
         setOfflinePhotos((prev) => ({ ...prev, [slot]: compressed.dataUrl }));
       }
 

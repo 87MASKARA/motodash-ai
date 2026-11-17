@@ -181,7 +181,7 @@ export default function CarPlayHudModal({
 
   return (
     <div
-      className={`fixed inset-0 z-[180] flex flex-col justify-between overflow-y-auto select-none transition-colors ${
+      className={`fixed inset-0 z-[45] flex flex-col justify-between overflow-y-auto select-none transition-colors ${
         sunlightBoost
           ? 'bg-black text-white contrast-125'
           : 'bg-[#07080a] text-white'
@@ -539,3 +539,4 @@ export default function CarPlayHudModal({
     </div>
   );
 }
+

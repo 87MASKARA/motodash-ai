@@ -86,6 +86,14 @@ export default function App() {
     return null;
   });
 
+  const createCleanDemoBikes = () =>
+    DEMO_GARAGE.map((b) => ({
+      ...b,
+      isDemo: true,
+      hojaDeVida: b.hojaDeVida ? JSON.parse(JSON.stringify(b.hojaDeVida)) : {},
+      customComponents: b.customComponents ? JSON.parse(JSON.stringify(b.customComponents)) : {}
+    }));
+
   // Garaje protegido: en modo demo carga DEMO_GARAGE neutro. Si hay perfil activo, carga sus motos guardadas y sincroniza con Supabase
   const [garage, setGarage] = useState(() => {
     const saved = localStorage.getItem("motodash_garage");
@@ -104,12 +112,26 @@ export default function App() {
         console.error("Error cargando garaje de localStorage:", e);
       }
     }
-    return DEMO_GARAGE;
+    return [];
   });
+
+  const [isDemoSession, setIsDemoSession] = useState(() => {
+    try {
+      const savedProfile = localStorage.getItem("motodash_user_profile");
+      if (!savedProfile) return true;
+      const parsed = JSON.parse(savedProfile);
+      if (!parsed?.id || parsed?.email === "demo@motodash.com") return true;
+      return localStorage.getItem("motodash_demo_session") === "true";
+    } catch {
+      return true;
+    }
+  });
+  const [demoBikes, setDemoBikes] = useState(() => createCleanDemoBikes());
+  const [demoBikeId, setDemoBikeId] = useState(DEMO_GARAGE[0].id);
 
   const [activeBikeId, setActiveBikeId] = useState(() => {
     const savedId = localStorage.getItem("motodash_active_bike_id");
-    return savedId || DEMO_GARAGE[0].id;
+    return savedId || "";
   });
 
   // Modales
@@ -148,13 +170,20 @@ export default function App() {
     return { unitSystem: 'metric', currency: 'COP', soundEnabled: true, wakeLockEnabled: true };
   });
 
-  // Moto activa: garaje privado del usuario o catálogo demo oficial neutro
-  const activeBike = (
-    garage.find((b) => b?.id === activeBikeId && isValidBike(b)) ||
-    DEMO_GARAGE.find((b) => b.id === activeBikeId) ||
-    garage.find(isValidBike) ||
-    DEMO_GARAGE[0]
+  const activeIsDemo = Boolean(
+    isDemoSession ||
+    !userProfile?.id ||
+    userProfile?.email === "demo@motodash.com"
   );
+
+  // Moto activa: estrictamente aislada entre Bóveda Demo neutra y Garaje Privado real
+  const activeBike = activeIsDemo
+    ? (demoBikes.find((b) => b.id === demoBikeId) || demoBikes[0])
+    : (
+        garage.find((b) => b?.id === activeBikeId && isValidBike(b)) ||
+        garage.find(isValidBike) ||
+        demoBikes[0]
+      );
 
   const activeOdometer = typeof activeBike?.odometer === "number" ? activeBike.odometer : 0;
 
@@ -171,12 +200,20 @@ export default function App() {
   }, [currentView]);
 
   useEffect(() => {
-    localStorage.setItem("motodash_garage", JSON.stringify(garage));
-  }, [garage]);
+    localStorage.setItem("motodash_demo_session", isDemoSession ? "true" : "false");
+  }, [isDemoSession]);
 
   useEffect(() => {
-    localStorage.setItem("motodash_active_bike_id", activeBikeId);
-  }, [activeBikeId]);
+    if (userProfile?.id && userProfile?.email !== "demo@motodash.com" && Array.isArray(garage) && garage.length > 0) {
+      localStorage.setItem("motodash_garage", JSON.stringify(garage));
+    }
+  }, [garage, userProfile?.id, userProfile?.email]);
+
+  useEffect(() => {
+    if (!activeIsDemo && activeBikeId) {
+      localStorage.setItem("motodash_active_bike_id", activeBikeId);
+    }
+  }, [activeBikeId, activeIsDemo]);
 
   useEffect(() => {
     if (userProfile) {
@@ -274,6 +311,7 @@ export default function App() {
     hasLoadedRemoteRef.current = true;
     const cleanBike = sanitizeBikeEntry(newBike) || newBike;
     setUserProfile(profile);
+    setIsDemoSession(false);
     setGarage((prev) => [cleanBike, ...prev]);
     setActiveBikeId(cleanBike.id);
     setIsOnboardingOpen(false);
@@ -284,8 +322,7 @@ export default function App() {
   // Abrir asistente para agregar o calibrar nueva moto (respetando cupo de membresía o ilimitado para VIP)
   const handleOpenAddBike = () => {
     setIsGarageOpen(false);
-    const demoIds = new Set(DEMO_GARAGE.map((d) => d.id));
-    const customBikesCount = garage.filter((b) => !demoIds.has(b.id)).length;
+    const customBikesCount = garage.filter((b) => !b?.isDemo && !DEMO_PREVIEW_IDS.includes(b?.id)).length;
     const isVip = Boolean(
       userProfile?.plan === "founder_vip" || 
       userProfile?.isLifetimeVip || 
@@ -309,17 +346,12 @@ export default function App() {
     setIsOnboardingOpen(true);
   };
 
-  // Entrar al Demo en vivo desde Landing: activa simulación inmediatamente
+  // Entrar al Demo en vivo desde Landing: activa simulación inmediatamente en caja de arena aislada
   const handleEnterDemo = (bikeId = "bike_tvs_apache160") => {
     const targetId = typeof bikeId === "string" ? bikeId : "bike_tvs_apache160";
-    const demoBike = DEMO_GARAGE.find((d) => d.id === targetId);
-    if (demoBike) {
-      setGarage((prev) => {
-        if (prev.some((b) => b.id === targetId)) return prev;
-        return [...prev, demoBike];
-      });
-    }
-    setActiveBikeId(targetId);
+    setDemoBikes(createCleanDemoBikes());
+    setDemoBikeId(targetId);
+    setIsDemoSession(true);
     setCurrentView("cockpit");
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (telemetry.startSimulation) {
@@ -345,10 +377,19 @@ export default function App() {
     setIsEditComponentModalOpen(true);
   };
 
+  // Aislamiento de escritura: en modo Demo las ediciones quedan solo en memoria y jamás tocan el garaje real ni Supabase
+  const updateActiveGarage = (updater) => {
+    if (activeIsDemo) {
+      setDemoBikes((prev) => updater(prev));
+    } else {
+      setGarage((prev) => updater(prev));
+    }
+  };
+
   const handleSaveOdometer = (payload) => {
     const { km, recordType, date, serviceData, fuelData } = payload;
 
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
 
@@ -417,13 +458,13 @@ export default function App() {
   };
 
   const handleUpdateHojaDeVida = (nextHoja) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => (bike.id === activeBike.id ? { ...bike, hojaDeVida: nextHoja } : bike))
     );
   };
 
   const handleDeleteService = (serviceId) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
         const currentHoja = bike.hojaDeVida || { documentos: {}, servicios: [] };
@@ -439,7 +480,7 @@ export default function App() {
   };
 
   const handleSaveComponent = (componentPayload) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
         const currentCustom = bike.customComponents || {};
@@ -455,7 +496,7 @@ export default function App() {
   };
 
   const handleDeleteComponent = (compId) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
         const currentCustom = { ...(bike.customComponents || {}) };
@@ -469,13 +510,13 @@ export default function App() {
   };
 
   const handleChangeRidingCondition = (condition) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => (bike.id === activeBike.id ? { ...bike, ridingCondition: condition } : bike))
     );
   };
 
   const handleSyncHardwareOdometer = (newKm, sourceName = 'Hardware Link', fullTelemetry = null) => {
-    setGarage((prev) =>
+    updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
         const cleanOdometer = Number(newKm) || bike.odometer;
@@ -651,14 +692,15 @@ export default function App() {
               {/* Selector Rápido de las 5 Motos Demo */}
               <div className="flex gap-1.5">
                 {DEMO_GARAGE.map((b) => {
-                  const isActive = b.id === activeBike.id;
+                  const isActive = activeIsDemo && b.id === activeBike.id;
                   const shortLabel = b.config.bikeIdentity.shortModel || b.config.bikeIdentity.model.split(' ')[0];
                   return (
                     <button
                       key={b.id}
                       type="button"
                       onClick={() => {
-                        setActiveBikeId(b.id);
+                        setIsDemoSession(true);
+                        setDemoBikeId(b.id);
                         if (telemetry.startSimulation) telemetry.startSimulation();
                       }}
                       className={`px-2.5 py-1 rounded-xl text-[10px] font-racing font-bold flex items-center gap-1.5 border transition whitespace-nowrap ${
@@ -680,6 +722,17 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2.5 w-full lg:w-auto justify-between lg:justify-end flex-wrap sm:flex-nowrap">
+              {userProfile?.id && userProfile?.email !== "demo@motodash.com" && activeIsDemo && garage.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsDemoSession(false)}
+                  className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-racing font-bold text-[10px] flex items-center gap-1 transition whitespace-nowrap"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  <span>Volver a Mi Garaje</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={handleOpenAddBike}
@@ -697,10 +750,10 @@ export default function App() {
                   type="button"
                   onClick={() => setIsProfileModalOpen(true)}
                   className="text-neutral-400 hover:text-white transition flex items-center gap-1 text-[11px] max-w-[100px] sm:max-w-none truncate"
-                  title={userProfile ? userProfile.fullName : t('nav.demoMode')}
+                  title={userProfile && !activeIsDemo ? userProfile.fullName : t('nav.demoMode')}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                  <span className="truncate">{userProfile ? userProfile.fullName : t('nav.demoMode')}</span>
+                  <span className={`w-2 h-2 rounded-full animate-pulse flex-shrink-0 ${activeIsDemo ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                  <span className="truncate">{userProfile && !activeIsDemo ? userProfile.fullName : t('nav.demoMode')}</span>
                 </button>
 
                 <button
@@ -724,9 +777,9 @@ export default function App() {
             customComponents={activeBike?.customComponents || {}}
             ridingCondition={activeBike?.ridingCondition || 'normal'}
             onChangeRidingCondition={handleChangeRidingCondition}
-            garageCount={garage.length}
+            garageCount={activeIsDemo ? demoBikes.length : garage.length}
             globalSettings={globalSettings}
-            userProfile={userProfile}
+            userProfile={activeIsDemo ? null : userProfile}
             onToggleSound={handleToggleSound}
             onOpenSelector={handleOpenAddBike}
             onOpenGarage={() => setIsGarageOpen(true)}
@@ -785,7 +838,7 @@ export default function App() {
         onClose={() => setIsHojaDeVidaOpen(false)}
         bikeConfig={activeBike?.config}
         bike={activeBike}
-        userProfile={userProfile}
+        userProfile={activeIsDemo ? null : userProfile}
         hojaDeVida={activeBike?.hojaDeVida || {}}
         odometer={activeOdometer}
         currency={globalSettings.currency || 'COP'}
@@ -800,29 +853,31 @@ export default function App() {
       {/* DRAWER DEL GARAJE */}
       {isGarageOpen && (
         <GarageDrawer
-          garage={garage}
+          garage={activeIsDemo ? demoBikes : (garage.length > 0 ? garage : demoBikes)}
           activeBikeId={activeBike.id}
           onSelectBike={(id) => {
-            setActiveBikeId(id);
+            if (activeIsDemo && demoBikes.some((d) => d.id === id) && !garage.some((g) => g.id === id)) {
+              setDemoBikeId(id);
+            } else {
+              setIsDemoSession(false);
+              setActiveBikeId(id);
+            }
             setIsGarageOpen(false);
           }}
           onAddNewBike={handleOpenAddBike}
           onDeleteBike={(id) => {
+            if (activeIsDemo) return alert("Las motos de demostración no se pueden eliminar.");
             if (garage.length <= 1) return alert("Debes tener al menos 1 moto en tu garaje.");
             const filtered = garage.filter((b) => b.id !== id);
             setGarage(filtered);
             if (activeBike.id === id) {
-              setActiveBikeId(filtered[0]?.id || DEMO_GARAGE[0].id);
+              setActiveBikeId(filtered[0]?.id || "");
             }
           }}
           onCleanDemoBikes={() => {
             setGarage((prev) => {
               const demoIdSet = new Set(DEMO_PREVIEW_IDS);
-              const customBikes = prev.filter((b) => !demoIdSet.has(b.id));
-              return customBikes.length > 0 ? customBikes : [DEMO_GARAGE[0]];
-            });
-            setActiveBikeId((prevId) => {
-              return DEMO_PREVIEW_IDS.includes(prevId) ? (garage[0]?.id || DEMO_GARAGE[0].id) : prevId;
+              return prev.filter((b) => !demoIdSet.has(b.id) && !b.isDemo);
             });
           }}
           onSellBike={() => {
@@ -840,7 +895,7 @@ export default function App() {
         bike={activeBike}
         hojaDeVida={activeBike?.hojaDeVida || {}}
         odometer={activeOdometer}
-        userProfile={userProfile}
+        userProfile={activeIsDemo ? null : userProfile}
         onOpenHojaDeVida={() => setIsHojaDeVidaOpen(true)}
       />
 
@@ -880,9 +935,11 @@ export default function App() {
         onOpenLegal={handleOpenLegal}
         onLoginSuccess={(profile) => {
           setUserProfile(profile);
+          setIsDemoSession(false);
           const effectiveUserId = profile?.id || null;
           if (effectiveUserId) {
             loadPilotGarage(effectiveUserId).then((remoteData) => {
+              hasLoadedRemoteRef.current = true;
               if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
                 const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
                 if (cleanBikes.length > 0) {
@@ -920,8 +977,11 @@ export default function App() {
           localStorage.removeItem("motodash_user_profile");
           localStorage.removeItem("motodash_garage");
           localStorage.removeItem("motodash_active_bike_id");
-          setGarage(DEMO_GARAGE);
-          setActiveBikeId(DEMO_GARAGE[0].id);
+          setGarage([]);
+          setActiveBikeId("");
+          setDemoBikes(createCleanDemoBikes());
+          setDemoBikeId(DEMO_GARAGE[0].id);
+          setIsDemoSession(true);
           setIsProfileModalOpen(false);
           setCurrentView("landing");
         }}
