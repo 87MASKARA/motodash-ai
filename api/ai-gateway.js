@@ -1,11 +1,59 @@
 /**
- * MotoDash AI — Serverless AI Gateway (/api/ai-gateway)
- * Mantiene la llave GEMINI_API_KEY 100% protegida en el servidor de Vercel
- * para que nunca quede expuesta en el navegador del cliente.
+ * MotoDash AI — Serverless AI Gateway Protegido (/api/ai-gateway)
+ * - Mantiene GEMINI_API_KEY 100% oculta en el servidor de Vercel.
+ * - Incluye Rate Limiting por IP (máx. 25 solicitudes/minuto por IP) contra abuso de bots.
+ * - Valida Origin/Referer y limita el tamaño de prompt e imagen.
  */
+
+const rateLimitMap = new Map();
+const WINDOW_MS = 60 * 1000; // 1 minuto
+const MAX_REQ_PER_WINDOW = 25;
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.start > WINDOW_MS) {
+    rateLimitMap.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  if (entry.count >= MAX_REQ_PER_WINDOW) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  // 1. Validación básica de Origin / Referer para bloquear consumo desde dominios externos
+  const origin = String(req.headers?.origin || req.headers?.referer || '').toLowerCase();
+  const host = String(req.headers?.host || '').toLowerCase();
+  if (
+    origin &&
+    host &&
+    !origin.includes(host) &&
+    !origin.includes('localhost') &&
+    !origin.includes('127.0.0.1') &&
+    !origin.includes('vercel.app') &&
+    !origin.includes('motodash')
+  ) {
+    return res.status(403).json({ error: 'Origen no autorizado' });
+  }
+
+  // 2. Rate Limiting por IP
+  const clientIp =
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket?.remoteAddress ||
+    'unknown';
+
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({
+      error: 'Demasiadas consultas seguidas. Espera 1 minuto.',
+      fallback: true
+    });
   }
 
   const apiKey =
@@ -26,8 +74,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Prompt requerido' });
     }
 
-    const parts = [{ text: prompt.slice(0, 6000) }];
+    const parts = [{ text: prompt.slice(0, 5500) }];
     if (base64Image && typeof base64Image === 'string') {
+      // Limitar tamaño máximo de imagen en base64 (~2.5 MB)
+      if (base64Image.length > 3500000) {
+        return res.status(413).json({ error: 'Imagen demasiado grande', fallback: true });
+      }
       const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
       parts.push({
         inline_data: {
@@ -45,7 +97,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           contents: [{ parts }],
           generationConfig: {
-            temperature,
+            temperature: Math.min(1, Math.max(0, Number(temperature) || 0.15)),
             responseMimeType: 'application/json'
           }
         })

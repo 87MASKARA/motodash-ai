@@ -1023,6 +1023,11 @@ export default function DigitalGloveboxModal({
                         setIsPinLocked(true);
                         setShowPinPrompt(false);
                         setPinError('');
+                        try {
+                          if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                            document.documentElement.requestFullscreen().catch(() => {});
+                          }
+                        } catch {}
                       } else {
                         setShowPinPrompt(true);
                       }
@@ -1032,7 +1037,7 @@ export default function DigitalGloveboxModal({
                         ? 'bg-red-600 text-white border-red-400 shadow-lg shadow-red-600/30'
                         : 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
                     }`}
-                    title="Bloquea la salida para que el agente solo pueda ver los 4 documentos sin tocar tu celular"
+                    title="Bloquea la salida en pantalla completa para que el agente solo pueda ver los 4 documentos"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>
@@ -1052,6 +1057,14 @@ export default function DigitalGloveboxModal({
                   )}
                 </div>
               </div>
+
+              {isPinLocked && !showPinPrompt && (
+                <div className="mt-2 px-3 py-1.5 rounded-xl bg-red-950/50 border border-red-500/40 text-[11px] font-mono text-red-200 flex items-center justify-between gap-2">
+                  <span>
+                    🛡️ {isEn ? 'Officer Inspection Lock Active (Full Screen). For maximum OS lock on Android use "Pin App" or "Guided Access" on iPhone.' : 'Bloqueo de Inspección Policial Activo (Pantalla Completa). Para bloqueo del sistema usa «Fijar App» en Android o «Acceso Guiado» en iPhone.'}
+                  </span>
+                </div>
+              )}
 
               {/* Mini Modal de Desbloqueo con PIN Personalizado */}
               {isPinLocked && showPinPrompt && (
@@ -1077,6 +1090,11 @@ export default function DigitalGloveboxModal({
                           setShowPinPrompt(false);
                           setPinInput('');
                           setPinError('');
+                          try {
+                            if (document.fullscreenElement && document.exitFullscreen) {
+                              document.exitFullscreen().catch(() => {});
+                            }
+                          } catch {}
                         } else {
                           setPinError(isEn ? 'Invalid PIN' : 'PIN incorrecto');
                         }

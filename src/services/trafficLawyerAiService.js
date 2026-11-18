@@ -1065,7 +1065,9 @@ export async function askTrafficLawyerAI({
   bikeBrand = 'TVS',
   bikeModel = 'Apache RTR 160 4V'
 }) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  const apiKey = import.meta.env.DEV
+    ? (import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.NEXT_PUBLIC_GEMINI_API_KEY)
+    : null;
   const framework = COUNTRY_LEGAL_FRAMEWORKS[country] || COUNTRY_LEGAL_FRAMEWORKS.Colombia;
   const lang = getCountryLanguage(country);
   const langName = LANGUAGE_NAMES_FOR_PROMPT[lang] || 'español';

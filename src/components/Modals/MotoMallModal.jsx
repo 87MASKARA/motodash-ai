@@ -218,6 +218,17 @@ export default function MotoMallModal({
   const [searchQuery, setSearchQuery] = useState('');
 
   const [stores, setStores] = useState(() => getLoadedMallStores());
+  const [certifiedUsedBikes, setCertifiedUsedBikes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('motodash_certified_used_bikes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [selectedUsedBikePhoto, setSelectedUsedBikePhoto] = useState(null);
 
   // Geolocalización del motero varado para mostrar el aliado más cercano
   const [riderCoords, setRiderCoords] = useState(() => {
@@ -289,28 +300,50 @@ export default function MotoMallModal({
     let isMounted = true;
 
     async function loadMallFromSupabase() {
-      const authUid = await getAuthenticatedUserId();
-      if (!authUid) return;
+      let localUsed = [];
+      try {
+        const saved = localStorage.getItem('motodash_certified_used_bikes');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) localUsed = parsed;
+        }
+      } catch {}
 
-      const [storesRes, prodsRes] = await Promise.all([
-        supabase.from('mall_stores').select('*').order('created_at', { ascending: false }),
-        supabase.from('mall_products').select('*').order('created_at', { ascending: false })
-      ]);
+      try {
+        const [storesRes, prodsRes, usedRes] = await Promise.all([
+          supabase.from('mall_stores').select('*').order('created_at', { ascending: false }),
+          supabase.from('mall_products').select('*').order('created_at', { ascending: false }),
+          supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false })
+        ]);
 
-      if (isMounted && !storesRes.error && Array.isArray(storesRes.data) && storesRes.data.length > 0) {
-        const mergedStores = [...storesRes.data];
-        INITIAL_OFFICIAL_STORES.forEach((seed) => {
-          if (!mergedStores.some((s) => s.slug === seed.slug)) mergedStores.push(seed);
-        });
-        setStores(mergedStores);
-      }
+        if (isMounted && !storesRes.error && Array.isArray(storesRes.data) && storesRes.data.length > 0) {
+          const mergedStores = [...storesRes.data];
+          INITIAL_OFFICIAL_STORES.forEach((seed) => {
+            if (!mergedStores.some((s) => s.slug === seed.slug)) mergedStores.push(seed);
+          });
+          setStores(mergedStores);
+        }
 
-      if (isMounted && !prodsRes.error && Array.isArray(prodsRes.data) && prodsRes.data.length > 0) {
-        const mergedProds = [...prodsRes.data];
-        INITIAL_OFFICIAL_PRODUCTS.forEach((seed) => {
-          if (!mergedProds.some((p) => p.title === seed.title)) mergedProds.push(seed);
-        });
-        setProducts(mergedProds);
+        if (isMounted && !prodsRes.error && Array.isArray(prodsRes.data) && prodsRes.data.length > 0) {
+          const mergedProds = [...prodsRes.data];
+          INITIAL_OFFICIAL_PRODUCTS.forEach((seed) => {
+            if (!mergedProds.some((p) => p.title === seed.title)) mergedProds.push(seed);
+          });
+          setProducts(mergedProds);
+        }
+
+        if (isMounted) {
+          const remoteUsed = !usedRes.error && Array.isArray(usedRes.data) ? usedRes.data : [];
+          const mergedUsed = [...localUsed];
+          remoteUsed.forEach((item) => {
+            if (!mergedUsed.some((u) => u.moto_id === item.moto_id && u.brand === item.brand)) {
+              mergedUsed.push(item);
+            }
+          });
+          setCertifiedUsedBikes(mergedUsed);
+        }
+      } catch {
+        if (isMounted) setCertifiedUsedBikes(localUsed);
       }
     }
 
@@ -495,7 +528,7 @@ export default function MotoMallModal({
       logo_url: storeLogoUrl,
       accent_color: storeType === 'concesionario' ? '#EF4444' : storeType === 'boutique' ? '#06B6D4' : '#F59E0B',
       brands_supported: brandsArray.length > 0 ? brandsArray : ['MULTIMARCAS'],
-      is_verified: true,
+      is_verified: Boolean(isFounderUser),
       founder_overseer_name: OFFICIAL_FOUNDER_NAME,
       rating: 5.0
     };
@@ -518,7 +551,7 @@ export default function MotoMallModal({
           logo_url: newStoreObj.logo_url,
           accent_color: newStoreObj.accent_color,
           brands_supported: newStoreObj.brands_supported,
-          is_verified: true,
+          is_verified: Boolean(isFounderUser),
           founder_overseer_name: OFFICIAL_FOUNDER_NAME
         });
       }
@@ -531,7 +564,9 @@ export default function MotoMallModal({
       } catch {}
 
       setStoreRegisteredMsg(
-        `✅ ¡Comercio "${newStoreObj.store_name}" (${newStoreObj.tax_id_nit}) registrado con ubicación GPS exacta (${parsedLat}, ${parsedLng}) y Sello Verificado por ${OFFICIAL_FOUNDER_NAME}! Ahora puedes publicar tus productos abajo.`
+        isFounderUser
+          ? `✅ ¡Comercio "${newStoreObj.store_name}" (${newStoreObj.tax_id_nit}) registrado con ubicación GPS exacta (${parsedLat}, ${parsedLng}) y Sello Verificado por ${OFFICIAL_FOUNDER_NAME}!`
+          : `✅ ¡Comercio "${newStoreObj.store_name}" (${newStoreObj.tax_id_nit}) registrado! Quedó en revisión de verificación por ${OFFICIAL_FOUNDER_NAME}. Ya puedes cargar tu catálogo de productos abajo.`
       );
       setStoreName('');
       setStoreNit('');
@@ -706,7 +741,20 @@ export default function MotoMallModal({
               }`}
             >
               <Store className="w-4 h-4" />
-              <span>🏪 Tiendas & Concesionarios Verificados ({stores.length})</span>
+              <span>🏪 Tiendas & Concesionarios ({stores.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('used_bikes')}
+              className={`px-4 py-2 rounded-xl text-xs font-racing font-bold uppercase tracking-wider flex items-center gap-1.5 border transition whitespace-nowrap ${
+                activeTab === 'used_bikes'
+                  ? 'bg-amber-400 text-black border-amber-300 shadow-md'
+                  : 'bg-neutral-900 text-amber-300 border-amber-500/40 hover:text-white'
+              }`}
+            >
+              <Bike className="w-4 h-4" />
+              <span>🏍️ Motos Usadas Certificadas ({certifiedUsedBikes.length})</span>
             </button>
 
             <button
@@ -1311,11 +1359,176 @@ export default function MotoMallModal({
                       >
                         Ver Catálogo →
                       </button>
+
+                      {isFounderUser && !st.is_verified && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const updated = stores.map((x) =>
+                              x.slug === st.slug ? { ...x, is_verified: true } : x
+                            );
+                            setStores(updated);
+                            try {
+                              localStorage.setItem('motodash_mall_stores', JSON.stringify(updated));
+                              await supabase
+                                .from('mall_stores')
+                                .update({ is_verified: true })
+                                .eq('slug', st.slug);
+                            } catch {}
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-[10px] transition"
+                        >
+                          ✅ Aprobar
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* PESTAÑA NUEVA: VITRINA DE MOTOS USADAS CERTIFICADAS (3+ FOTOS)    */}
+        {/* ================================================================= */}
+        {activeTab === 'used_bikes' && (
+          <div className="space-y-4 pt-4 max-h-[65vh] overflow-y-auto pr-1">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-emerald-950/30 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-amber-300 font-bold block">
+                  VITRINA PÚBLICA • CERO MOTOS MAQUILLADAS • MÍNIMO 3 FOTOS REALES
+                </span>
+                <h3 className="text-base sm:text-lg font-black font-racing uppercase text-white">
+                  🏍️ Motos Usadas con Sello de Mantenimiento Verificado
+                </h3>
+                <p className="text-xs text-neutral-300">
+                  Cada moto publicada aquí tiene su odómetro auditado en MotoDash AI, 17 componentes de desgaste verificados y galería de fotos reales.
+                </p>
+              </div>
+            </div>
+
+            {certifiedUsedBikes.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-neutral-900/70 border border-neutral-800 text-center space-y-2">
+                <Bike className="w-10 h-10 text-amber-400 mx-auto" />
+                <h4 className="text-sm font-black font-racing uppercase text-white">
+                  Aún no hay motos publicadas en esta vitrina
+                </h4>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  Puedes publicar tu moto desde el botón «Vender con Historial Certificado» en tu Garaje o Tablero subiendo mínimo 3 fotos reales.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {certifiedUsedBikes.map((item) => {
+                  const summary = item.technical_summary || {};
+                  const photosArr = Array.isArray(summary.photos)
+                    ? summary.photos.filter((p) => p?.dataUrl)
+                    : [];
+                  const mainPhoto = photosArr[0]?.dataUrl || null;
+                  const cleanPhone = String(summary.sellerPhone || '573000000000').replace(/[^0-9]/g, '');
+                  const waText = encodeURIComponent(
+                    `Hola, vi tu ${item.brand} ${item.model} (${item.year}) con ${Number(item.odometer).toLocaleString()} km y Sello de Mantenimiento Verificado en el MotoMall de MotoDash AI por $${Number(item.price).toLocaleString()} ${item.currency}. ¿Sigue disponible?`
+                  );
+
+                  return (
+                    <div
+                      key={item.id || `${item.moto_id}_${item.created_at}`}
+                      className="p-4 rounded-2xl bg-neutral-900/90 border border-amber-500/40 flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-3">
+                        {/* Galería de Fotos Reales */}
+                        {mainPhoto && (
+                          <div className="space-y-2">
+                            <div className="h-44 rounded-xl overflow-hidden bg-black border border-neutral-800 relative">
+                              <img
+                                src={mainPhoto}
+                                alt={`${item.brand} ${item.model}`}
+                                onClick={() => setSelectedUsedBikePhoto(mainPhoto)}
+                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition"
+                              />
+                              <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-emerald-500 text-black text-[10px] font-mono font-bold">
+                                ✅ {photosArr.length} Fotos Reales Verificadas
+                              </span>
+                            </div>
+
+                            {photosArr.length > 1 && (
+                              <div className="grid grid-cols-4 gap-2">
+                                {photosArr.map((ph, idx) => (
+                                  <img
+                                    key={ph.slotId || idx}
+                                    src={ph.dataUrl}
+                                    alt={`Foto ${idx + 1}`}
+                                    onClick={() => setSelectedUsedBikePhoto(ph.dataUrl)}
+                                    className="h-14 w-full object-cover rounded-lg border border-neutral-700 hover:border-amber-400 cursor-pointer transition"
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              HISTORIAL CERTIFICADO • {item.health_score || 98}% SALUD MECÁNICA
+                            </span>
+                            <h4 className="text-base font-black font-racing uppercase text-white mt-0.5">
+                              {item.brand} {item.model} ({item.year})
+                            </h4>
+                            <p className="text-xs font-mono text-neutral-400">
+                              📍 {item.city}, {item.country} • Odómetro: <strong className="text-white">{Number(item.odometer).toLocaleString()} km</strong>
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-lg font-black font-telemetry text-amber-400 block">
+                              ${Number(item.price).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-mono text-neutral-400">{item.currency}</span>
+                          </div>
+                        </div>
+
+                        {summary.sellerNotes && (
+                          <p className="text-xs text-neutral-300 bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
+                            “{summary.sellerNotes}”
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800">
+                        <span className="text-[10px] font-mono text-neutral-400">
+                          🔧 Último servicio: {summary.lastService || 'Al día'}
+                        </span>
+                        <a
+                          href={`https://wa.me/${cleanPhone}?text=${waText}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black uppercase text-xs flex items-center gap-1.5 transition"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" />
+                          <span>Contactar Dueño</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {selectedUsedBikePhoto && (
+              <div
+                onClick={() => setSelectedUsedBikePhoto(null)}
+                className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-4"
+              >
+                <img
+                  src={selectedUsedBikePhoto}
+                  alt="Foto ampliada"
+                  className="max-w-full max-h-[88vh] rounded-2xl object-contain border border-amber-500/40"
+                />
+              </div>
+            )}
           </div>
         )}
 

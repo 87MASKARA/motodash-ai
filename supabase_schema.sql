@@ -638,8 +638,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.marketplace_listings TO aut
 
 CREATE POLICY "Ver anuncios certificados"
   ON public.marketplace_listings FOR SELECT
-  TO authenticated
-  USING ((select auth.uid()) = user_id OR status = 'active');
+  TO authenticated, anon
+  USING (true);
 
 CREATE POLICY "Crear propio anuncio certificado"
   ON public.marketplace_listings FOR INSERT
@@ -656,3 +656,177 @@ CREATE POLICY "Eliminar propio anuncio certificado"
   ON public.marketplace_listings FOR DELETE
   TO authenticated
   USING ((select auth.uid()) = user_id);
+
+-- Permitir lectura pública de la vitrina de motos certificadas
+GRANT SELECT ON TABLE public.marketplace_listings TO anon;
+
+-- ============================================================================
+-- 13. MOTOMALL B2B2C: TIENDAS ALIADAS, TALLERES Y CONCESIONARIOS (mall_stores)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.mall_stores (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
+  slug text UNIQUE NOT NULL,
+  store_name text NOT NULL,
+  store_type text NOT NULL DEFAULT 'repuestos',
+  tax_id_nit text,
+  city text NOT NULL DEFAULT 'Medellín',
+  country text DEFAULT 'Colombia',
+  address text,
+  latitude numeric(10, 6),
+  longitude numeric(10, 6),
+  whatsapp_sales text,
+  logo_url text,
+  accent_color text DEFAULT '#F59E0B',
+  brands_supported text[] DEFAULT ARRAY['TVS', 'YAMAHA', 'KTM', 'BAJAJ'],
+  is_verified boolean DEFAULT false,
+  founder_overseer_name text DEFAULT 'Anderson • Fundador VIP',
+  rating numeric(3, 2) DEFAULT 5.0,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mall_stores_city ON public.mall_stores(city);
+CREATE INDEX IF NOT EXISTS idx_mall_stores_slug ON public.mall_stores(slug);
+
+ALTER TABLE public.mall_stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mall_stores FORCE ROW LEVEL SECURITY;
+GRANT SELECT ON TABLE public.mall_stores TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON TABLE public.mall_stores TO authenticated;
+
+CREATE POLICY "Ver tiendas del MotoMall"
+  ON public.mall_stores FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+CREATE POLICY "Registrar propia tienda en MotoMall"
+  ON public.mall_stores FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = owner_id OR owner_id IS NULL);
+
+CREATE POLICY "Actualizar propia tienda o Fundador VIP"
+  ON public.mall_stores FOR UPDATE
+  TO authenticated
+  USING (
+    (select auth.uid()) = owner_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );
+
+CREATE POLICY "Eliminar propia tienda o Fundador VIP"
+  ON public.mall_stores FOR DELETE
+  TO authenticated
+  USING (
+    (select auth.uid()) = owner_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );
+
+-- ============================================================================
+-- 14. MOTOMALL B2B2C: CATÁLOGO DE REPUESTOS Y MOTOS 0 KM (mall_products)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.mall_products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  seller_id uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
+  store_slug text NOT NULL,
+  store_name text NOT NULL,
+  title text NOT NULL,
+  category text NOT NULL DEFAULT 'motor',
+  maintenance_comp_id text DEFAULT 'aceite_motor',
+  compatible_brands text[] DEFAULT ARRAY['TVS', 'YAMAHA', 'KTM', 'BAJAJ'],
+  compatible_models text,
+  oem_reference text,
+  price numeric(14, 2) NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'COP',
+  discount_pct integer DEFAULT 0,
+  stock integer DEFAULT 10,
+  image_url text,
+  whatsapp_sales text,
+  delivery_available boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mall_products_category ON public.mall_products(category);
+CREATE INDEX IF NOT EXISTS idx_mall_products_store ON public.mall_products(store_slug);
+
+ALTER TABLE public.mall_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mall_products FORCE ROW LEVEL SECURITY;
+GRANT SELECT ON TABLE public.mall_products TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON TABLE public.mall_products TO authenticated;
+
+CREATE POLICY "Ver productos del MotoMall"
+  ON public.mall_products FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+CREATE POLICY "Publicar productos en MotoMall"
+  ON public.mall_products FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = seller_id OR seller_id IS NULL);
+
+CREATE POLICY "Actualizar propios productos o Fundador VIP"
+  ON public.mall_products FOR UPDATE
+  TO authenticated
+  USING (
+    (select auth.uid()) = seller_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );
+
+CREATE POLICY "Eliminar propios productos o Fundador VIP"
+  ON public.mall_products FOR DELETE
+  TO authenticated
+  USING (
+    (select auth.uid()) = seller_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );
+
+-- ============================================================================
+-- 15. CLANES MOTEROS PRIVADOS CON LOGO PROPIO (moto_clans)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.moto_clans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
+  slug text UNIQUE NOT NULL,
+  name text NOT NULL,
+  tag text DEFAULT 'CLAN',
+  motto text,
+  city text NOT NULL DEFAULT 'Medellín',
+  country text NOT NULL DEFAULT 'Colombia',
+  logo_url text,
+  accent_color text DEFAULT '#F59E0B',
+  is_private boolean DEFAULT false,
+  invite_code text,
+  creator_name text NOT NULL DEFAULT 'Líder de Clan',
+  founder_name text DEFAULT 'Anderson • Fundador VIP',
+  member_count integer DEFAULT 2,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_moto_clans_slug ON public.moto_clans(slug);
+
+ALTER TABLE public.moto_clans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.moto_clans FORCE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.moto_clans TO authenticated;
+
+CREATE POLICY "Ver clanes moteros"
+  ON public.moto_clans FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Crear propio clan motero"
+  ON public.moto_clans FOR INSERT
+  TO authenticated
+  WITH CHECK ((select auth.uid()) = creator_id OR creator_id IS NULL);
+
+CREATE POLICY "Actualizar propio clan o Fundador VIP"
+  ON public.moto_clans FOR UPDATE
+  TO authenticated
+  USING (
+    (select auth.uid()) = creator_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );
+
+CREATE POLICY "Eliminar propio clan o Fundador VIP"
+  ON public.moto_clans FOR DELETE
+  TO authenticated
+  USING (
+    (select auth.uid()) = creator_id
+    OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
+  );

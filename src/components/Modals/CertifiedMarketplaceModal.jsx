@@ -212,40 +212,76 @@ export default function CertifiedMarketplaceModal({
     try {
       persistListingToHoja(photos, { status: 'published' });
 
+      const photoItems = Object.keys(photos).map((k) => ({
+        slotId: k,
+        storagePath: photos[k]?.storagePath || null,
+        dataUrl: photos[k]?.dataUrl || null
+      }));
+
+      const localListingObj = {
+        id: `used_${bike.id}`,
+        moto_id: bike.id,
+        brand: identity.brand || 'Moto',
+        model: identity.model || '',
+        year: Number(docs.modeloAno || identity.year || 2026),
+        odometer: Number(odometer) || 0,
+        price: Number(price) || 0,
+        currency,
+        city: userProfile?.city || 'Medellín',
+        country: userProfile?.country || 'Colombia',
+        verified_maintenance_badge: hasVerifiedBadge,
+        health_score: 98,
+        fines_clean: true,
+        is_featured: selectedTier !== 'free',
+        tier: selectedTier,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        technical_summary: {
+          plate: docs.placa || 'PROTEGIDA',
+          servicesCount: servicios.length,
+          lastService: lastService.servicio,
+          componentsAudited: 17,
+          photosCount: uploadedPhotosCount,
+          photos: photoItems,
+          sellerPhone,
+          sellerNotes,
+          sellerName: userProfile?.fullName || 'Propietario Verificado'
+        }
+      };
+
+      try {
+        const existingRaw = localStorage.getItem('motodash_certified_used_bikes');
+        const parsedList = existingRaw ? JSON.parse(existingRaw) : [];
+        const filtered = Array.isArray(parsedList)
+          ? parsedList.filter((x) => x.moto_id !== bike.id)
+          : [];
+        localStorage.setItem(
+          'motodash_certified_used_bikes',
+          JSON.stringify([localListingObj, ...filtered].slice(0, 30))
+        );
+      } catch {}
+
       const authUid = await getAuthenticatedUserId();
       if (authUid && !bike?.isDemo) {
         await supabase.from('marketplace_listings').upsert(
           {
             user_id: authUid,
             moto_id: bike.id,
-            brand: identity.brand || 'Moto',
-            model: identity.model || '',
-            year: Number(docs.modeloAno || identity.year || 2026),
-            odometer: Number(odometer) || 0,
-            price: Number(price) || 0,
-            currency,
-            city: userProfile?.city || 'Medellín',
-            country: userProfile?.country || 'Colombia',
+            brand: localListingObj.brand,
+            model: localListingObj.model,
+            year: localListingObj.year,
+            odometer: localListingObj.odometer,
+            price: localListingObj.price,
+            currency: localListingObj.currency,
+            city: localListingObj.city,
+            country: localListingObj.country,
             verified_maintenance_badge: hasVerifiedBadge,
             health_score: 98,
             fines_clean: true,
             is_featured: selectedTier !== 'free',
             tier: selectedTier,
-            status: 'pre_registered',
-            technical_summary: {
-              plate: docs.placa || 'PROTEGIDA',
-              servicesCount: servicios.length,
-              lastService: lastService.servicio,
-              componentsAudited: 17,
-              photosCount: uploadedPhotosCount,
-              photos: Object.keys(photos).map((k) => ({
-                slotId: k,
-                storagePath: photos[k]?.storagePath || null,
-                dataUrl: photos[k]?.dataUrl || null
-              })),
-              sellerPhone,
-              sellerNotes
-            }
+            status: 'active',
+            technical_summary: localListingObj.technical_summary
           },
           { onConflict: 'user_id,moto_id' }
         );
