@@ -41,8 +41,12 @@ export default function FuelTelemetryWidget({
     : tankCapacity;
   const remainingGallons = litersToGallons(remainingLiters);
 
+  // Si el registro ya trae `gallons` lo usa; si es un registro previo en Colombia (sin `unitUsed` y valor <= 5.5), respeta el número ingresado (ej. 2.6 Gal)
   const latestGallons = latestRefuel
-    ? latestRefuel.gallons || litersToGallons(latestRefuel.liters)
+    ? latestRefuel.gallons ??
+      (!latestRefuel.unitUsed && isGallons && Number(latestRefuel.liters) <= 5.5
+        ? Number(latestRefuel.liters)
+        : litersToGallons(latestRefuel.liters))
     : null;
 
   return (
