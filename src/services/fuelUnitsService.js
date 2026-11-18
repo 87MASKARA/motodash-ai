@@ -281,6 +281,48 @@ export const COUNTRY_FUEL_UNITS = {
     secondaryEfficiencyLabel: 'KM / GAL',
     defaultRefuelAmount: 8.5,
     defaultRefuelCost: 4.5
+  },
+  Francia: {
+    country: 'Francia',
+    iso: 'FR',
+    flag: '🇫🇷',
+    unit: 'L',
+    isGallons: false,
+    unitLabelEs: 'Litros',
+    unitLabelEn: 'Liters',
+    unitShort: 'L',
+    efficiencyLabel: 'KM / L',
+    secondaryEfficiencyLabel: 'KM / GAL',
+    defaultRefuelAmount: 8.5,
+    defaultRefuelCost: 16
+  },
+  Italia: {
+    country: 'Italia',
+    iso: 'IT',
+    flag: '🇮🇹',
+    unit: 'L',
+    isGallons: false,
+    unitLabelEs: 'Litros',
+    unitLabelEn: 'Liters',
+    unitShort: 'L',
+    efficiencyLabel: 'KM / L',
+    secondaryEfficiencyLabel: 'KM / GAL',
+    defaultRefuelAmount: 8.5,
+    defaultRefuelCost: 16
+  },
+  Alemania: {
+    country: 'Alemania',
+    iso: 'DE',
+    flag: '🇩🇪',
+    unit: 'L',
+    isGallons: false,
+    unitLabelEs: 'Litros',
+    unitLabelEn: 'Liters',
+    unitShort: 'L',
+    efficiencyLabel: 'KM / L',
+    secondaryEfficiencyLabel: 'KM / GAL',
+    defaultRefuelAmount: 8.5,
+    defaultRefuelCost: 16
   }
 };
 
@@ -300,6 +342,9 @@ const ISO_TO_COUNTRY = {
   CL: 'Chile',
   AR: 'Argentina',
   BR: 'Brasil',
+  FR: 'Francia',
+  IT: 'Italia',
+  DE: 'Alemania',
   UK: 'Reino Unido',
   CR: 'Costa Rica',
   UY: 'Uruguay',

@@ -13,6 +13,7 @@ import {
   COUNTRY_LEGAL_FRAMEWORKS,
   COUNTRY_TO_ISO_AND_LANG,
   ISO_TO_COUNTRY_NAME,
+  LANG_TO_DEFAULT_COUNTRY,
   isEnglishCountry,
   getCountryQuickLegalQuestions,
   getLawyerModalUiLabels,
@@ -28,9 +29,10 @@ export default function TrafficLawyerModal({
   userProfile,
   onUpdateHojaDeVida
 }) {
-  const { setLang } = useLanguage();
+  const { language, setLang } = useLanguage();
 
   const resolvedInitialCountry =
+    (language && language !== 'es' && LANG_TO_DEFAULT_COUNTRY[language]) ||
     hojaDeVida?.country ||
     ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
     userProfile?.country ||
@@ -45,6 +47,7 @@ export default function TrafficLawyerModal({
   useEffect(() => {
     if (isOpen) {
       const nextCountry =
+        (language && language !== 'es' && LANG_TO_DEFAULT_COUNTRY[language]) ||
         hojaDeVida?.country ||
         ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
         userProfile?.country ||
@@ -53,7 +56,7 @@ export default function TrafficLawyerModal({
         setSelectedCountry(nextCountry);
       }
     }
-  }, [isOpen, hojaDeVida?.country, hojaDeVida?.multas?.pais, userProfile?.country]);
+  }, [isOpen, language, hojaDeVida?.country, hojaDeVida?.multas?.pais, userProfile?.country]);
 
   if (!isOpen) return null;
 

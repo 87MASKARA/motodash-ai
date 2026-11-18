@@ -12,7 +12,11 @@ export const COUNTRY_TO_ISO_AND_LANG = {
   'Estados Unidos': { iso: 'US', lang: 'en' },
   Chile: { iso: 'CL', lang: 'es' },
   Perú: { iso: 'PE', lang: 'es' },
-  'Reino Unido': { iso: 'UK', lang: 'en' }
+  'Reino Unido': { iso: 'UK', lang: 'en' },
+  Brasil: { iso: 'BR', lang: 'pt' },
+  Francia: { iso: 'FR', lang: 'fr' },
+  Italia: { iso: 'IT', lang: 'it' },
+  Alemania: { iso: 'DE', lang: 'de' }
 };
 
 export const ISO_TO_COUNTRY_NAME = {
@@ -22,11 +26,28 @@ export const ISO_TO_COUNTRY_NAME = {
   US: 'Estados Unidos',
   CL: 'Chile',
   PE: 'Perú',
-  UK: 'Reino Unido'
+  UK: 'Reino Unido',
+  BR: 'Brasil',
+  FR: 'Francia',
+  IT: 'Italia',
+  DE: 'Alemania'
+};
+
+export const LANG_TO_DEFAULT_COUNTRY = {
+  es: 'Colombia',
+  en: 'Estados Unidos',
+  pt: 'Brasil',
+  fr: 'Francia',
+  it: 'Italia',
+  de: 'Alemania'
 };
 
 export function isEnglishCountry(country = '') {
   return country === 'Estados Unidos' || country === 'Reino Unido';
+}
+
+export function getCountryLanguage(country = 'Colombia') {
+  return COUNTRY_TO_ISO_AND_LANG[country]?.lang || 'es';
 }
 
 export const COUNTRY_LEGAL_FRAMEWORKS = {
@@ -573,6 +594,335 @@ export const COUNTRY_LEGAL_FRAMEWORKS = {
         ]
       }
     ]
+  },
+
+  // =========================================================================
+  // 🇧🇷 BRASIL (PORTUGUÊS DO BRASIL • CTB LEI 9.503/1997 E LEI 14.229/2021)
+  // =========================================================================
+  Brasil: {
+    flag: '🇧🇷',
+    lang: 'pt',
+    iso: 'BR',
+    codeName: 'Código de Trânsito Brasileiro (CTB - Lei nº 9.503/1997 e Lei nº 14.229/2021)',
+    authority: 'SENATRAN / DETRAN / PRF (Polícia Rodoviária Federal) / PM',
+    keyRulesSummary: `
+- Documentos Digitais (CNH Digital e CRLV-e - Art. 159 §1º-A e Art. 133 do CTB): Têm exatamente a mesma validade jurídica do documento físico em todo o território nacional. Caso o agente tenha acesso ao sistema informatizado, o porte é até dispensado.
+- Regra Anti-Guincho / Sanar no Local (Art. 270 §2º e Art. 271 §9º do CTB - Lei 14.229/2021): Não cabe remoção (guincho ao pátio) se a irregularidade puder ser sanada no local da infração (ex.: lâmpada queimada, viseira levantada, documento apresentado no celular).
+- Escapamento Esportivo / Ruído (Art. 230 XI do CTB e Resolução CONTRAN 958/2022): Para autuar por excesso de ruído de descarga livre, exige-se medição técnica com decibelímetro aferido pelo INMETRO (exceto ausência total de abafador/silenciador).
+- Radar e Prazo de 30 Dias (Art. 281 parágrafo único II do CTB): Se a Notificação de Autuação não for expedida em até 30 dias, o auto de infração deve ser arquivado e seu registro julgado insubsistente.`,
+    quickQuestions: [
+      {
+        id: 'digital_docs',
+        badge: '📱 CNH Digital e CRLV-e no Celular',
+        question: 'O agente pode multar ou guinchar minha moto se eu apresentar a CNH Digital e o CRLV-e pelo celular?',
+        instantVerdict: 'PROIBIDO MULTAR OU GUINCHAR POR DOCUMENTO DIGITAL',
+        canImpound: 'NÃO CABE REMOÇÃO AO PÁTIO',
+        lawCitation: 'Art. 133 parágrafo único e Art. 159 § 1º-A do Código de Trânsito Brasileiro (CTB)',
+        explanation: 'A CNH Digital e o CRLV-e têm plena validade jurídica em todo o Brasil. Além disso, o Art. 133 dispensa o porte quando o agente puder consultar o sistema no momento da abordagem.',
+        actionSteps: [
+          'Mostre a CNH Digital e o CRLV-e na tela da Guantera Digital (Modo Blitz) com bloqueio por PIN.',
+          'Informe com respeito: "Agente, conforme o Art. 159 §1º-A e Art. 133 do CTB, meus documentos digitais estão regulares no sistema SENATRAN/DETRAN".'
+        ]
+      },
+      {
+        id: 'exhaust_noise',
+        badge: '🔊 Escapamento Esportivo "No Ouvido"',
+        question: 'O policial quer multar e reter minha moto dizendo "de ouvido" que meu escapamento faz barulho. Isso é legal?',
+        instantVerdict: 'AUTUAÇÃO POR RUÍDO EXIGE DECIBELÍMETRO INMETRO',
+        canImpound: 'RETENÇÃO PARA REGULARIZAÇÃO (SEM GUINCHO SE SANADO)',
+        lawCitation: 'Art. 230, XI do CTB + Resolução CONTRAN nº 958/2022',
+        explanation: 'Se o escapamento possui abafador/db-killer e não está com descarga livre aberta, a constatação de excesso de decibéis exige medição com sonômetro (decibelímetro) homologado pelo INMETRO, não valendo autuação "a ouvido".',
+        actionSteps: [
+          'Pergunte educadamente se há decibelímetro aferido pelo INMETRO na blitz e peça que conste no campo de observações do Auto de Infração.',
+          'Tire foto do escapamento mostrando a presença do abafador/ponteira para apresentar na Defesa Prévia.'
+        ]
+      },
+      {
+        id: 'cure_60_min',
+        badge: '🛠️ Lei do Guincho (Sanar no Local)',
+        question: 'Tenho direito de consertar uma falha simples no local da blitz para evitar que o guincho leve minha moto ao pátio?',
+        instantVerdict: 'PROIBIDO GUINCHAR SE PUDER SER SANADO NO LOCAL',
+        canImpound: 'NÃO PODE REMOVER AO PÁTIO (LEI 14.229/2021)',
+        lawCitation: 'Art. 270 § 2º e Art. 271 § 9º do CTB (Lei nº 14.229/2021)',
+        explanation: 'A Lei 14.229/2021 proíbe expressamente a remoção do veículo ao pátio quando a irregularidade puder ser resolvida no local da abordagem (ou liberada a condutor habilitado).',
+        actionSteps: [
+          'Solicite ao agente a oportunidade de sanar a falha imediatamente no local conforme o Art. 271 § 9º do CTB.',
+          'Caso o licenciamento esteja pago na hora via PIX, apresente o comprovante para liberar a motocicleta.'
+        ]
+      },
+      {
+        id: 'photo_ticket',
+        badge: '📸 Multa de Radar & Desconto 40%',
+        question: 'Recebi uma multa de radar eletrônico. Como saber se é válida ou como obter 40% de desconto?',
+        instantVerdict: 'ARQUIVAMENTO SE PASSAR DE 30 DIAS OU 40% DESCONTO SNE',
+        canImpound: 'MULTA PECUNIÁRIA (SEM APREENSÃO)',
+        lawCitation: 'Art. 281, parágrafo único, II e Art. 284 do CTB',
+        explanation: 'O órgão de trânsito tem no máximo 30 dias após a infração para expedir a Notificação de Autuação. Além disso, o radar deve ter aferição do INMETRO em dia (últimos 12 meses).',
+        actionSteps: [
+          'Verifique a data da infração e a data de expedição da notificação (se > 30 dias, peça arquivamento na Defesa Prévia).',
+          'Se optar por pagar sem recorrer, utilize o SNE na Carteira Digital de Trânsito para obter 40% de desconto.'
+        ]
+      },
+      {
+        id: 'record_police',
+        badge: '🎥 Gravar a Abordagem Policial',
+        question: 'É permitido por lei filmar a abordagem policial na blitz com meu celular ou câmera no capacete?',
+        instantVerdict: 'DIREITO CONSTITUCIONAL DE FILMAR AÇÃO PÚBLICA',
+        canImpound: 'NÃO GERA REMOÇÃO NEM INFRAÇÃO',
+        lawCitation: 'Art. 5º, incisos IV e IX da Constituição Federal e entendimento do STF',
+        explanation: 'Todo cidadão tem o direito constitucional de registrar e filmar a atuação de agentes públicos no exercício de suas funções em via pública, desde que sem obstruir a fiscalização.',
+        actionSteps: [
+          'Grave de forma tranquila e respeitosa, mantendo distância segura sem interferir no trabalho do agente.',
+          'Nunca entregue a chave da motocicleta sem que haja auto formal de retenção ou remoção.'
+        ]
+      }
+    ]
+  },
+
+  // =========================================================================
+  // 🇫🇷 FRANCIA (FRANÇAIS • CODE DE LA ROUTE & ANTAI)
+  // =========================================================================
+  Francia: {
+    flag: '🇫🇷',
+    lang: 'fr',
+    iso: 'FR',
+    codeName: 'Code de la route français (Légifrance & Décrets 2RM 2024)',
+    authority: 'Police Nationale / Gendarmerie Nationale / ANTAI',
+    keyRulesSummary: `
+- Suppression de la vignette verte (Décret n° 2023-1152 depuis le 1er avril 2024) : Il n'est plus obligatoire d'apposer le papillon vert sur la moto. Les forces de l'ordre vérifient l'assurance directement dans le FVA (Fichier des Véhicules Assurés).
+- Permis de conduire numérique (Application France Identité) : Pleinement valable lors d'un contrôle routier en France.
+- Échappement et Db-Killer (Art. R318-3 du Code de la route) : Un contrôle sonore officiel nécessite un sonomètre homologué (ou le constat de l'absence de chicane amovible sur un pot homologué CE).
+- Immobilisation et Mise en Fourrière (Art. L325-1 et R325-1) : La fourrière n'est légale que pour les infractions graves limitativement prévues (grand excès de vitesse ≥ 50 km/h, défaut d'assurance/permis, alcool/stupéfiants, rodéo urbain).`,
+    quickQuestions: [
+      {
+        id: 'digital_docs',
+        badge: '📱 Fin de la Vignette Verte & Docs Numériques',
+        question: "Un agent peut-il me verbaliser parce que je n'ai plus la vignette verte d'assurance collée sur ma moto ?",
+        instantVerdict: 'VIGNETTE VERTE SUPPRIMÉE DEPUIS AVRIL 2024',
+        canImpound: 'AUCUNE MISE EN FOURRIÈRE SI ASSURÉ AU FVA',
+        lawCitation: 'Décret n° 2023-1152 du 8 décembre 2023 & Art. R211-21-1 du Code des assurances',
+        explanation: "Depuis le 1er avril 2024, l'attestation papier et le certificat vert d'assurance sont supprimés pour les motos immatriculées. Le contrôle s'effectue via le Fichier des Véhicules Assurés (FVA).",
+        actionSteps: [
+          'Présentez votre mémo véhicule assuré ou votre certificat numérique dans la Boîte à Gants MotoDash AI.',
+          'Invitez courtoisement les forces de l’ordre à consulter le Fichier des Véhicules Assurés (FVA) avec votre plaque.'
+        ]
+      },
+      {
+        id: 'exhaust_noise',
+        badge: '🔊 Pot d’Échappement & Chicane (dB-Killer)',
+        question: 'Peut-on immobiliser ma moto pour le bruit du pot d’échappement "à l’oreille" sans sonomètre ?',
+        instantVerdict: 'HOMOLOGATION CE + CHICANE PRÉSENTE = LÉGAL',
+        canImpound: 'IMMOBILISATION SEULEMENT SI POT NON HOMOLOGUÉ OU SANS CHICANE',
+        lawCitation: 'Article R318-3 du Code de la route & Arrêté du 18 juillet 1985',
+        explanation: 'Si votre silencieux comporte le marquage d’homologation CE/ECE et que sa chicane (dB-killer) est en place, une verbalisation pour dépassement du niveau sonore inscrit sur la carte grise (champ U.1) requiert une mesure au sonomètre homologué.',
+        actionSteps: [
+          'Montrez le numéro d’homologation gravé sur le silencieux ainsi que la présence du dB-killer.',
+          'En cas d’amende sans sonomètre alors que le pot est d’origine ou homologué, ne reconnaissez pas l’infraction sur le terminal PVe pour pouvoir contester sur ANTAI.'
+        ]
+      },
+      {
+        id: 'cure_60_min',
+        badge: '🧤 Gants CE, Casque & Contrôle Technique 2RM',
+        question: 'Quelles infractions permettent réellement la mise en fourrière immédiate de ma moto en France ?',
+        instantVerdict: 'FOURRIÈRE LIMITÉE AUX INFRACTIONS GRAVES (ART. L325-1)',
+        canImpound: 'PAS DE FOURRIÈRE POUR UNE SIMPLE CONTRAVENTION TECHNIQUE',
+        lawCitation: 'Articles L325-1 à L325-3 et R325-1 du Code de la route',
+        explanation: "L'oubli de gants CE (R431-1-2) ou le retard de Contrôle Technique 2RM entraîne une amende forfaitaire, mais pas la confiscation de la moto (sauf danger grave ou fiche d'immobilisation non régularisée).",
+        actionSteps: [
+          'Portez toujours un casque homologué ECE 22.05/22.06 avec réfléchissants et des gants certifiés CE.',
+          'Si le problème est immédiatement corrigible sur place, demandez la levée immédiate de l’immobilisation.'
+        ]
+      },
+      {
+        id: 'photo_ticket',
+        badge: '📸 Radar Automatique & Photo ANTAI',
+        question: 'J’ai reçu un avis de contravention par radar automatique pris de dos : puis-je éviter le retrait de points ?',
+        instantVerdict: 'PAS DE RETRAIT DE POINTS SANS IDENTIFICATION DU CONDUCTEUR',
+        canImpound: 'AUCUNE IMMOBILISATION',
+        lawCitation: 'Article L121-3 du Code de la route & Jurisprudence de la Cour de cassation',
+        explanation: "Si le cliché radar (notamment pris par l'arrière avec casque intégral) ne permet pas de vous identifier formellement comme conducteur, vous pouvez contester en tant que titulaire de la carte grise : vous serez redevable pécuniairement mais sans perte de points.",
+        actionSteps: [
+          'Demandez le cliché photographique en ligne sur le site du Ministère de l’Intérieur / ANTAI.',
+          'Contestez dans les 45 jours via le formulaire de requête en exonération (Cas n° 3) en versant la consignation.'
+        ]
+      },
+      {
+        id: 'record_police',
+        badge: '🎥 Filmer un Contrôle de Police',
+        question: 'Ai-je le droit de filmer un contrôle routier de la Police ou de la Gendarmerie avec ma caméra embarquée ?',
+        instantVerdict: 'TOTALEMENT LÉGAL D’ENREGISTRER UN CONTRÔLE EN LIEU PUBLIC',
+        canImpound: 'INTERDIT DE SAISIR LE TÉLÉPHONE SANS DÉLIT',
+        lawCitation: 'Circulaire du Ministère de l’Intérieur du 23 décembre 2008 & Liberté d’information',
+        explanation: "Enregistrer un contrôle de police sur la voie publique est légal en France. Les agents ne peuvent ni confisquer votre téléphone ni exiger l'effacement de la vidéo.",
+        actionSteps: [
+          'Filmez calmement sans gêner le contrôle et ne diffusez pas les visages des agents sur les réseaux sociaux sans floutage.'
+        ]
+      }
+    ]
+  },
+
+  // =========================================================================
+  // 🇮🇹 ITALIA (ITALIANO • CODICE DELLA STRADA & RIFORMA 2024)
+  // =========================================================================
+  Italia: {
+    flag: '🇮🇹',
+    lang: 'it',
+    iso: 'IT',
+    codeName: 'Nuovo Codice della Strada (D.Lgs. 285/1992 e Riforma CdS 2024)',
+    authority: 'Polizia Stradale / Carabinieri / Polizia Locale / Motorizzazione Civile',
+    keyRulesSummary: `
+- Certificato RC Moto Digitale (Art. 180 CdS e Circolare Ministero dell'Interno): È pienamente legittimo esibire il certificato di assicurazione RC Moto sullo smartphone (in PDF o nell'app) e la patente digitale su IT-Wallet.
+- Scarico Omologato e Art. 78 vs Art. 72 CdS (Circolare Ministero Trasporti): Un terminale di scarico aftermarket omologato (con codice E-mark e db-killer inserito) NON comporta il ritiro del libretto ex Art. 78 CdS.
+- Autovelox Omologazione Obbligatoria (Ordinanza Corte di Cassazione n. 10505/2024): Le multe elevate da autovelox soltanto "approvati" ma privi di formale decreto di "omologazione" ministeriale sono annullabili.
+- Sconto del 30% (Art. 202 CdS): Pagamento ridotto del 30% entro 5 giorni dalla contestazione o notifica.`,
+    quickQuestions: [
+      {
+        id: 'digital_docs',
+        badge: '📱 Assicurazione RC Moto sullo Smartphone',
+        question: 'La Polizia può farmi la multa se mostro il certificato di assicurazione RC Moto dal telefono invece che su carta?',
+        instantVerdict: 'CERTIFICATO DIGITALE 100% VALIDO PER LEGGE',
+        canImpound: 'NESSUN SEQUESTRO SE LA MOTO È ASSICURATA',
+        lawCitation: "Art. 180 comma 1 CdS, Provvedimento IVASS n. 41/2015 e Circolare Ministero dell'Interno",
+        explanation: "La normativa italiana consente espressamente di esibire il certificato di assicurazione RC tramite smartphone o tablet. Inoltre la copertura viene verificata telematicamente tramite targa nella banca dati ANIA/MIT.",
+        actionSteps: [
+          'Apri il Cassetto Digitale MotoDash AI con blocco PIN e mostra il certificato RC Moto e il Libretto.',
+          'Ricorda con cortesia la Circolare del Ministero dell’Interno sulla validità dell’esibizione su dispositivo mobile.'
+        ]
+      },
+      {
+        id: 'exhaust_noise',
+        badge: '🔊 Scarico Aftermarket Omologato & Db-Killer',
+        question: 'L’agente vuole applicarmi l’Art. 78 CdS e ritirare il libretto per uno scarico aftermarket omologato con db-killer. È legittimo?',
+        instantVerdict: 'SCARICO OMOLOGATO CON DB-KILLER NON VIOLA L’ART. 78',
+        canImpound: 'VIETATO IL RITIRO DELLA CARTA DI CIRCOLAZIONE',
+        lawCitation: 'Art. 72 e Art. 78 CdS + Circolare Ministero dei Trasporti DC IV B/03 1997',
+        explanation: "La sostituzione del silenziatore con uno omologato per il tuo modello di moto (provvisto di punzonatura E-mark e db-killer inserito) non richiede l'aggiornamento della carta di circolazione e non integra la violazione dell'Art. 78 CdS.",
+        actionSteps: [
+          'Mostra il codice di omologazione stampigliato sullo scarico, il db-killer inserito e il certificato del produttore.',
+          'Se contestano comunque il verbale, fai mettere a verbale che "lo scarico reca omologazione europea E-mark ed è dotato di db-killer".'
+        ]
+      },
+      {
+        id: 'cure_60_min',
+        badge: '🛡️ Quando Scatta il Fermo Amministrativo Moto',
+        question: 'In quali casi la Polizia può davvero disporre il fermo amministrativo o il sequestro della mia moto in Italia?',
+        instantVerdict: 'FERMO SOLO NEI CASI TASSATIVI DEL CODICE DELLA STRADA',
+        canImpound: 'SOLO PER VIOLAZIONI GRAVI (ART. 171, 170, 193, 214 CDS)',
+        lawCitation: 'Articoli 170, 171, 193, 213 e 214 del Codice della Strada',
+        explanation: 'Il fermo amministrativo di 60 giorni scatta per guida senza casco (Art. 171), impennata o guida senza mani (Art. 170), o targa inclinata oltre i 30° / illeggibile. Il sequestro scatta per mancanza di assicurazione RC (Art. 193).',
+        actionSteps: [
+          'Verifica sempre che casco omologato ECE e inclinazione targa (max 30°) siano a norma.',
+          'Per semplici dimenticanze documentali (Art. 180) non è mai previsto il fermo della moto.'
+        ]
+      },
+      {
+        id: 'photo_ticket',
+        badge: '📸 Autovelox non Omologato (Cassazione 2024)',
+        question: 'Ho preso una multa con Autovelox: posso fare ricorso se il dispositivo è solo "approvato" e non "omologato"?',
+        instantVerdict: 'VERBALE ANNULLABILE SE AUTOVELOX NON È OMOLOGATO',
+        canImpound: 'SOLO SANZIONE AMMINISTRATIVA',
+        lawCitation: 'Corte di Cassazione Ordinanza n. 10505/2024 & Art. 142 comma 6 CdS',
+        explanation: 'La Corte di Cassazione ha stabilito che approvazione e omologazione sono procedimenti distinti: i verbali elevati con autovelox privi di decreto di omologazione ministeriale o notificati oltre 90 giorni sono illegittimi.',
+        actionSteps: [
+          'Controlla sul verbale se è indicato il decreto di "omologazione" (e non solo di approvazione) e la data di taratura annuale.',
+          'Presenta ricorso al Giudice di Pace entro 30 giorni o al Prefetto entro 60 giorni (senza pagare la multa prima).'
+        ]
+      },
+      {
+        id: 'record_police',
+        badge: '🎥 Riprendere il Controllo Stradale',
+        question: 'Posso registrare video o audio durante un posto di blocco della Polizia o dei Carabinieri?',
+        instantVerdict: 'LEGITTIMO REGISTRARE PER TUTELA DIFENSIVA',
+        canImpound: 'NESSUNA SANZIONE',
+        lawCitation: 'Art. 24 Costituzione Italiana & Garante della Privacy (Uso personale difensivo)',
+        explanation: 'Registrare audio o video di un controllo su pubblica via a fini di tutela legale personale è lecito in Italia, purché il filmato non venga diffuso pubblicamente sui social ledendo la riservatezza degli agenti.',
+        actionSteps: [
+          'Registra con discrezione senza ostacolare le operazioni di controllo e conserva il file solo per eventuale difesa legale.'
+        ]
+      }
+    ]
+  },
+
+  // =========================================================================
+  // 🇩🇪 ALEMANIA (DEUTSCH • STVO, STVZO & BUSSGELDKATALOG)
+  // =========================================================================
+  Alemania: {
+    flag: '🇩🇪',
+    lang: 'de',
+    iso: 'DE',
+    codeName: 'Straßenverkehrs-Ordnung (StVO), StVZO & Bußgeldkatalog (BKatV)',
+    authority: 'Polizei / Kraftfahrt-Bundesamt (KBA Flensburg) / TÜV / DEKRA',
+    keyRulesSummary: `
+- Auspuff & Betriebserlaubnis (§ 19 Abs. 2 StVZO): Ein Zubehör-Auspuff mit gültigem E-Prüfzeichen (ECE-Genehmigung) oder ABE und eingebautem dB-Eater führt NICHT zum Erlöschen der Betriebserlaubnis. Bei einer Standgeräuschmessung vor Ort gilt eine Toleranz von +5 dB(A) zum Wert in Feld U.1 des Fahrzeugscheins.
+- Stilllegung / Abschleppen durch die Polizei: Eine sofortige Sicherstellung des Motorrads vor Ort ist nur bei konkreter Verkehrsgefährdung oder nachgewiesener Manipulation zulässig (Verhältnismäßigkeitsgrundsatz).
+- Blitzerfoto & Fahrerprinzip (§ 26 StVG): In Deutschland gilt bei Geschwindigkeitsverstößen keine Halterhaftung – der Fahrer muss zweifelsfrei identifiziert werden; Verjährungsfrist beträgt 3 Monate.`,
+    quickQuestions: [
+      {
+        id: 'digital_docs',
+        badge: '📱 Fahrzeugschein / Papiere bei Kontrolle',
+        question: 'Darf die Polizei mein Motorrad stilllegen, wenn ich den Fahrzeugschein auf dem Handy habe und das Papier zu Hause liegt?',
+        instantVerdict: 'KEINE STILLLEGUNG – MAXIMAL 10 € VERWARNUNGSGELD',
+        canImpound: 'ABSChLEPPEN / STILLLEGUNG VERBOTEN',
+        lawCitation: '§ 11 Abs. 6 FZV und § 4 Abs. 2 FeV (Bußgeldkatalog Nr. 168 / 179)',
+        explanation: 'Das Nichtmitführen von Führerschein oder Zulassungsbescheinigung Teil I im Original ist lediglich eine geringfügige Ordnungswidrigkeit (10 € Verwarnungsgeld). Die Polizei prüft Halter- und Versicherungsdaten direkt über ZEVIS.',
+        actionSteps: [
+          'Zeigen Sie die hochauflösenden Scans von Führerschein und Fahrzeugschein im MotoDash AI Handschuhfach vor.',
+          'Bleiben Sie freundlich: Eine Weiterfahrt darf wegen vergessener Papierdokumente nicht untersagt werden.'
+        ]
+      },
+      {
+        id: 'exhaust_noise',
+        badge: '🔊 Auspuff E-Prüfzeichen, dB-Eater & Standgeräusch',
+        question: 'Die Polizei behauptet, mein Auspuff mit E-Nummer und eingebautem dB-Eater sei zu laut und will die Weiterfahrt verbieten. Ist das rechtens?',
+        instantVerdict: 'MIT E-NUMMER & DB-EATER KEINE SOFORTIGE STILLLEGUNG',
+        canImpound: 'SICHERSTELLUNG NUR BEI MANIPULATION ODER > +5 DB(A) ÜBER U.1',
+        lawCitation: '§ 19 Abs. 2 StVZO & Richtlinie zur Standgeräuschmessung (45°-Winkel, 0,5 m Abstand, +5 dB Toleranz)',
+        explanation: 'Ein Auspuff mit gültiger EG-Betriebserlaubnis (E-Prüfzeichen) und unmanipuliertem dB-Eater ist legal. Eine Vor-Ort-Messung muss auf freier Fläche im 45°-Winkel mit 50 cm Abstand bei halber Nenndrehzahl (Feld U.2) erfolgen; erst ab mehr als 5 dB(A) über dem Wert in Feld U.1 liegt ein Anfangsverdacht vor.',
+        actionSteps: [
+          'Verweisen Sie auf das E-Prüfzeichen, den montierten dB-Eater und den Standgeräuschwert in Feld U.1 Ihres Fahrzeugscheins.',
+          'Widersprechen Sie einer Sicherstellung höflich aber bestimmt zu Protokoll, falls kein Manipulationsnachweis vorliegt.'
+        ]
+      },
+      {
+        id: 'cure_60_min',
+        badge: '🛠️ Mängelkarte statt Abschleppen (ABE / Teile)',
+        question: 'Wann darf die Polizei mein Motorrad tatsächlich sicherstellen und wann gibt es nur einen Mängelbericht?',
+        instantVerdict: 'VERHÄLTNISMÄSSIGKEIT: MÄNGELBERICHT STATT SICHERSTELLUNG',
+        canImpound: 'KEIN ABSCHLEPPEN OHNE KONKRETE VERKEHRSGEFÄHRDUNG',
+        lawCitation: '§ 5 FZV (Mängelbericht innerhalb von 14 Tagen) & § 19 Abs. 2 Satz 2 Nr. 2 StVZO',
+        explanation: 'Die Betriebserlaubnis erlischt nach § 19 Abs. 2 StVZO nur, wenn1) die Fahrzeugart geändert wird, 2) eine Gefährdung von Verkehrsteilnehmern zu erwarten ist oder 3) das Abgas-/Geräuschverhalten verschlechtert wird. Für fehlende ABE-Papiere oder Rückstrahler wird lediglich ein Mängelbericht ausgestellt.',
+        actionSteps: [
+          'Speichern Sie alle ABE-Dokumente (Bremshebel, Windschild, Stahlflex) digital auf dem Smartphone.',
+          'Bitten Sie bei kleineren Mängeln um Ausstellung einer Mängelkarte (§ 5 FZV) zur Vorführung beim TÜV binnen 14 Tagen.'
+        ]
+      },
+      {
+        id: 'photo_ticket',
+        badge: '📸 Blitzerfoto mit Helm & 3-Monats-Verjährung',
+        question: 'Ich wurde auf dem Motorrad geblitzt. Muss ich zahlen, wenn der Fahrer unter dem Helm nicht eindeutig erkennbar ist?',
+        instantVerdict: 'KEINE HALTERHAFTUNG BEI GESCHWINDIGKEITSVERSTÖSSEN',
+        canImpound: 'KEIN FAHRVERBOT OHNE FAHRERIDENTIFIZIERUNG',
+        lawCitation: '§ 26 Abs. 3 StVG (3 Monate Verjährung) & Fahrerprinzip im deutschen Ordnungswidrigkeitenrecht',
+        explanation: 'In Deutschland gilt das Täterprinzip: Nur wer als Fahrer zweifelsfrei identifiziert wird, kann mit Bußgeld, Punkten in Flensburg oder Fahrverbot belegt werden. Ist das Gesicht durch Helm/Visier nicht identifizierbar, wird das Verfahren meist eingestellt.',
+        actionSteps: [
+          'Prüfen Sie den Anhörungsbogen und das Beweisfoto genau; machen Sie ohne anwaltliche Akteneinsicht keine Angaben zur Sache.',
+          'Legen Sie gegen einen Bußgeldbescheid unbedingt innerhalb von 14 Tagen nach Zustellung Einspruch ein (§ 67 OWiG).'
+        ]
+      },
+      {
+        id: 'record_police',
+        badge: '🎥 Dashcam / Actioncam bei Polizeikontrolle',
+        question: 'Was muss ich in Deutschland beachten, wenn meine Actioncam am Helm während einer Kontrolle läuft?',
+        instantVerdict: 'ACHTUNG BEI TONAUFNAHMEN (§ 201 STGB)',
+        canImpound: 'KEINE FAHRZEUGSTILLLEGUNG',
+        lawCitation: '§ 201 StGB (Vertraulichkeit des Wortes) & BGH-Urteil VI ZR 233/17 zu Dashcams',
+        explanation: 'Wichtig in Deutschland: Heimliche Tonaufnahmen des nichtöffentlich gesprochenen Wortes sind nach § 201 StGB problematisch. Wenn Sie eine Kontrolle zu Beweiszwecken aufzeichnen möchten, kündigen Sie dies offen an oder ziehen Sie einen Zeugen hinzu.',
+        actionSteps: [
+          'Schalten Sie die Helmkamera bei Beginn der Kontrolle aus oder weisen Sie offen darauf hin.',
+          'Unterschreiben Sie vor Ort niemals ein Schuldeingeständnis auf dem Polizeiprotokoll.'
+        ]
+      }
+    ]
   }
 };
 
@@ -585,11 +935,12 @@ export function getCountryQuickLegalQuestions(country = 'Colombia') {
 }
 
 /**
- * Textos de interfaz del modal según el idioma del país seleccionado
+ * Textos de interfaz del modal según el idioma nativo del país seleccionado (ES, EN, PT, FR, IT, DE)
  */
 export function getLawyerModalUiLabels(country = 'Colombia') {
-  const isEn = isEnglishCountry(country);
-  if (isEn) {
+  const lang = getCountryLanguage(country);
+
+  if (lang === 'en') {
     return {
       topPill: 'AI POCKET TRAFFIC LAWYER • CHECKPOINT DEFENSE',
       title: 'AI Motorcycle Traffic Lawyer & Anti-Impound Advisor',
@@ -604,6 +955,78 @@ export function getLawyerModalUiLabels(country = 'Colombia') {
       impoundLabel: 'CAN POLICE TOW / IMPOUND MY MOTORCYCLE?',
       citationLabel: 'EXACT STATUTE / CASE LAW TO CITE TO THE OFFICER:',
       stepsLabel: '🛡️ Step-by-step what to do right now:'
+    };
+  }
+
+  if (lang === 'pt') {
+    return {
+      topPill: 'ADVOGADO DE TRÂNSITO IA • DEFESA EM BLITZ',
+      title: 'Assessor Jurídico de Trânsito & Anti-Guincho IA (CTB)',
+      subtitleSuffix: 'Consulte na hora se uma multa ou remoção ao pátio é legal ou ilegal',
+      inputLabel: 'O que o agente de trânsito está dizendo na blitz ou qual sua dúvida sobre a autuação?',
+      inputPlaceholder: 'Ex: O policial quer guinchar minha moto porque estou com o CRLV-e no celular ou pelo escapamento...',
+      askBtn: 'Consultar CTB',
+      askingBtn: 'Analisando Lei...',
+      quickSectionTitle: 'Situações Frequentes em Blitz (Toque em uma para ver o Artigo Exato do CTB):',
+      analyzedLabel: 'PERGUNTA ANALISADA',
+      verdictLabel: '⚖️ VEREDITO JURÍDICO IMEDIATO',
+      impoundLabel: 'PODEM GUINCHAR MINHA MOTO AO PÁTIO?',
+      citationLabel: 'ARTIGO EXATO DO CTB / CONTRAN PARA INVOCAR AO AGENTE:',
+      stepsLabel: '🛡️ O que fazer passo a passo neste momento:'
+    };
+  }
+
+  if (lang === 'fr') {
+    return {
+      topPill: 'AVOCAT ROUTIER IA • DÉFENSE CONTRÔLE MOTO',
+      title: 'Conseiller Juridique Moto & Anti-Fourrière IA (Code de la route)',
+      subtitleSuffix: 'Vérifiez instantanément si une verbalisation ou mise en fourrière est légale',
+      inputLabel: 'Que vous dit l’agent lors du contrôle ou quelle est votre question sur l’amende ?',
+      inputPlaceholder: 'Ex : L’agent veut immobiliser ma moto pour la vignette d’assurance ou le bruit du pot...',
+      askBtn: 'Vérifier la Loi',
+      askingBtn: 'Analyse du Code...',
+      quickSectionTitle: 'Situations Fréquentes en Contrôle Routier (Touchez pour voir l’Article Exact) :',
+      analyzedLabel: 'QUESTION ANALYSÉE',
+      verdictLabel: '⚖️ VERDICT JURIDIQUE IMMÉDIAT',
+      impoundLabel: 'PEUVENT-ILS METTRE MA MOTO EN FOURRIÈRE ?',
+      citationLabel: 'ARTICLE EXACT DU CODE DE LA ROUTE À CITER :',
+      stepsLabel: '🛡️ Marche à suivre étape par étape :'
+    };
+  }
+
+  if (lang === 'it') {
+    return {
+      topPill: 'AVVOCATO STRADALE IA • DIFESA POSTO DI BLOCCO',
+      title: 'Consulente Legale Moto & Anti-Fermo IA (Codice della Strada)',
+      subtitleSuffix: 'Verifica subito se un verbale, fermo o ritiro del libretto è legittimo',
+      inputLabel: 'Cosa ti sta contestando l’agente o quale dubbio hai sul verbale?',
+      inputPlaceholder: 'Es: L’agente vuole ritirare il libretto per lo scarico omologato o l’assicurazione sul telefono...',
+      askBtn: 'Consulta il Codice',
+      askingBtn: 'Analisi CdS...',
+      quickSectionTitle: 'Situazioni Frequenti al Posto di Blocco (Tocca per vedere l’Articolo Esatto):',
+      analyzedLabel: 'DOMANDA ANALIZZATA',
+      verdictLabel: '⚖️ VERDETTO LEGALE IMMEDIATO',
+      impoundLabel: 'POSSONO APPLICARE FERMO O SEQUESTRO ALLA MOTO?',
+      citationLabel: 'ARTICOLO ESATTO DEL CODICE DELLA STRADA / CASSAZIONE:',
+      stepsLabel: '🛡️ Cosa fare passo dopo passo adesso:'
+    };
+  }
+
+  if (lang === 'de') {
+    return {
+      topPill: 'KI-VERKEHRSRECHTSANWALT • MOTORRAD-KONTROLLE',
+      title: 'KI-Motorrad-Rechtsberater & Stilllegungs-Schutz (StVO / StVZO)',
+      subtitleSuffix: 'Sofort-Check bei Polizeikontrolle: Ist Bußgeld oder Stilllegung rechtmäßig?',
+      inputLabel: 'Was wirft Ihnen der Polizeibeamte vor oder welche Frage haben Sie zum Bußgeld?',
+      inputPlaceholder: 'Z.B.: Die Polizei will die Weiterfahrt wegen meines E-geprüften Auspuffs untersagen...',
+      askBtn: 'Rechtslage prüfen',
+      askingBtn: 'Prüfe StVO/StVZO...',
+      quickSectionTitle: 'Häufige Situationen bei Motorradkontrollen (Antippen für genauen Paragraphen):',
+      analyzedLabel: 'ANALYSIERTE FRAGE',
+      verdictLabel: '⚖️ SOFORTIGE RECHTLICHE EINSCHÄTZUNG',
+      impoundLabel: 'DARF DIE POLIZEI MEIN MOTORRAD STILLLEGEN / ABSCHLEPPEN?',
+      citationLabel: 'GENAUER PARAGRAPH (StVO / StVZO / BKatV) FÜR DIE KONTROLLE:',
+      stepsLabel: '🛡️ Schritt-für-Schritt-Empfehlung vor Ort:'
     };
   }
 
@@ -624,6 +1047,15 @@ export function getLawyerModalUiLabels(country = 'Colombia') {
   };
 }
 
+const LANGUAGE_NAMES_FOR_PROMPT = {
+  es: 'español',
+  en: 'English',
+  pt: 'português do Brasil',
+  fr: 'français',
+  it: 'italiano',
+  de: 'Deutsch'
+};
+
 /**
  * Consulta al Asesor Jurídico Vial IA (Gemini 2.0 Flash + Base Legal del País e Idioma)
  */
@@ -635,48 +1067,29 @@ export async function askTrafficLawyerAI({
 }) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.NEXT_PUBLIC_GEMINI_API_KEY;
   const framework = COUNTRY_LEGAL_FRAMEWORKS[country] || COUNTRY_LEGAL_FRAMEWORKS.Colombia;
-  const isEn = isEnglishCountry(country);
+  const lang = getCountryLanguage(country);
+  const langName = LANGUAGE_NAMES_FOR_PROMPT[lang] || 'español';
   const questions = getCountryQuickLegalQuestions(country);
 
-  const systemPrompt = isEn
-    ? `You are the expert Motorcycle Traffic Defense Lawyer AI of MotoDash AI for the United States (${framework.codeName}).
-Your mission is to protect the motorcyclist during a roadside traffic stop or ticket dispute with exact U.S. statutes and constitutional case law.
-Applicable legal framework: ${framework.codeName} (${framework.authority}).
-Verified rules:
+  const systemPrompt = `You are the expert Motorcycle Traffic Defense Lawyer AI of MotoDash AI for ${country} (${framework.codeName}).
+Your mission is to protect the motorcyclist during a roadside traffic stop or ticket dispute with exact statutes and case law from ${country} (${framework.authority}).
+Verified rules for ${country}:
 ${framework.keyRulesSummary}
 
-Respond to the rider's query ("${question}") STRICTLY in English as pure JSON without markdown blocks using this exact schema:
+Respond to the rider's query ("${question}") STRICTLY in ${langName} as pure JSON without markdown blocks using this exact schema:
 {
-  "instantVerdict": "Short punchy uppercase verdict (e.g., NO TOWING ALLOWED / FIX-IT TICKET ONLY / PROTECTED BY 1ST AMENDMENT)",
-  "canImpound": "Clearly state in uppercase whether police can tow/impound the motorcycle or not",
-  "lawCitation": "Exact U.S. State Vehicle Code section or U.S. Supreme Court / Federal case citation",
-  "explanation": "Clear, direct legal explanation in English of why the officer's action is lawful or unlawful",
+  "instantVerdict": "Short punchy uppercase verdict in ${langName}",
+  "canImpound": "Clearly state in uppercase in ${langName} whether police can tow/impound the motorcycle or not in ${country}",
+  "lawCitation": "Exact statute, article, decree, or Supreme Court case law from ${country}",
+  "explanation": "Clear, direct legal explanation in ${langName} of why the officer's action is lawful or unlawful in ${country}",
   "actionSteps": [
-    "Step 1 concrete action or statement to say to the officer",
-    "Step 2 concrete roadside defense step",
-    "Step 3 how to contest in traffic court or via Trial by Written Declaration"
-  ]
-}`
-    : `Eres el Abogado y Asesor Jurídico Vial experto en motocicletas de MotoDash AI para ${country}.
-Tu misión es defender al motociclista con la ley exacta de ${country} en la mano cuando está en un retén policial o tiene una duda sobre un comparendo/multa.
-Marco legal aplicable en ${country}: ${framework.codeName} (${framework.authority}).
-Reglas clave verificadas de ${country}:
-${framework.keyRulesSummary}
-
-Responde a la consulta del piloto ("${question}") ESTRICTAMENTE en español y en formato JSON puro sin bloques markdown con esta estructura exacta:
-{
-  "instantVerdict": "Frase corta y contundente en mayúsculas (ej: NO TE PUEDEN INMOVILIZAR LA MOTO / SUBSANABLE EN EL SITIO / SÍ PROCEDE SEGÚN LA LEY DE ${country.toUpperCase()})",
-  "canImpound": "Indica claramente si se pueden llevar la moto en grúa / depósito en ${country} o no",
-  "lawCitation": "Ley, artículo, decreto o sentencia exacta aplicable en ${country}",
-  "explanation": "Explicación clara, directa y jurídica de por qué es legal o ilegal el procedimiento en ${country}",
-  "actionSteps": [
-    "Paso 1 concreto para decirle al agente o hacer en el momento en ${country}",
-    "Paso 2 concreto de defensa legal",
-    "Paso 3 sobre acta de observaciones o impugnación"
+    "Step 1 concrete action or statement to say to the officer in ${langName}",
+    "Step 2 concrete roadside defense step in ${langName}",
+    "Step 3 how to contest or appeal in ${country} in ${langName}"
   ]
 }`;
 
-  // 1. Intentar primero el Serverless AI Gateway seguro (/api/ai-gateway) para proteger GEMINI_API_KEY
+  // 1. Intentar primero el Serverless AI Gateway seguro (/api/ai-gateway)
   try {
     const gatewayRes = await fetch('/api/ai-gateway', {
       method: 'POST',
@@ -688,9 +1101,7 @@ Responde a la consulta del piloto ("${question}") ESTRICTAMENTE en español y en
       if (payload?.data?.instantVerdict) {
         return {
           ...payload.data,
-          source: isEn
-            ? `Gemini 2.0 Flash Secure Gateway (${country})`
-            : `Gemini 2.0 Flash • Servidor Seguro (${country})`
+          source: `Gemini 2.0 Flash • ${country}`
         };
       }
     }
@@ -721,7 +1132,7 @@ Responde a la consulta del piloto ("${question}") ESTRICTAMENTE en español y en
         if (parsed && parsed.instantVerdict) {
           return {
             ...parsed,
-            source: isEn ? `Gemini 2.0 Flash Legal Engine (${country})` : `Gemini 2.0 Flash Jurídico (${country})`
+            source: `Gemini 2.0 Flash • ${country}`
           };
         }
       }
@@ -732,49 +1143,79 @@ Responde a la consulta del piloto ("${question}") ESTRICTAMENTE en español y en
 
   // Motor jurídico determinístico offline adaptado al país e idioma seleccionado
   const qLower = String(question).toLowerCase();
-  const sourceLabel = isEn ? `Verified Legal Database (${country})` : `Base Jurídica Oficial (${country})`;
+  const sourceLabel = `MotoDash AI Legal Engine (${country})`;
 
-  if (qLower.includes('celular') || qLower.includes('digital') || qLower.includes('soat') || qLower.includes('papel') || qLower.includes('phone') || qLower.includes('insurance') || qLower.includes('midgt') || qLower.includes('soap')) {
+  if (
+    qLower.includes('celular') ||
+    qLower.includes('digital') ||
+    qLower.includes('soat') ||
+    qLower.includes('papel') ||
+    qLower.includes('phone') ||
+    qLower.includes('insurance') ||
+    qLower.includes('midgt') ||
+    qLower.includes('soap') ||
+    qLower.includes('cnh') ||
+    qLower.includes('crlv') ||
+    qLower.includes('vignette') ||
+    qLower.includes('assicurazione') ||
+    qLower.includes('fahrzeugschein')
+  ) {
     return { ...questions[0], source: sourceLabel };
   }
-  if (qLower.includes('mofle') || qLower.includes('exosto') || qLower.includes('ruido') || qLower.includes('llanta') || qLower.includes('escape') || qLower.includes('exhaust') || qLower.includes('loud') || qLower.includes('muffler')) {
+  if (
+    qLower.includes('mofle') ||
+    qLower.includes('exosto') ||
+    qLower.includes('ruido') ||
+    qLower.includes('llanta') ||
+    qLower.includes('escape') ||
+    qLower.includes('escapamento') ||
+    qLower.includes('exhaust') ||
+    qLower.includes('loud') ||
+    qLower.includes('pot') ||
+    qLower.includes('chicane') ||
+    qLower.includes('scarico') ||
+    qLower.includes('auspuff') ||
+    qLower.includes('db')
+  ) {
     return { ...questions[1], source: sourceLabel };
   }
-  if (qLower.includes('fotomulta') || qLower.includes('camara') || qLower.includes('cámara') || qLower.includes('radar') || qLower.includes('camera') || qLower.includes('red light') || qLower.includes('fotocivica') || qLower.includes('fotopapeleta')) {
+  if (
+    qLower.includes('fotomulta') ||
+    qLower.includes('camara') ||
+    qLower.includes('cámara') ||
+    qLower.includes('radar') ||
+    qLower.includes('camera') ||
+    qLower.includes('autovelox') ||
+    qLower.includes('blitzer') ||
+    qLower.includes('antai')
+  ) {
     return { ...questions[3], source: sourceLabel };
   }
-  if (qLower.includes('grabar') || qLower.includes('video') || qLower.includes('llave') || qLower.includes('record') || qLower.includes('gopro') || qLower.includes('key')) {
+  if (
+    qLower.includes('grabar') ||
+    qLower.includes('filmar') ||
+    qLower.includes('video') ||
+    qLower.includes('llave') ||
+    qLower.includes('record') ||
+    qLower.includes('gopro') ||
+    qLower.includes('dashcam') ||
+    qLower.includes('riprendere')
+  ) {
     return { ...questions[4], source: sourceLabel };
   }
-  if (qLower.includes('60') || qLower.includes('subsanar') || qLower.includes('casco') || qLower.includes('chaleco') || qLower.includes('luz') || qLower.includes('fix-it') || qLower.includes('cure')) {
+  if (
+    qLower.includes('60') ||
+    qLower.includes('subsanar') ||
+    qLower.includes('guincho') ||
+    qLower.includes('fourrière') ||
+    qLower.includes('fermo') ||
+    qLower.includes('stilllegung') ||
+    qLower.includes('casco') ||
+    qLower.includes('capacete') ||
+    qLower.includes('gants')
+  ) {
     return { ...questions[2], source: sourceLabel };
   }
 
-  if (isEn) {
-    return {
-      instantVerdict: `ANALYZED UNDER ${framework.codeName.toUpperCase()}`,
-      canImpound: 'NO ROADSIDE TOW UNLESS STATUTORY IMPOUND CONDITION APPLIES',
-      lawCitation: `${framework.codeName} (${framework.authority})`,
-      explanation: `Regarding your question ("${question}"), officers cannot arbitrarily impound your motorcycle for minor traffic or equipment infractions if your Class M license, registration, and liability insurance are valid.`,
-      actionSteps: [
-        'Ask the officer for the specific Vehicle Code section being cited and whether it is a correctable ("Fix-It") violation.',
-        'Exercise your 1st Amendment right to record the stop and keep your ignition key in your pocket.',
-        'Remember that signing a traffic citation is only a promise to appear, NOT an admission of guilt.'
-      ],
-      source: `MotoDash AI Legal Engine (${country})`
-    };
-  }
-
-  return {
-    instantVerdict: `ANÁLISIS SEGÚN ${framework.codeName.toUpperCase()}`,
-    canImpound: `SOLO SI ESTÁ EXPRESAMENTE TIPIFICADO EN ${country.toUpperCase()}`,
-    lawCitation: `${framework.codeName} (${framework.authority})`,
-    explanation: `Para tu consulta ("${question}") en ${country}, ningún agente de tránsito puede aplicar sanciones ni inmovilizaciones por analogía. Debe indicarte el artículo o código exacto de la infracción en ${framework.codeName}, permitirte subsanar si la ley lo contempla y respetar tu derecho al debido proceso y a grabar el procedimiento.`,
-    actionSteps: [
-      `Pídele al agente que te indique el código o artículo exacto de ${framework.codeName} antes de entregar documentos físicos.`,
-      'Verifica si la falta es subsanable en el sitio para evitar la grúa / depósito.',
-      'Deja constancia escrita en observaciones y recuerda que recibir la boleta no significa aceptar la culpa.'
-    ],
-    source: `Motor Jurídico MotoDash AI (${country})`
-  };
+  return { ...questions[0], source: sourceLabel };
 }

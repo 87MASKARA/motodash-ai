@@ -169,6 +169,102 @@ export const TRAFFIC_PORTALS = {
       { codigo: "G47", nombre: "Exceso de velocidad con cinemómetro", baseCOP: 396 },
       { codigo: "M01", nombre: "Conducir sin SOAT vigente", baseCOP: 594 }
     ]
+  },
+
+  BR: {
+    pais: "Brasil",
+    bandera: "🇧🇷",
+    moneda: "BRL",
+    entidad: "SENATRAN / DETRAN & Carteira Digital de Trânsito (SNE)",
+    entidadCorta: "SENATRAN / DETRAN Brasil",
+    portalUrl: "https://portalservicos.senatran.serpro.gov.br/",
+    documentoLabel: "CPF / RENAVAM",
+    documentoTipo: "CPF",
+    descuentoLey: "40% de desconto aderindo ao SNE (Sistema de Notificação Eletrônica) ou 20% até o vencimento da notificação (Art. 284 do CTB).",
+    diasDescuentoMax: 30,
+    porcentajeDescuento: 40,
+    reglasImpugnacion: [
+      "Decadência de 30 dias (Art. 281 § único II do CTB): Se a notificação da autuação não for expedida em até 30 dias, o auto de infração deve ser arquivado.",
+      "Defesa Prévia e Recurso à JARI: Direito de apresentar Defesa da Autuação antes da penalidade e recurso à JARI sem necessidade de pagamento prévio.",
+      "Aferição INMETRO: Radares e medidores de velocidade devem ter certificado de verificação do INMETRO vigente a cada 12 meses."
+    ],
+    infraccionesComunes: [
+      { codigo: "7455-0", nombre: "Transitar em velocidade superior à máxima em até 20% (Média)", baseCOP: 130 },
+      { codigo: "7030-1", nombre: "Conduzir motocicleta sem capacete ou viseira regulamentar (Gravíssima)", baseCOP: 293 },
+      { codigo: "6599-2", nombre: "Conduzir veículo não devidamente licenciado CRLV-e (Gravíssima)", baseCOP: 293 }
+    ]
+  },
+
+  FR: {
+    pais: "Francia",
+    bandera: "🇫🇷",
+    moneda: "EUR",
+    entidad: "ANTAI (Agence Nationale de Traitement Automatisé des Infractions)",
+    entidadCorta: "ANTAI France",
+    portalUrl: "https://www.antai.gouv.fr/",
+    documentoLabel: "Numéro d'avis de contravention / Immatriculation",
+    documentoTipo: "AVIS",
+    descuentoLey: "Amende forfaitaire minorée : réduction jusqu'à 30% en cas de paiement dans les 15 jours (30 jours par télépaiement).",
+    diasDescuentoMax: 15,
+    porcentajeDescuento: 30,
+    reglasImpugnacion: [
+      "Requête en exonération (45 jours) : Contestation en ligne sur ANTAI sans payer l'amende au préalable (ou consignation si radar automatique).",
+      "Demande du cliché radar : Droit d'obtenir la photo prise par le radar automatique pour vérifier si le conducteur est identifiable.",
+      "Vérification annuelle du cinémomètre : L'avis de contravention doit mentionner la date de dernière vérification de l'appareil de mesure."
+    ],
+    infraccionesComunes: [
+      { codigo: "R413-14", nombre: "Excès de vitesse inférieur à 20 km/h (Hors agglomération)", baseCOP: 68 },
+      { codigo: "R431-1-2", nombre: "Absence de gants certifiés CE en deux-roues motorisé", baseCOP: 68 },
+      { codigo: "R323-1", nombre: "Défaut de Contrôle Technique Deux-Roues (CT 2RM)", baseCOP: 135 }
+    ]
+  },
+
+  IT: {
+    pais: "Italia",
+    bandera: "🇮🇹",
+    moneda: "EUR",
+    entidad: "Portale dell'Automobilista (MIT) & Polizia Stradale",
+    entidadCorta: "Polizia Stradale / MIT",
+    portalUrl: "https://www.ilportaledellautomobilista.it/",
+    documentoLabel: "Codice Fiscale / Targa Moto",
+    documentoTipo: "CF",
+    descuentoLey: "Sconto del 30% sull'importo della sanzione se il pagamento avviene entro 5 giorni dalla contestazione o notifica (Art. 202 CdS).",
+    diasDescuentoMax: 5,
+    porcentajeDescuento: 30,
+    reglasImpugnacion: [
+      "Termine di Notifica di 90 giorni (Art. 201 CdS): Il verbale notificato oltre 90 giorni dall'infrazione è nullo.",
+      "Omologazione Autovelox (Cassazione 2024): I verbali elevati con dispositivi solo 'approvati' ma non formalmente 'omologati' sono annullabili.",
+      "Ricorso al Prefetto (60 gg) o Giudice di Pace (30 gg): Non pagare la multa se intendi presentare ricorso."
+    ],
+    infraccionesComunes: [
+      { codigo: "ART-142", nombre: "Superamento limiti di velocità (tra 10 e 40 km/h)", baseCOP: 173 },
+      { codigo: "ART-80", nombre: "Circolazione con Revisione Ministeriale scaduta", baseCOP: 173 },
+      { codigo: "ART-193", nombre: "Circolazione senza copertura assicurativa RC Moto", baseCOP: 866 }
+    ]
+  },
+
+  DE: {
+    pais: "Alemania",
+    bandera: "🇩🇪",
+    moneda: "EUR",
+    entidad: "KBA Flensburg (Kraftfahrt-Bundesamt) & Zentrale Bußgeldstelle",
+    entidadCorta: "KBA / Bußgeldstelle",
+    portalUrl: "https://www.kba.de/",
+    documentoLabel: "Aktenzeichen / Kennzeichen",
+    documentoTipo: "AZ",
+    descuentoLey: "Verwarnungsgeld ohne Zusatzgebühren (28,50 € Verwaltungskosten gespart) bei Zahlung innerhalb von 7 Tagen.",
+    diasDescuentoMax: 14,
+    porcentajeDescuento: 25,
+    reglasImpugnacion: [
+      "Fahrerprinzip (Keine Halterhaftung bei Tempo-Verstößen): In Deutschland haftet bei Geschwindigkeitsverstößen nur der tatsächlich identifizierte Fahrer.",
+      "Einspruchsfrist von 2 Wochen (§ 67 OWiG): Einspruch gegen den Bußgeldbescheid innerhalb von 14 Tagen nach Zustellung.",
+      "Verjährungsfrist von 3 Monaten (§ 26 Abs. 3 StVG): Wenn innerhalb von 3 Monaten keine Anhörung erfolgt, ist der Verstoß verjährt."
+    ],
+    infraccionesComunes: [
+      { codigo: "BKat-11", nombre: "Geschwindigkeitsüberschreitung außerorts (16–20 km/h)", baseCOP: 60 },
+      { codigo: "BKat-186", nombre: "Hauptuntersuchung (TÜV / HU) um mehr als 2 Monate überzogen", baseCOP: 25 },
+      { codigo: "BKat-214", nombre: "Erlöschen der Betriebserlaubnis (z.B. Auspuff ohne dB-Eater)", baseCOP: 90 }
+    ]
   }
 };
 
@@ -188,6 +284,10 @@ const COUNTRY_NAME_TO_CODE = {
   Argentina: "AR",
   Chile: "CL",
   Perú: "PE",
+  Brasil: "BR",
+  Francia: "FR",
+  Italia: "IT",
+  Alemania: "DE",
   "Reino Unido": "US"
 };
 

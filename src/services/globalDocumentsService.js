@@ -190,6 +190,110 @@ export const COUNTRY_DOCUMENT_TERMINOLOGY = {
       fullName: 'V5C Vehicle Registration Certificate',
       issuerPlaceholder: 'DVLA Swansea'
     }
+  },
+  Brasil: {
+    countryCode: 'BR',
+    flag: '🇧🇷',
+    authority: 'SENATRAN / DETRAN / PRF (Polícia Rodoviária Federal)',
+    driver_license: {
+      shortName: 'CNH Digital (Cat. A)',
+      fullName: 'Carteira Nacional de Habilitação Digital (Categoria A - Motocicleta)',
+      categoryDefault: 'Categoria A (Motocicleta)',
+      issuerPlaceholder: 'SENATRAN / DETRAN (Carteira Digital de Trânsito)'
+    },
+    mandatory_insurance: {
+      shortName: 'SPVAT / Seguro RC Moto',
+      fullName: 'Seguro Obrigatório SPVAT / Responsabilidade Civil Motocicleta',
+      issuerPlaceholder: 'Caixa / Porto Seguro / Suhai / Tokio Marine'
+    },
+    technical_inspection: {
+      shortName: 'Licenciamento Anual / Vistoria',
+      fullName: 'Licenciamento Anual DETRAN e Inspeção Veicular',
+      issuerPlaceholder: 'DETRAN Estadual / ECV Credenciada'
+    },
+    vehicle_registration: {
+      shortName: 'CRLV-e Digital',
+      fullName: 'Certificado de Registro e Licenciamento de Veículo (CRLV-e)',
+      issuerPlaceholder: 'SENATRAN / DETRAN'
+    }
+  },
+  Francia: {
+    countryCode: 'FR',
+    flag: '🇫🇷',
+    authority: 'ANTAI / Police Nationale / Gendarmerie Nationale',
+    driver_license: {
+      shortName: 'Permis de conduire (A1/A2/A)',
+      fullName: 'Permis de conduire européen (Catégorie A1 / A2 / A - France Identité)',
+      categoryDefault: 'Catégorie A2 / A (Moto)',
+      issuerPlaceholder: 'ANTS / France Identité'
+    },
+    mandatory_insurance: {
+      shortName: 'Assurance Moto (Fichier FVA)',
+      fullName: 'Assurance Responsabilité Civile Moto (Vérification FVA sans vignette)',
+      issuerPlaceholder: 'Mutuelle des Motards / AMV / MAIF / AXA'
+    },
+    technical_inspection: {
+      shortName: 'Contrôle Technique 2RM (CT)',
+      fullName: 'Contrôle Technique Périodique Deux-Roues Motorisés (Catégorie L)',
+      issuerPlaceholder: 'Centre de Contrôle Technique Agréé (Dekra / Autosur / Sécuritest)'
+    },
+    vehicle_registration: {
+      shortName: 'Carte Grise (Certificat)',
+      fullName: "Certificat d'immatriculation (Carte Grise Moto)",
+      issuerPlaceholder: 'ANTS / Ministère de l’Intérieur'
+    }
+  },
+  Italia: {
+    countryCode: 'IT',
+    flag: '🇮🇹',
+    authority: 'Polizia Stradale / Carabinieri / Motorizzazione Civile (MIT)',
+    driver_license: {
+      shortName: 'Patente di Guida (Cat. A)',
+      fullName: 'Patente di Guida Europea (Categoria A1 / A2 / A - IT-Wallet)',
+      categoryDefault: 'Categoria A2 / A (Motocicli)',
+      issuerPlaceholder: 'Ministero delle Infrastrutture e dei Trasporti (MIT)'
+    },
+    mandatory_insurance: {
+      shortName: 'Assicurazione RC Moto',
+      fullName: 'Certificato di Assicurazione RC Moto Obbligatoria (Anche Digitale)',
+      issuerPlaceholder: 'Generali / UnipolSai / Allianz / Motoplatinum'
+    },
+    technical_inspection: {
+      shortName: 'Revisione Ministeriale',
+      fullName: 'Revisione Periodica Obbligatoria Motoveicoli (Art. 80 CdS)',
+      issuerPlaceholder: 'Motorizzazione Civile / Centro Revisioni Autorizzato MCTC'
+    },
+    vehicle_registration: {
+      shortName: 'Libretto (Documento Unico)',
+      fullName: 'Documento Unico di Circolazione e di Proprietà (DU)',
+      issuerPlaceholder: 'Motorizzazione Civile / PRA (ACI)'
+    }
+  },
+  Alemania: {
+    countryCode: 'DE',
+    flag: '🇩🇪',
+    authority: 'KBA (Kraftfahrt-Bundesamt) / Polizei / TÜV / DEKRA',
+    driver_license: {
+      shortName: 'Führerschein (Klasse A)',
+      fullName: 'EU-Kartenführerschein (Klasse A1 / A2 / A - Krafträder)',
+      categoryDefault: 'Klasse A2 / A (Motorrad)',
+      issuerPlaceholder: 'Fahrerlaubnisbehörde / KBA'
+    },
+    mandatory_insurance: {
+      shortName: 'Kfz-Haftpflichtversicherung',
+      fullName: 'Gesetzliche Motorrad-Haftpflichtversicherung (eVB / Versicherungsnachweis)',
+      issuerPlaceholder: 'HUK-Coburg / Allianz / ADAC / DEVK'
+    },
+    technical_inspection: {
+      shortName: 'HU / AU (TÜV-Plakette)',
+      fullName: 'Hauptuntersuchung (HU) inkl. Abgasuntersuchung Kraftrad (§ 29 StVZO)',
+      issuerPlaceholder: 'TÜV / DEKRA / GTÜ / KÜS'
+    },
+    vehicle_registration: {
+      shortName: 'Fahrzeugschein (Teil I)',
+      fullName: 'Zulassungsbescheinigung Teil I (Fahrzeugschein)',
+      issuerPlaceholder: 'Kfz-Zulassungsbehörde'
+    }
   }
 };
 

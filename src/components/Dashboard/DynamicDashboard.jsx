@@ -223,13 +223,32 @@ export default function DynamicDashboard({
       ES: 'España',
       MX: 'México',
       US: 'Estados Unidos',
+      AR: 'Argentina',
       CL: 'Chile',
-      PE: 'Perú'
+      PE: 'Perú',
+      BR: 'Brasil',
+      FR: 'Francia',
+      IT: 'Italia',
+      DE: 'Alemania'
+    };
+    const codeToLang = {
+      CO: 'es',
+      ES: 'es',
+      MX: 'es',
+      AR: 'es',
+      CL: 'es',
+      PE: 'es',
+      US: 'en',
+      UK: 'en',
+      BR: 'pt',
+      FR: 'fr',
+      IT: 'it',
+      DE: 'de'
     };
     const nextCountryName = codeToCountry[settings?.pais] || currentHoja.country || 'Colombia';
 
     if (setLang && settings?.pais) {
-      setLang(settings.pais === 'US' ? 'en' : 'es');
+      setLang(codeToLang[settings.pais] || 'es');
     }
 
     const nextHoja = {

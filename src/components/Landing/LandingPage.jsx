@@ -362,7 +362,7 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
                 <Scale className="w-6 h-6" />
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-[10px] font-mono font-bold text-indigo-300">
-                8 PAÍSES • ES / EN
+                11 PAÍSES • 6 IDIOMAS
               </span>
             </div>
             <h3 className="text-lg font-bold font-racing uppercase text-white mb-2">
@@ -372,13 +372,13 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
             </h3>
             <p className="text-xs text-neutral-300 leading-relaxed font-sans mb-3">
               {isEn
-                ? 'Ask in real time if a ticket or tow-truck impound is legal in Colombia (Law 769), USA (English), Mexico, Spain, Argentina, Chile, Peru, or Ecuador. Gives you the exact legal article, whether you have 60 minutes to fix the issue, and what to say to the officer.'
-                : 'Pregunta en pleno retén si un comparendo o llevarse tu moto en grúa es legal según el código de Colombia (Ley 769), EE. UU. (en inglés), México, España, Argentina, Chile, Perú o Ecuador. Te da el artículo exacto, si tienes 60 minutos para subsanar y qué decirle al agente.'}
+                ? 'Ask in real time if a ticket or tow-truck impound is legal in Colombia (Law 769), USA, Brazil (CTB), France (Code de la route), Italy (CdS), Germany (StVO), Spain, Mexico, Chile, or Peru in their native language.'
+                : 'Pregunta en pleno retén si un comparendo o llevarse tu moto en grúa es legal según el código de Colombia (Ley 769), EE. UU., Brasil (CTB en portugués), Francia (Code de la route), Italia (Codice della Strada), Alemania (StVO), España, México, Chile o Perú.'}
             </p>
             <div className="flex flex-wrap gap-1.5 text-[10px] font-mono text-indigo-300">
               <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800">⚖️ ¿Es Legal la Grúa?</span>
-              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800">⏱️ Regla 60 Minutos</span>
-              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800">🌎 8 Jurisdicciones</span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800">⏱️ Subsanación en Sitio</span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800">🌎 ES•EN•PT•FR•IT•DE</span>
             </div>
           </div>
         </div>
@@ -467,8 +467,14 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
               <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
                 🇺🇸 DMV Violations
               </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇧🇷 SENATRAN / DETRAN
+              </span>
+              <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-amber-400">
+                🇫🇷 ANTAI • 🇮🇹 MIT • 🇩🇪 KBA
+              </span>
               <span className="px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-emerald-400">
-                ⚖️ Sentencias C-038 & C-321
+                ⚖️ Defensa Multipaís
               </span>
             </div>
           </div>

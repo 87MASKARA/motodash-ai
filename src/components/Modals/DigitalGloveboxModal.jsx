@@ -29,6 +29,7 @@ import {
 import {
   COUNTRY_TO_ISO_AND_LANG,
   ISO_TO_COUNTRY_NAME,
+  LANG_TO_DEFAULT_COUNTRY,
   isEnglishCountry
 } from '../../services/trafficLawyerAiService';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -47,8 +48,9 @@ export default function DigitalGloveboxModal({
   onUpdateHojaDeVida,
   onOpenLawyer
 }) {
-  const { setLang } = useLanguage();
+  const { language, setLang } = useLanguage();
   const resolvedCountry =
+    (language && language !== 'es' && LANG_TO_DEFAULT_COUNTRY[language]) ||
     hojaDeVida?.country ||
     ISO_TO_COUNTRY_NAME[hojaDeVida?.multas?.pais] ||
     userProfile?.country ||
