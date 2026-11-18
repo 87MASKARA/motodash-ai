@@ -744,6 +744,9 @@ export default function DynamicDashboard({
             tanqueos={hojaDeVida.tanqueos || []}
             currency={globalSettings.currency || 'COP'}
             hardwareTelemetry={hojaDeVida.hardwareTelemetry || null}
+            bike={effectiveBike}
+            hojaDeVida={hojaDeVida}
+            userProfile={userProfile}
             onOpenOdometerModal={onOpenOdometerModal}
             onOpenHardwareBridgeModal={() => setIsHardwareBridgeOpen(true)}
           />

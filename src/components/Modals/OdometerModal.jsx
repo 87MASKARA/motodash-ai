@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Gauge, Fuel, Wrench, X, Check } from 'lucide-react';
+import { Gauge, Fuel, Wrench, X, Check, Globe2 } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES } from '../../services/maintenanceCatalog';
 import { BrandLogo } from '../Common/BrandLogos';
+import {
+  COUNTRY_FUEL_UNITS,
+  getCountryFuelConfig,
+  gallonsToLiters,
+  litersToGallons
+} from '../../services/fuelUnitsService';
 
 export default function OdometerModal({
   isOpen,
@@ -9,14 +15,21 @@ export default function OdometerModal({
   currentKm,
   initialComponentKey,
   onSaveOdometer,
-  bikeName
+  bikeName,
+  bike = null,
+  userProfile = null,
+  currency = 'COP'
 }) {
+  const defaultFuelCfg = getCountryFuelConfig({ bike, userProfile, currency });
+
   const [kmInput, setKmInput] = useState(currentKm || 0);
   const [recordType, setRecordType] = useState(initialComponentKey ? 'service' : 'quick_km');
-  
-  // Campos de Tanqueo
-  const [fuelLiters, setFuelLiters] = useState(3.5);
-  const [fuelCost, setFuelCost] = useState(15);
+  const [selectedCountry, setSelectedCountry] = useState(defaultFuelCfg.country);
+  const [fuelUnit, setFuelUnit] = useState(defaultFuelCfg.unit); // 'gal' | 'L'
+
+  // Campos de Tanqueo (en Galones para Colombia/Perú/Ecuador/EE.UU./Centroamérica, o Litros para México/España/Chile/Argentina/Brasil)
+  const [fuelAmount, setFuelAmount] = useState(defaultFuelCfg.defaultRefuelAmount);
+  const [fuelCost, setFuelCost] = useState(defaultFuelCfg.defaultRefuelCost);
   const [isFullTank, setIsFullTank] = useState(true);
 
   // Campos de Mantenimiento / Taller
@@ -30,6 +43,12 @@ export default function OdometerModal({
 
   useEffect(() => {
     setKmInput(currentKm || 0);
+    const cfg = getCountryFuelConfig({ bike, userProfile, currency });
+    setSelectedCountry(cfg.country);
+    setFuelUnit(cfg.unit);
+    setFuelAmount(cfg.defaultRefuelAmount);
+    setFuelCost(cfg.defaultRefuelCost);
+
     if (initialComponentKey === 'fuel') {
       setRecordType('fuel');
     } else if (initialComponentKey === 'service') {
@@ -43,7 +62,23 @@ export default function OdometerModal({
     }
   }, [currentKm, initialComponentKey, isOpen]);
 
+  const handleCountryFuelChange = (nextCountry) => {
+    setSelectedCountry(nextCountry);
+    const cfg = COUNTRY_FUEL_UNITS[nextCountry] || COUNTRY_FUEL_UNITS.Colombia;
+    setFuelUnit(cfg.unit);
+    setFuelAmount(cfg.defaultRefuelAmount);
+    setFuelCost(cfg.defaultRefuelCost);
+  };
+
   if (!isOpen) return null;
+
+  const activeCountryCfg = COUNTRY_FUEL_UNITS[selectedCountry] || defaultFuelCfg;
+  const isGal = fuelUnit === 'gal';
+  const tankCapLiters = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
+  const tankCapGallons = litersToGallons(tankCapLiters);
+  const numericAmount = Math.max(0.1, Number(fuelAmount) || 0.1);
+  const computedLiters = isGal ? gallonsToLiters(numericAmount) : Number(numericAmount.toFixed(2));
+  const computedGallons = isGal ? Number(numericAmount.toFixed(2)) : litersToGallons(numericAmount);
 
   const handleComponentChange = (key) => {
     setSelectedComponentKey(key);
@@ -67,7 +102,16 @@ export default function OdometerModal({
       km: newKm,
       recordType,
       date: new Date().toISOString().slice(0, 10),
-      fuelData: recordType === 'fuel' ? { liters: Number(fuelLiters), cost: Number(fuelCost), isFull: isFullTank } : null,
+      fuelData: recordType === 'fuel'
+        ? {
+            liters: computedLiters,
+            gallons: computedGallons,
+            unitUsed: fuelUnit,
+            country: selectedCountry,
+            cost: Number(fuelCost),
+            isFull: isFullTank
+          }
+        : null,
       serviceData: recordType === 'service' ? {
         componentKey: selectedComponentKey,
         service: compInfo ? compInfo.label : "Servicio Mecánico",
@@ -176,28 +220,91 @@ export default function OdometerModal({
             </p>
           </div>
 
-          {/* Opciones Específicas de Tanqueo */}
+          {/* Opciones Específicas de Tanqueo con Unidad Oficial por País */}
           {recordType === 'fuel' && (
             <div className="space-y-3 p-4 bg-neutral-950/60 rounded-2xl border border-neutral-800/80">
+              {/* Selector de País y Estándar Oficial de Estación de Servicio */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-neutral-800">
+                <div className="flex items-center gap-1.5 text-xs font-mono text-amber-300">
+                  <Globe2 className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                  <span>Estándar Gasolinera por País:</span>
+                </div>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => handleCountryFuelChange(e.target.value)}
+                  className="bg-neutral-900 border border-amber-500/40 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                >
+                  {Object.values(COUNTRY_FUEL_UNITS).map((c) => (
+                    <option key={c.country} value={c.country}>
+                      {c.flag} {c.country} — Se tanquea en {c.unitLabelEs.toUpperCase()} ({c.unitShort})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] font-mono bg-neutral-900/90 px-3 py-2 rounded-xl border border-neutral-800">
+                <span className="text-neutral-300">
+                  {activeCountryCfg.flag} En <strong>{selectedCountry}</strong> se mide en:{' '}
+                  <strong className="text-amber-400">
+                    {isGal ? 'GALONES (1 Gal = 3.785 L)' : 'LITROS (L)'}
+                  </strong>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setFuelUnit('gal')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                      isGal ? 'bg-amber-500 text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Galones
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFuelUnit('L')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                      !isGal ? 'bg-amber-500 text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Litros
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-mono text-neutral-400 block mb-1">Litros / Galones</label>
+                  <label className="text-xs font-mono text-amber-300 font-bold block mb-1">
+                    {isGal ? 'Galones Tanqueados (Gal)' : 'Litros Tanqueados (L)'}
+                  </label>
                   <input
                     type="number"
-                    step="0.1"
-                    value={fuelLiters}
-                    onChange={(e) => setFuelLiters(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+                    step="0.05"
+                    min="0.1"
+                    value={fuelAmount}
+                    onChange={(e) => setFuelAmount(e.target.value)}
+                    className="w-full bg-neutral-900 border border-amber-500/50 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-amber-400"
                   />
+                  <span className="text-[10px] font-mono text-neutral-400 block mt-1">
+                    {isGal
+                      ? `≈ ${computedLiters} Litros (Tanque total: ${tankCapGallons} Gal / ${tankCapLiters}L)`
+                      : `≈ ${computedGallons} Galones (Tanque total: ${tankCapLiters}L / ${tankCapGallons} Gal)`}
+                  </span>
                 </div>
                 <div>
-                  <label className="text-xs font-mono text-neutral-400 block mb-1">Costo Total ($)</label>
+                  <label className="text-xs font-mono text-neutral-400 block mb-1">
+                    Costo Total ({currency})
+                  </label>
                   <input
                     type="number"
                     value={fuelCost}
                     onChange={(e) => setFuelCost(e.target.value)}
                     className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
                   />
+                  <span className="text-[10px] font-mono text-emerald-400 block mt-1">
+                    {numericAmount > 0
+                      ? `Precio por ${isGal ? 'Galón' : 'Litro'}: $${Math.round((Number(fuelCost) || 0) / numericAmount).toLocaleString()} ${currency}`
+                      : ''}
+                  </span>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer pt-1">
@@ -207,7 +314,7 @@ export default function OdometerModal({
                   onChange={(e) => setIsFullTank(e.target.checked)}
                   className="rounded border-neutral-700 text-amber-500 focus:ring-0"
                 />
-                <span>Tanque Lleno Completo (Full)</span>
+                <span>Tanque Lleno Completo (Full • Actualiza medidor al 100%)</span>
               </label>
             </div>
           )}

@@ -548,7 +548,9 @@ export default function HojaDeVidaModal({
                   </div>
                   <div className="bg-neutral-900/60 p-3 rounded-xl border border-neutral-800">
                     <span className="text-[10px] text-neutral-500 block">CAPACIDAD TANQUE</span>
-                    <strong className="text-neutral-200 text-sm">{telemetrySpecs.tankCapacityLiters} Litros</strong>
+                    <strong className="text-neutral-200 text-sm">
+                      {Number((Number(telemetrySpecs.tankCapacityLiters || 12) / 3.78541).toFixed(2))} Gal ({telemetrySpecs.tankCapacityLiters} L)
+                    </strong>
                   </div>
                   <div className="bg-neutral-900/60 p-3 rounded-xl border border-neutral-800">
                     <span className="text-[10px] text-neutral-500 block">VIN / CHASIS</span>

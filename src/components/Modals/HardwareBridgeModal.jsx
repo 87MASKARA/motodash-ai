@@ -430,13 +430,15 @@ export default function HardwareBridgeModal({
           <span className="text-[9px] text-emerald-300 block">⚡ Va a Mantenimiento Predictivo</span>
         </div>
 
-        {/* 3. Combustible y Litros */}
+        {/* 3. Combustible en Galones y Litros */}
         <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-cyan-500/40">
           <span className="text-[10px] text-neutral-400 block">3. Gasolina en Tanque</span>
           <span className="text-sm sm:text-base font-black text-cyan-400">
-            {liveParams.fuelLevelPercent}% ({fuelLiters} L)
+            {liveParams.fuelLevelPercent}% ({Number((fuelLiters / 3.78541).toFixed(2))} Gal)
           </span>
-          <span className="text-[9px] text-cyan-300 block">Tanque de {tankCap} Litros</span>
+          <span className="text-[9px] text-cyan-300 block">
+            {fuelLiters} L de {Number((tankCap / 3.78541).toFixed(2))} Gal ({tankCap}L)
+          </span>
         </div>
 
         {/* 4. Autonomía Restante (Range) */}
@@ -445,7 +447,9 @@ export default function HardwareBridgeModal({
           <span className="text-sm sm:text-base font-black text-white">
             {rangeKm} KM
           </span>
-          <span className="text-[9px] text-neutral-400 block">Consumo: {liveParams.realKmPerLiter} KM/L</span>
+          <span className="text-[9px] text-neutral-400 block">
+            {Math.round(Number(liveParams.realKmPerLiter) * 3.78541)} KM/Gal ({liveParams.realKmPerLiter} KM/L)
+          </span>
         </div>
 
         {/* 5. Modo de Manejo TFT */}

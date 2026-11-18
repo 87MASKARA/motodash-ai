@@ -435,9 +435,13 @@ export default function App() {
 
         if (recordType === "fuel" && fuelData) {
           const liters = Math.max(0.1, Number(fuelData.liters) || 1);
+          const gallons = Number((fuelData.gallons || (liters / 3.78541)).toFixed(2));
           const deltaKm = km > prevOdometer ? km - prevOdometer : 0;
           const computedKmPerL = deltaKm > 5 && deltaKm < 1200
-            ? Math.min(65, Math.max(8, Math.round(deltaKm / liters)))
+            ? Math.min(65, Math.max(8, Number((deltaKm / liters).toFixed(1))))
+            : null;
+          const computedKmPerGal = computedKmPerL
+            ? Math.round(computedKmPerL * 3.78541)
             : null;
 
           const newRefuel = {
@@ -445,14 +449,33 @@ export default function App() {
             fecha: date,
             km,
             liters,
+            gallons,
+            unitUsed: fuelData.unitUsed || "gal",
+            country: fuelData.country || currentHoja.country || "Colombia",
             cost: Math.max(0, Number(fuelData.cost) || 0),
             isFull: Boolean(fuelData.isFull),
-            kmPerLiter: computedKmPerL
+            kmPerLiter: computedKmPerL,
+            kmPerGalon: computedKmPerGal
           };
+
+          const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
+          const prevHw = currentHoja.hardwareTelemetry || {};
+          const nextKml = computedKmPerL || prevHw.realKmPerLiter || 40.5;
+          const nextFuelPct = fuelData.isFull ? 100 : (prevHw.fuelLevelPercent ?? 82);
+          const nextLitersLeft = Number(((tankCap * nextFuelPct) / 100).toFixed(1));
 
           updatedBike.hojaDeVida = {
             ...currentHoja,
-            tanqueos: [newRefuel, ...(currentHoja.tanqueos || [])]
+            country: fuelData.country || currentHoja.country || "Colombia",
+            tanqueos: [newRefuel, ...(currentHoja.tanqueos || [])],
+            hardwareTelemetry: {
+              ...prevHw,
+              odometerKm: km,
+              fuelLevelPercent: nextFuelPct,
+              fuelLitersRemaining: nextLitersLeft,
+              realKmPerLiter: nextKml,
+              estimatedRangeKm: Math.round(nextLitersLeft * nextKml)
+            }
           };
         }
 
@@ -852,6 +875,9 @@ export default function App() {
         initialComponentKey={initialComponentKey}
         onSaveOdometer={handleSaveOdometer}
         bikeName={`${activeBike?.config?.bikeIdentity?.brand} ${activeBike?.config?.bikeIdentity?.model}`}
+        bike={activeBike}
+        userProfile={activeIsDemo ? null : userProfile}
+        currency={globalSettings.currency || 'COP'}
       />
 
       {/* MODAL CALIBRAR INTERVALO DE CADA PARTE */}
