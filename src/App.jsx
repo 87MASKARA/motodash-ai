@@ -187,11 +187,47 @@ export default function App() {
 
   const activeOdometer = typeof activeBike?.odometer === "number" ? activeBike.odometer : 0;
 
-  // Telemetría sincronizada con el límite de RPM de la moto activa y auto-inicio en modo Demo
+  // Telemetría sincronizada: en cuenta real usa GPS + Sensores Reales por defecto; en Demo inicia simulación
   const telemetry = useDeviceGps({
     maxRpm: activeBike?.config?.telemetrySpecs?.maxRpm || 11500,
     redlineRpm: activeBike?.config?.telemetrySpecs?.redlineRpm || 10500,
-    autoStart: currentView === "cockpit"
+    autoStart: currentView === "cockpit" && activeIsDemo,
+    onRealDistanceMilestone: (addedKm, snap) => {
+      if (activeIsDemo || !addedKm || addedKm <= 0) return;
+      setGarage((prev) =>
+        prev.map((bike) => {
+          if (bike.id !== activeBike?.id) return bike;
+          const nextOdo = Math.round((Number(bike.odometer) || 0) + addedKm);
+          const currentHoja = bike.hojaDeVida || {};
+          const prevHw = currentHoja.hardwareTelemetry || {};
+          const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
+          const kml = Number(prevHw.realKmPerLiter) || 40.5;
+          const prevFuel = Number(prevHw.fuelLevelPercent ?? 82);
+          const burnedPct = ((addedKm / kml) / tankCap) * 100;
+          const nextFuel = Math.max(5, Math.round(prevFuel - burnedPct));
+          const nextLiters = Number(((tankCap * nextFuel) / 100).toFixed(1));
+
+          return {
+            ...bike,
+            odometer: nextOdo,
+            hojaDeVida: {
+              ...currentHoja,
+              hardwareTelemetry: {
+                ...prevHw,
+                odometerKm: nextOdo,
+                fuelLevelPercent: nextFuel,
+                fuelLitersRemaining: nextLiters,
+                estimatedRangeKm: Math.round(nextLiters * kml),
+                tripAKm: Number(((Number(prevHw.tripAKm) || 0) + addedKm).toFixed(1)),
+                topSpeedRecorded: Math.max(Number(prevHw.topSpeedRecorded) || 0, Number(snap?.speed) || 0),
+                syncedAt: new Date().toISOString(),
+                sourceName: prevHw.sourceName || 'Telemetría GPS + Hardware en Vivo'
+              }
+            }
+          };
+        })
+      );
+    }
   });
 
   // Guardar persistencia
@@ -954,7 +990,7 @@ export default function App() {
             });
           }
           setCurrentView("cockpit");
-          if (telemetry.startSimulation) telemetry.startSimulation();
+          if (telemetry.stopSimulation) telemetry.stopSimulation();
         }}
       />
 

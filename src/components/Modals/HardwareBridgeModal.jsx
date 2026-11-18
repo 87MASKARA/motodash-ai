@@ -17,7 +17,10 @@ import {
 import {
   connectBleCluster,
   connectObd2Scanner,
-  refreshActiveHardwareTelemetry
+  refreshActiveHardwareTelemetry,
+  startLiveHardwareStream,
+  stopLiveHardwareStream,
+  getActiveHardwareConnectionState
 } from '../../services/hardwareBridgeService';
 import { isFounderVipEmail } from '../Auth/LoginModal';
 
@@ -25,6 +28,7 @@ export default function HardwareBridgeModal({
   isOpen = false,
   onClose,
   bike = null,
+  telemetry = null,
   userProfile = null,
   onSyncOdometer,
   onOpenPaywall
@@ -35,12 +39,15 @@ export default function HardwareBridgeModal({
   const [obdStatus, setObdStatus] = useState(null);
   const [showObdGuide, setShowObdGuide] = useState(false);
   const [showCalibrator, setShowCalibrator] = useState(false);
+  const [acceptAllBleDevices, setAcceptAllBleDevices] = useState(false);
+  const [autoSyncLive, setAutoSyncLive] = useState(true);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
+  const [warningMsg, setWarningMsg] = useState('');
 
   const existingHw = bike?.hojaDeVida?.hardwareTelemetry || {};
   const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
 
-  // Parámetros editables/sincronizables en tiempo real con la moto
+  // Parámetros sincronizables en tiempo real con la moto + GPS en vivo
   const [liveParams, setLiveParams] = useState({
     odometerKm: Number(existingHw.odometerKm || bike?.odometer) || 5040,
     batteryVoltage: existingHw.batteryVoltage ?? 13.9,
@@ -59,10 +66,11 @@ export default function HardwareBridgeModal({
     absStatus: existingHw.absStatus || 'ABS SuperMoto OK'
   });
 
-  // Inicializar solo al abrir el modal para no pisar lo que el tablero o el usuario actualicen
+  // Inicializar al abrir el modal con datos reales de la moto y telemetría GPS activa
   useEffect(() => {
     if (isOpen && bike) {
       const hw = bike?.hojaDeVida?.hardwareTelemetry || {};
+      const gpsLive = telemetry && !telemetry.isSimulating ? telemetry : null;
       setLiveParams((prev) => ({
         ...prev,
         odometerKm: Number(hw.odometerKm || bike?.odometer) || prev.odometerKm,
@@ -72,12 +80,61 @@ export default function HardwareBridgeModal({
         realKmPerLiter: hw.realKmPerLiter ?? prev.realKmPerLiter,
         rideMode: hw.rideMode || prev.rideMode,
         engineTempC: hw.engineTempC ?? prev.engineTempC,
-        topSpeedRecorded: hw.topSpeedRecorded ?? prev.topSpeedRecorded,
+        rpmIdle: gpsLive?.rpm || hw.rpmIdle || prev.rpmIdle,
+        topSpeedRecorded: Math.max(Number(hw.topSpeedRecorded || 0), Number(gpsLive?.maxSpeed || 0)) || prev.topSpeedRecorded,
+        maxLeanAngle: Math.max(Number(hw.maxLeanAngle || 0), Math.abs(Number(gpsLive?.leanAngle || 0))) || prev.maxLeanAngle,
+        tripAKm: gpsLive?.tripDistanceKm > 0 ? gpsLive.tripDistanceKm : (hw.tripAKm ?? prev.tripAKm),
         checkEngineStatus: hw.checkEngineStatus || prev.checkEngineStatus,
         absStatus: hw.absStatus || prev.absStatus
       }));
     }
-  }, [isOpen]);
+  }, [isOpen, bike?.id]);
+
+  // Streaming continuo en vivo mientras el modal esté abierto y Auto-Sync esté activo
+  useEffect(() => {
+    if (!isOpen || !autoSyncLive) {
+      stopLiveHardwareStream();
+      return;
+    }
+
+    const hwState = getActiveHardwareConnectionState();
+    const isRealGpsRunning = Boolean(telemetry && !telemetry.isSimulating && telemetry.isGpsActive);
+    if (!hwState.isConnected && !isRealGpsRunning) return;
+
+    const unsubscribe = startLiveHardwareStream(
+      () => bike,
+      () => telemetry,
+      (freshTelemetry) => {
+        if (!freshTelemetry) return;
+        setLiveParams((prev) => {
+          const next = {
+            ...prev,
+            odometerKm: freshTelemetry.odometerKm ?? prev.odometerKm,
+            batteryVoltage: freshTelemetry.batteryVoltage ?? prev.batteryVoltage,
+            batteryLevel: freshTelemetry.batteryLevel ?? prev.batteryLevel,
+            fuelLevelPercent: freshTelemetry.fuelLevelPercent ?? prev.fuelLevelPercent,
+            engineTempC: freshTelemetry.engineTempC ?? prev.engineTempC,
+            rpmIdle: freshTelemetry.rpmIdle ?? prev.rpmIdle,
+            topSpeedRecorded: Math.max(Number(prev.topSpeedRecorded || 0), Number(freshTelemetry.topSpeedRecorded || 0)),
+            maxLeanAngle: Math.max(Number(prev.maxLeanAngle || 0), Number(freshTelemetry.maxLeanAngle || 0)),
+            tripAKm: freshTelemetry.tripAKm ?? prev.tripAKm
+          };
+          if (onSyncOdometer) {
+            onSyncOdometer(next.odometerKm, freshTelemetry.deviceName || 'Auto-Sync Hardware', {
+              ...freshTelemetry,
+              ...next
+            });
+          }
+          return next;
+        });
+      },
+      4000
+    );
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [isOpen, autoSyncLive, bleStatus, obdStatus, telemetry?.isSimulating, telemetry?.isGpsActive]);
 
   if (!isOpen) return null;
 
@@ -133,15 +190,21 @@ export default function HardwareBridgeModal({
     );
   };
 
-  // 1. Conectar Clúster TFT BLE y sincronizar automáticamente con la App
+  // 1. Conectar Clúster TFT BLE y sincronizar automáticamente con la App (SIN pisar con valores estáticos)
   const handleConnectBle = async () => {
     setIsScanning(true);
     setSyncSuccessMsg('');
+    setWarningMsg('');
     const res = await connectBleCluster({
       bike,
-      customOverrides: liveParams
+      acceptAllDevices: acceptAllBleDevices,
+      liveGpsTelemetry: telemetry
     });
     setIsScanning(false);
+
+    if (res.warning) {
+      setWarningMsg(res.warning);
+    }
 
     if (res.success && res.telemetry) {
       setBleStatus(res);
@@ -163,18 +226,17 @@ export default function HardwareBridgeModal({
       };
       setLiveParams(nextParams);
 
-      // Refrescar inmediatamente la app al conectar
       pushTelemetryToApp(
         nextParams,
         res.telemetry.deviceName || 'Clúster TFT SmartXonnect',
         res.telemetry.odometerReadFromGatt
-          ? `✅ ¡Tablero ${res.telemetry.deviceName} enlazado! Odómetro leído directo por GATT (${nextParams.odometerKm.toLocaleString()} KM) y sincronizado en toda la app.`
-          : `✅ ¡Tablero ${res.telemetry.deviceName} enlazado! Batería (${nextParams.batteryVoltage}V / ${nextParams.batteryLevel}%) sincronizada. Si el firmware SmartXonnect cifra el registro de KM, verifica o escribe el KM exacto de tu pantalla en la casilla #1 y pulsa Actualizar.`
+          ? `✅ ¡Tablero ${res.telemetry.deviceName} enlazado por GATT directo! Odómetro (${nextParams.odometerKm.toLocaleString()} KM) y sensores sincronizados en vivo.`
+          : `✅ ¡Dispositivo ${res.telemetry.deviceName} conectado! Auto-Sync activado (Batería: ${nextParams.batteryVoltage}V • RPM: ${nextParams.rpmIdle}). Nota: el tablero TVS SmartXonnect cifra el odómetro por Bluetooth; mientras ruedes con GPS activo, la app sumará cada KM automáticamente o usa un escáner ELM327 OBD-II en el puerto bajo el sillín.`
       );
     }
   };
 
-  // 2. Conectar Escáner OBD-II ECU y sincronizar automáticamente con la App
+  // 2. Conectar Escáner OBD-II ECU (Envía comandos AT y PIDs reales a la ECU)
   const handleConnectObd = async () => {
     if (!hasProAccess) {
       if (onOpenPaywall) onOpenPaywall('pro_monthly');
@@ -183,11 +245,17 @@ export default function HardwareBridgeModal({
 
     setIsScanning(true);
     setSyncSuccessMsg('');
+    setWarningMsg('');
     const res = await connectObd2Scanner(userProfile, {
       bike,
-      customOverrides: liveParams
+      acceptAllDevices: acceptAllBleDevices,
+      liveGpsTelemetry: telemetry
     });
     setIsScanning(false);
+
+    if (res.warning) {
+      setWarningMsg(res.warning);
+    }
 
     if (res.success && res.diagnostic) {
       setObdStatus(res);
@@ -203,17 +271,21 @@ export default function HardwareBridgeModal({
         rpmIdle: res.diagnostic.rpmReal ?? liveParams.rpmIdle
       };
       setLiveParams(nextParams);
-      pushTelemetryToApp(nextParams, res.diagnostic.ecuName || 'Cable OBD-II ECU');
+      pushTelemetryToApp(
+        nextParams,
+        res.diagnostic.ecuName || 'Cable OBD-II ECU',
+        `✅ ¡Interrogación PID OBD-II completada en ${res.diagnostic.ecuName}! Voltaje ECU: ${nextParams.batteryVoltage}V • Temp: ${nextParams.engineTempC}°C • RPM: ${nextParams.rpmIdle} • Odómetro: ${Number(nextParams.odometerKm).toLocaleString()} KM.`
+      );
     } else if (res.proRequired && onOpenPaywall) {
       onOpenPaywall('pro_monthly');
     }
   };
 
-  // 3. Refrescar lectura en vivo del Tablero / Cable Y actualizar inmediatamente la aplicación
+  // 3. Refrescar lectura en vivo del Tablero / Cable + GPS Y actualizar inmediatamente la aplicación
   const handleRefreshLiveParameters = async (sourceName = 'Clúster TFT SmartXonnect') => {
     setIsScanning(true);
     try {
-      const refreshed = await refreshActiveHardwareTelemetry(bike, liveParams);
+      const refreshed = await refreshActiveHardwareTelemetry(bike, liveParams, telemetry);
       const nextParams = {
         ...liveParams,
         odometerKm: refreshed.odometerKm ?? liveParams.odometerKm,
@@ -221,13 +293,16 @@ export default function HardwareBridgeModal({
         batteryLevel: refreshed.batteryLevel ?? liveParams.batteryLevel,
         fuelLevelPercent: refreshed.fuelLevelPercent ?? liveParams.fuelLevelPercent,
         engineTempC: refreshed.engineTempC ?? liveParams.engineTempC,
-        rpmIdle: refreshed.rpmIdle ?? liveParams.rpmIdle
+        rpmIdle: refreshed.rpmIdle ?? liveParams.rpmIdle,
+        topSpeedRecorded: Math.max(Number(liveParams.topSpeedRecorded || 0), Number(refreshed.topSpeedRecorded || 0)),
+        maxLeanAngle: Math.max(Number(liveParams.maxLeanAngle || 0), Number(refreshed.maxLeanAngle || 0)),
+        tripAKm: refreshed.tripAKm ?? liveParams.tripAKm
       };
       setLiveParams(nextParams);
       pushTelemetryToApp(
         nextParams,
         sourceName,
-        `🔄 ¡Sensores refrescados en vivo y sincronizados con la App! Odómetro: ${Number(nextParams.odometerKm).toLocaleString()} KM • Batería: ${nextParams.batteryVoltage}V (${nextParams.batteryLevel}%).`
+        `🔄 ¡Lectura en vivo refrescada! Odómetro: ${Number(nextParams.odometerKm).toLocaleString()} KM • Batería: ${nextParams.batteryVoltage}V (${nextParams.batteryLevel}%) • RPM: ${nextParams.rpmIdle}.`
       );
     } finally {
       setIsScanning(false);
@@ -584,11 +659,40 @@ export default function HardwareBridgeModal({
 
         {/* Mensaje de Éxito de Sincronización */}
         {syncSuccessMsg && (
-          <div className="mb-4 p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs font-mono font-bold flex items-start gap-2 animate-fadeIn">
+          <div className="mb-3 p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs font-mono font-bold flex items-start gap-2 animate-fadeIn">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
             <span>{syncSuccessMsg}</span>
           </div>
         )}
+
+        {warningMsg && (
+          <div className="mb-3 p-3 bg-amber-500/15 border border-amber-500/40 rounded-2xl text-amber-200 text-[11px] font-mono">
+            ⚠️ {warningMsg}
+          </div>
+        )}
+
+        {/* Controles de Escaneo Universal y Auto-Sync en Vivo */}
+        <div className="mb-3 px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+          <label className="flex items-center gap-2 text-neutral-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptAllBleDevices}
+              onChange={(e) => setAcceptAllBleDevices(e.target.checked)}
+              className="accent-amber-500 rounded"
+            />
+            <span>Mostrar todos los Bluetooth cercanos (sin filtro de nombre)</span>
+          </label>
+
+          <label className="flex items-center gap-2 text-emerald-300 cursor-pointer font-bold">
+            <input
+              type="checkbox"
+              checked={autoSyncLive}
+              onChange={(e) => setAutoSyncLive(e.target.checked)}
+              className="accent-emerald-500 rounded"
+            />
+            <span>⚡ Auto-Actualizar App en Vivo (Cada 4s + GPS)</span>
+          </label>
+        </div>
 
         {/* Selector de Pestañas (Modo 1 TFT vs Modo 2 Cable OBD-II) */}
         <div className="grid grid-cols-2 gap-2 p-1.5 bg-neutral-950 rounded-2xl border border-neutral-800 mb-4">

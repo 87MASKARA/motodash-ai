@@ -838,6 +838,7 @@ export default function DynamicDashboard({
         isOpen={isHardwareBridgeOpen}
         onClose={() => setIsHardwareBridgeOpen(false)}
         bike={effectiveBike}
+        telemetry={telemetry}
         userProfile={userProfile}
         onSyncOdometer={(km, source, fullTelemetry) => {
           if (onSyncHardwareOdometer) {

@@ -14,15 +14,26 @@ function computeHaversineKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-export function useDeviceGps({ maxRpm = 11500, redlineRpm = 10500, autoStart = false } = {}) {
+export function useDeviceGps({ maxRpm = 11500, redlineRpm = 10500, autoStart = false, onRealDistanceMilestone = null } = {}) {
   const [isSimulating, setIsSimulating] = useState(Boolean(autoStart));
   const simStartRef = useRef(performance.now());
   const lastCoordsRef = useRef(null);
+  const accumulatedGpsKmRef = useRef(0);
+  const unreportedKmRef = useRef(0);
   const specsRef = useRef({ maxRpm, redlineRpm });
+  const milestoneCallbackRef = useRef(onRealDistanceMilestone);
 
   useEffect(() => {
     specsRef.current = { maxRpm, redlineRpm };
   }, [maxRpm, redlineRpm]);
+
+  useEffect(() => {
+    milestoneCallbackRef.current = onRealDistanceMilestone;
+  }, [onRealDistanceMilestone]);
+
+  useEffect(() => {
+    setIsSimulating(Boolean(autoStart));
+  }, [autoStart]);
 
   const [telemetry, setTelemetry] = useState({
     speed: 0,
@@ -34,9 +45,10 @@ export function useDeviceGps({ maxRpm = 11500, redlineRpm = 10500, autoStart = f
     altitude: 1480,
     isGpsActive: Boolean(autoStart),
     leanAngle: 0,
-    tripDistanceKm: 18.4,
-    tripSeconds: 1452,
-    avgSpeed: 58
+    tripDistanceKm: 0,
+    sessionDeltaKm: 0,
+    tripSeconds: 0,
+    avgSpeed: 0
   });
 
   // Giroscopio Real del Dispositivo (DeviceOrientation API) para medir ángulo de inclinación en curva
@@ -97,6 +109,20 @@ export function useDeviceGps({ maxRpm = 11500, redlineRpm = 10500, autoStart = f
             ? idleRpm
             : Math.min(redline, Math.round(idleRpm + ((currentSpeed % 38) / 38) * (redline - idleRpm - 800) + currentSpeed * 18));
 
+          if (deltaKm > 0) {
+            accumulatedGpsKmRef.current = Number((accumulatedGpsKmRef.current + deltaKm).toFixed(3));
+            unreportedKmRef.current += deltaKm;
+            if (unreportedKmRef.current >= 0.25 && typeof milestoneCallbackRef.current === 'function') {
+              const kmToReport = Number(unreportedKmRef.current.toFixed(2));
+              unreportedKmRef.current = 0;
+              milestoneCallbackRef.current(kmToReport, {
+                speed: currentSpeed,
+                rpm: estimatedRpm,
+                sessionDeltaKm: accumulatedGpsKmRef.current
+              });
+            }
+          }
+
           setTelemetry((prev) => ({
             ...prev,
             speed: currentSpeed,
@@ -106,6 +132,7 @@ export function useDeviceGps({ maxRpm = 11500, redlineRpm = 10500, autoStart = f
             heading: pos.coords.heading ? Math.round(pos.coords.heading) : prev.heading,
             altitude: pos.coords.altitude ? Math.round(pos.coords.altitude) : prev.altitude,
             tripDistanceKm: Number((prev.tripDistanceKm + deltaKm).toFixed(2)),
+            sessionDeltaKm: accumulatedGpsKmRef.current,
             isGpsActive: true
           }));
         },
