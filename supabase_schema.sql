@@ -636,22 +636,26 @@ ALTER TABLE public.marketplace_listings FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.marketplace_listings FROM PUBLIC, anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.marketplace_listings TO authenticated;
 
+DROP POLICY IF EXISTS "Ver anuncios certificados" ON public.marketplace_listings;
 CREATE POLICY "Ver anuncios certificados"
   ON public.marketplace_listings FOR SELECT
   TO authenticated, anon
   USING (true);
 
+DROP POLICY IF EXISTS "Crear propio anuncio certificado" ON public.marketplace_listings;
 CREATE POLICY "Crear propio anuncio certificado"
   ON public.marketplace_listings FOR INSERT
   TO authenticated
   WITH CHECK ((select auth.uid()) = user_id);
 
+DROP POLICY IF EXISTS "Actualizar propio anuncio certificado" ON public.marketplace_listings;
 CREATE POLICY "Actualizar propio anuncio certificado"
   ON public.marketplace_listings FOR UPDATE
   TO authenticated
   USING ((select auth.uid()) = user_id)
   WITH CHECK ((select auth.uid()) = user_id);
 
+DROP POLICY IF EXISTS "Eliminar propio anuncio certificado" ON public.marketplace_listings;
 CREATE POLICY "Eliminar propio anuncio certificado"
   ON public.marketplace_listings FOR DELETE
   TO authenticated
@@ -685,6 +689,24 @@ CREATE TABLE IF NOT EXISTS public.mall_stores (
   created_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE public.mall_stores
+  ADD COLUMN IF NOT EXISTS owner_id uuid DEFAULT auth.uid(),
+  ADD COLUMN IF NOT EXISTS store_name text,
+  ADD COLUMN IF NOT EXISTS store_type text DEFAULT 'repuestos',
+  ADD COLUMN IF NOT EXISTS tax_id_nit text,
+  ADD COLUMN IF NOT EXISTS city text DEFAULT 'Medellín',
+  ADD COLUMN IF NOT EXISTS country text DEFAULT 'Colombia',
+  ADD COLUMN IF NOT EXISTS address text,
+  ADD COLUMN IF NOT EXISTS latitude numeric(10, 6),
+  ADD COLUMN IF NOT EXISTS longitude numeric(10, 6),
+  ADD COLUMN IF NOT EXISTS whatsapp_sales text,
+  ADD COLUMN IF NOT EXISTS logo_url text,
+  ADD COLUMN IF NOT EXISTS accent_color text DEFAULT '#F59E0B',
+  ADD COLUMN IF NOT EXISTS brands_supported text[] DEFAULT ARRAY['TVS', 'YAMAHA', 'KTM', 'BAJAJ'],
+  ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS founder_overseer_name text DEFAULT 'Anderson • Fundador VIP',
+  ADD COLUMN IF NOT EXISTS rating numeric(3, 2) DEFAULT 5.0;
+
 CREATE INDEX IF NOT EXISTS idx_mall_stores_city ON public.mall_stores(city);
 CREATE INDEX IF NOT EXISTS idx_mall_stores_slug ON public.mall_stores(slug);
 
@@ -693,16 +715,19 @@ ALTER TABLE public.mall_stores FORCE ROW LEVEL SECURITY;
 GRANT SELECT ON TABLE public.mall_stores TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON TABLE public.mall_stores TO authenticated;
 
+DROP POLICY IF EXISTS "Ver tiendas del MotoMall" ON public.mall_stores;
 CREATE POLICY "Ver tiendas del MotoMall"
   ON public.mall_stores FOR SELECT
   TO anon, authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Registrar propia tienda en MotoMall" ON public.mall_stores;
 CREATE POLICY "Registrar propia tienda en MotoMall"
   ON public.mall_stores FOR INSERT
   TO authenticated
   WITH CHECK ((select auth.uid()) = owner_id OR owner_id IS NULL);
 
+DROP POLICY IF EXISTS "Actualizar propia tienda o Fundador VIP" ON public.mall_stores;
 CREATE POLICY "Actualizar propia tienda o Fundador VIP"
   ON public.mall_stores FOR UPDATE
   TO authenticated
@@ -711,6 +736,7 @@ CREATE POLICY "Actualizar propia tienda o Fundador VIP"
     OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
   );
 
+DROP POLICY IF EXISTS "Eliminar propia tienda o Fundador VIP" ON public.mall_stores;
 CREATE POLICY "Eliminar propia tienda o Fundador VIP"
   ON public.mall_stores FOR DELETE
   TO authenticated
@@ -743,6 +769,24 @@ CREATE TABLE IF NOT EXISTS public.mall_products (
   created_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE public.mall_products
+  ADD COLUMN IF NOT EXISTS seller_id uuid DEFAULT auth.uid(),
+  ADD COLUMN IF NOT EXISTS store_slug text,
+  ADD COLUMN IF NOT EXISTS store_name text,
+  ADD COLUMN IF NOT EXISTS title text,
+  ADD COLUMN IF NOT EXISTS category text DEFAULT 'motor',
+  ADD COLUMN IF NOT EXISTS maintenance_comp_id text DEFAULT 'aceite_motor',
+  ADD COLUMN IF NOT EXISTS compatible_brands text[] DEFAULT ARRAY['TVS', 'YAMAHA', 'KTM', 'BAJAJ'],
+  ADD COLUMN IF NOT EXISTS compatible_models text,
+  ADD COLUMN IF NOT EXISTS oem_reference text,
+  ADD COLUMN IF NOT EXISTS price numeric(14, 2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS currency text DEFAULT 'COP',
+  ADD COLUMN IF NOT EXISTS discount_pct integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS stock integer DEFAULT 10,
+  ADD COLUMN IF NOT EXISTS image_url text,
+  ADD COLUMN IF NOT EXISTS whatsapp_sales text,
+  ADD COLUMN IF NOT EXISTS delivery_available boolean DEFAULT true;
+
 CREATE INDEX IF NOT EXISTS idx_mall_products_category ON public.mall_products(category);
 CREATE INDEX IF NOT EXISTS idx_mall_products_store ON public.mall_products(store_slug);
 
@@ -751,16 +795,19 @@ ALTER TABLE public.mall_products FORCE ROW LEVEL SECURITY;
 GRANT SELECT ON TABLE public.mall_products TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON TABLE public.mall_products TO authenticated;
 
+DROP POLICY IF EXISTS "Ver productos del MotoMall" ON public.mall_products;
 CREATE POLICY "Ver productos del MotoMall"
   ON public.mall_products FOR SELECT
   TO anon, authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Publicar productos en MotoMall" ON public.mall_products;
 CREATE POLICY "Publicar productos en MotoMall"
   ON public.mall_products FOR INSERT
   TO authenticated
   WITH CHECK ((select auth.uid()) = seller_id OR seller_id IS NULL);
 
+DROP POLICY IF EXISTS "Actualizar propios productos o Fundador VIP" ON public.mall_products;
 CREATE POLICY "Actualizar propios productos o Fundador VIP"
   ON public.mall_products FOR UPDATE
   TO authenticated
@@ -769,6 +816,7 @@ CREATE POLICY "Actualizar propios productos o Fundador VIP"
     OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
   );
 
+DROP POLICY IF EXISTS "Eliminar propios productos o Fundador VIP" ON public.mall_products;
 CREATE POLICY "Eliminar propios productos o Fundador VIP"
   ON public.mall_products FOR DELETE
   TO authenticated
@@ -799,22 +847,39 @@ CREATE TABLE IF NOT EXISTS public.moto_clans (
   created_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE public.moto_clans
+  ADD COLUMN IF NOT EXISTS creator_id uuid DEFAULT auth.uid(),
+  ADD COLUMN IF NOT EXISTS tag text DEFAULT 'CLAN',
+  ADD COLUMN IF NOT EXISTS motto text,
+  ADD COLUMN IF NOT EXISTS city text DEFAULT 'Medellín',
+  ADD COLUMN IF NOT EXISTS country text DEFAULT 'Colombia',
+  ADD COLUMN IF NOT EXISTS logo_url text,
+  ADD COLUMN IF NOT EXISTS accent_color text DEFAULT '#F59E0B',
+  ADD COLUMN IF NOT EXISTS is_private boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS invite_code text,
+  ADD COLUMN IF NOT EXISTS creator_name text DEFAULT 'Líder de Clan',
+  ADD COLUMN IF NOT EXISTS founder_name text DEFAULT 'Anderson • Fundador VIP',
+  ADD COLUMN IF NOT EXISTS member_count integer DEFAULT 2;
+
 CREATE INDEX IF NOT EXISTS idx_moto_clans_slug ON public.moto_clans(slug);
 
 ALTER TABLE public.moto_clans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.moto_clans FORCE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.moto_clans TO authenticated;
 
+DROP POLICY IF EXISTS "Ver clanes moteros" ON public.moto_clans;
 CREATE POLICY "Ver clanes moteros"
   ON public.moto_clans FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Crear propio clan motero" ON public.moto_clans;
 CREATE POLICY "Crear propio clan motero"
   ON public.moto_clans FOR INSERT
   TO authenticated
   WITH CHECK ((select auth.uid()) = creator_id OR creator_id IS NULL);
 
+DROP POLICY IF EXISTS "Actualizar propio clan o Fundador VIP" ON public.moto_clans;
 CREATE POLICY "Actualizar propio clan o Fundador VIP"
   ON public.moto_clans FOR UPDATE
   TO authenticated
@@ -823,6 +888,7 @@ CREATE POLICY "Actualizar propio clan o Fundador VIP"
     OR (select auth.jwt() ->> 'email') = 'anderson1125@gmail.com'
   );
 
+DROP POLICY IF EXISTS "Eliminar propio clan o Fundador VIP" ON public.moto_clans;
 CREATE POLICY "Eliminar propio clan o Fundador VIP"
   ON public.moto_clans FOR DELETE
   TO authenticated
