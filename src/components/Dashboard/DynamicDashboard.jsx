@@ -901,6 +901,7 @@ export default function DynamicDashboard({
         odometer={odometer}
         userProfile={userProfile}
         onOpenHojaDeVida={onOpenHojaDeVida}
+        onUpdateHojaDeVida={onUpdateHojaDeVida}
       />
 
       {/* MODAL SOS EMERGENCIA MÉDICA PARA PARAMÉDICOS, GRÚA Y ALERTA GPS AL CLAN */}

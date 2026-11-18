@@ -959,6 +959,7 @@ export default function App() {
         odometer={activeOdometer}
         userProfile={activeIsDemo ? null : userProfile}
         onOpenHojaDeVida={() => setIsHojaDeVidaOpen(true)}
+        onUpdateHojaDeVida={handleUpdateHojaDeVida}
       />
 
       {/* MODAL SUSCRIPCIÓN PRO */}
