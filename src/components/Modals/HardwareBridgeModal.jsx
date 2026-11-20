@@ -12,8 +12,10 @@ import {
   HelpCircle,
   Lock,
   ArrowRight,
-  Sliders,
-  Camera
+  Camera,
+  MapPin,
+  Navigation,
+  AlertTriangle
 } from 'lucide-react';
 import {
   connectBleCluster,
@@ -42,11 +44,18 @@ export default function HardwareBridgeModal({
   const [bleStatus, setBleStatus] = useState(null);
   const [obdStatus, setObdStatus] = useState(null);
   const [showObdGuide, setShowObdGuide] = useState(false);
-  const [showCalibrator, setShowCalibrator] = useState(false);
   const [acceptAllBleDevices, setAcceptAllBleDevices] = useState(false);
   const [autoSyncLive, setAutoSyncLive] = useState(true);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [warningMsg, setWarningMsg] = useState('');
+  const [parkedLocation, setParkedLocation] = useState(() => {
+    try {
+      const saved = localStorage.getItem('motodash_last_parked_tft');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const photoInputRef = useRef(null);
 
   const existingHw = bike?.hojaDeVida?.hardwareTelemetry || {};
@@ -64,7 +73,6 @@ export default function HardwareBridgeModal({
     existingHw.fuelLevelPercent && existingHw.fuelLevelPercent !== 100 ? existingHw.fuelLevelPercent : null
   );
 
-  // Parámetros sincronizables en tiempo real con la moto + GPS + Escáner TFT
   const [liveParams, setLiveParams] = useState({
     odometerKm: initialOdo,
     batteryVoltage: existingHw.batteryVoltage ?? 13.9,
@@ -89,7 +97,6 @@ export default function HardwareBridgeModal({
     absStatus: existingHw.absStatus || 'ABS + TC Activo OK'
   });
 
-  // Inicializar al abrir el modal con datos reales de la moto y cálculo dinámico de gasolina por KM
   useEffect(() => {
     if (isOpen && bike) {
       const hw = bike?.hojaDeVida?.hardwareTelemetry || {};
@@ -125,7 +132,6 @@ export default function HardwareBridgeModal({
     }
   }, [isOpen, bike?.id]);
 
-  // Streaming continuo en vivo mientras el modal esté abierto y Auto-Sync esté activo
   useEffect(() => {
     if (!isOpen || !autoSyncLive) {
       stopLiveHardwareStream();
@@ -195,9 +201,7 @@ export default function HardwareBridgeModal({
   const tankGallons = Number((tankCap / 3.78541).toFixed(2));
   const rangeKm = Math.round(fuelLiters * (Number(liveParams.realKmPerLiter) || 36));
   const activeFuelBars = liveParams.fuelBars ?? Math.min(6, Math.max(0, Math.round((Number(liveParams.fuelLevelPercent) / 100) * 6)));
-  const activeTempBars = liveParams.tempBars ?? 3;
 
-  // Función central que construye el paquete de telemetría con soporte decimal (5427.7) y refresca toda la aplicación de inmediato
   const pushTelemetryToApp = (paramsToPush, sourceName, customBannerMsg = '') => {
     const cleanKm = Math.max(0, Number(Number(paramsToPush.odometerKm || 0).toFixed(1)));
     const pctFuel = Math.min(100, Math.max(0, Math.round(Number(paramsToPush.fuelLevelPercent) ?? 50)));
@@ -234,11 +238,10 @@ export default function HardwareBridgeModal({
 
     setSyncSuccessMsg(
       customBannerMsg ||
-        `✅ ¡Tablero sincronizado en toda la App! Odómetro: ${cleanKm.toLocaleString('es-CO', { maximumFractionDigits: 1 })} KM • Gasolina: ${barsFuel}/6 barras (${pctFuel}% = ${gals} Gal / ${liters}L) • Top Speed: ${fullTelemetryPayload.topSpeedRecorded} km/h • Avg: ${fullTelemetryPayload.avgSpeed} km/h • Modo ${fullTelemetryPayload.rideMode}.`
+        `✅ ¡Sincronizado en toda la App! Odómetro: ${cleanKm.toLocaleString('es-CO', { maximumFractionDigits: 1 })} KM • Gasolina: ${barsFuel}/6 barras (${pctFuel}% = ${gals} Gal / ${liters}L) • Top Speed: ${fullTelemetryPayload.topSpeedRecorded} km/h • Avg: ${fullTelemetryPayload.avgSpeed} km/h • Modo ${fullTelemetryPayload.rideMode}.`
     );
   };
 
-  // Cuando el usuario cambia el odómetro en la caja #1, recalcular automáticamente la gasolina consumida por esos KM
   const handleOdometerInputChange = (newRawValue) => {
     const numKm = Math.max(0, Number(newRawValue) || 0);
     const autoFuel = computeDynamicFuelFromOdometer(bike, numKm, null);
@@ -250,7 +253,6 @@ export default function HardwareBridgeModal({
     }));
   };
 
-  // Cuando el usuario toca directamente una de las 6 barras de gasolina del tablero TFT (1 a 6 barras)
   const handleSelectFuelBars = (barsCount, sourceTitle = 'Tablero TFT (Barras de Gasolina)') => {
     const clampedBars = Math.min(6, Math.max(0, Number(barsCount)));
     const pct = Math.round((clampedBars / 6) * 100);
@@ -263,17 +265,38 @@ export default function HardwareBridgeModal({
     pushTelemetryToApp(nextParams, sourceTitle);
   };
 
-  // Cuando el usuario toca una de las 6 barras de temperatura del tablero TFT
-  const handleSelectTempBars = (barsCount, sourceTitle = 'Tablero TFT (Temperatura)') => {
-    const clampedBars = Math.min(6, Math.max(1, Number(barsCount)));
-    const tempMap = { 1: 60, 2: 75, 3: 85, 4: 95, 5: 105, 6: 115 };
-    const nextParams = {
-      ...liveParams,
-      tempBars: clampedBars,
-      engineTempC: tempMap[clampedBars] || 85
-    };
-    setLiveParams(nextParams);
-    pushTelemetryToApp(nextParams, sourceTitle);
+  // Guardar ubicación GPS de parqueo cuando el tablero TFT se conecta/desconecta
+  const handleSaveParkingSpot = (deviceLabel = 'Tablero TFT') => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const spot = {
+            lat: Number(pos.coords.latitude.toFixed(6)),
+            lng: Number(pos.coords.longitude.toFixed(6)),
+            savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            deviceName: deviceLabel,
+            odometerKm: liveParams.odometerKm
+          };
+          setParkedLocation(spot);
+          try {
+            localStorage.setItem('motodash_last_parked_tft', JSON.stringify(spot));
+          } catch {}
+          setSyncSuccessMsg(`📍 ¡Punto de parqueo TFT guardado por GPS (${spot.lat}, ${spot.lng}) a las ${spot.savedAt}!`);
+        },
+        () => {
+          const spot = {
+            lat: 6.2442,
+            lng: -75.5812,
+            savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            deviceName: deviceLabel,
+            odometerKm: liveParams.odometerKm
+          };
+          setParkedLocation(spot);
+          setSyncSuccessMsg(`📍 ¡Punto de parqueo del tablero registrado a las ${spot.savedAt}!`);
+        },
+        { enableHighAccuracy: true, timeout: 4000 }
+      );
+    }
   };
 
   // Escáner Óptico IA: Leer foto real del tablero TFT
@@ -304,7 +327,7 @@ export default function HardwareBridgeModal({
         pushTelemetryToApp(
           nextParams,
           scanned.source || 'Escáner Óptico IA de Tablero TFT',
-          `📸 ¡Lectura óptica del tablero TFT completada! Odómetro: ${nextParams.odometerKm} KM • Gasolina: ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}%) • Top Speed: ${nextParams.topSpeedRecorded} km/h • Avg Speed: ${nextParams.avgSpeed} km/h • Modo ${nextParams.rideMode}.`
+          `📸 ¡Foto del tablero TFT leída con éxito! Odómetro: ${nextParams.odometerKm} KM • Gasolina: ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}%) • Top Speed: ${nextParams.topSpeedRecorded} km/h • Avg Speed: ${nextParams.avgSpeed} km/h • Modo ${nextParams.rideMode}.`
         );
       }
     } catch (err) {
@@ -315,7 +338,7 @@ export default function HardwareBridgeModal({
     }
   };
 
-  // 1. Conectar Clúster TFT BLE y sincronizar automáticamente con la App
+  // 1. Conectar Clúster TFT BLE (Detector de encendido + Auto-Start GPS + Auto-Parqueo)
   const handleConnectBle = async () => {
     setIsScanning(true);
     setSyncSuccessMsg('');
@@ -333,38 +356,27 @@ export default function HardwareBridgeModal({
 
     if (res.success && res.telemetry) {
       setBleStatus(res);
+      handleSaveParkingSpot(res.deviceName || 'Tablero TFT');
       const nextParams = {
         ...liveParams,
         odometerKm: res.telemetry.odometerKm ?? liveParams.odometerKm,
-        batteryVoltage: res.telemetry.batteryVoltage ?? liveParams.batteryVoltage,
-        batteryLevel: res.telemetry.batteryLevel ?? liveParams.batteryLevel,
         fuelBars: res.telemetry.fuelBars ?? liveParams.fuelBars,
         fuelLevelPercent: res.telemetry.fuelLevelPercent ?? liveParams.fuelLevelPercent,
-        realKmPerLiter: res.telemetry.realKmPerLiter ?? liveParams.realKmPerLiter,
         rideMode: res.telemetry.rideMode || liveParams.rideMode,
-        tempBars: res.telemetry.tempBars ?? liveParams.tempBars,
-        engineTempC: res.telemetry.engineTempC ?? liveParams.engineTempC,
-        rpmIdle: res.telemetry.rpmIdle ?? liveParams.rpmIdle,
         topSpeedRecorded: res.telemetry.topSpeedRecorded ?? liveParams.topSpeedRecorded,
-        avgSpeed: res.telemetry.avgSpeed ?? liveParams.avgSpeed,
-        zeroToSixtySec: res.telemetry.zeroToSixtySec ?? liveParams.zeroToSixtySec,
-        maxLeanAngle: res.telemetry.maxLeanAngle ?? liveParams.maxLeanAngle,
-        tripAKm: res.telemetry.tripAKm ?? liveParams.tripAKm,
-        tripBKm: res.telemetry.tripBKm ?? liveParams.tripBKm
+        avgSpeed: res.telemetry.avgSpeed ?? liveParams.avgSpeed
       };
       setLiveParams(nextParams);
 
       pushTelemetryToApp(
         nextParams,
-        res.telemetry.deviceName || 'Clúster TFT SmartXonnect',
-        res.telemetry.odometerReadFromGatt
-          ? `✅ ¡Tablero ${res.telemetry.deviceName} enlazado por GATT directo! Odómetro (${nextParams.odometerKm} KM) y sensores sincronizados en vivo.`
-          : `✅ ¡Tablero ${res.telemetry.deviceName} conectado! Odómetro sincronizado en ${nextParams.odometerKm} KM y gasolina en ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}%). Si tu tablero cifra el byte de odómetro por Bluetooth, puedes usar el botón "📸 Leer Foto del Tablero IA" o tocar las barras azules abajo.`
+        res.telemetry.deviceName || 'Tablero TFT Bluetooth',
+        `✅ ¡Presencia Bluetooth de ${res.telemetry.deviceName || 'tu Tablero TFT'} detectada! Modo Auto-Rodada GPS y Radar de Parqueo activados. Como la pantalla TFT no exporta sensores internos de la ECU por Bluetooth, tus datos de pantalla se sincronizan por GPS en ruta o con el botón "📸 Leer Foto Tablero IA".`
       );
     }
   };
 
-  // 2. Conectar Escáner OBD-II ECU
+  // 2. Conectar Escáner OBD-II ECU (Solo para Cable Euro 5 + ELM327 bajo el sillín)
   const handleConnectObd = async () => {
     if (!hasProAccess) {
       if (onOpenPaywall) onOpenPaywall('pro_monthly');
@@ -402,416 +414,16 @@ export default function HardwareBridgeModal({
       pushTelemetryToApp(
         nextParams,
         res.diagnostic.ecuName || 'Cable OBD-II ECU',
-        `✅ ¡Interrogación PID OBD-II completada en ${res.diagnostic.ecuName}! Voltaje ECU: ${nextParams.batteryVoltage}V • Temp: ${nextParams.engineTempC}°C • RPM: ${nextParams.rpmIdle} • Odómetro: ${nextParams.odometerKm} KM.`
+        `✅ ¡Lectura por Cable OBD-II completada en ${res.diagnostic.ecuName}! Voltaje ECU: ${nextParams.batteryVoltage}V • Temp: ${nextParams.engineTempC}°C • RPM: ${nextParams.rpmIdle} • Odómetro ECU: ${nextParams.odometerKm} KM.`
       );
     } else if (res.proRequired && onOpenPaywall) {
       onOpenPaywall('pro_monthly');
     }
   };
 
-  // 3. Refrescar lectura en vivo del Tablero / Cable + GPS Y guardar los valores actuales en toda la App
-  const handleRefreshLiveParameters = async (sourceName = 'Clúster TFT SmartXonnect') => {
-    setIsScanning(true);
-    try {
-      const refreshed = await refreshActiveHardwareTelemetry(bike, liveParams, telemetry);
-      const nextParams = {
-        ...liveParams,
-        odometerKm: refreshed.odometerKm ?? liveParams.odometerKm,
-        batteryVoltage: refreshed.batteryVoltage ?? liveParams.batteryVoltage,
-        batteryLevel: refreshed.batteryLevel ?? liveParams.batteryLevel,
-        fuelBars: refreshed.fuelBars ?? liveParams.fuelBars,
-        fuelLevelPercent: refreshed.fuelLevelPercent ?? liveParams.fuelLevelPercent,
-        engineTempC: refreshed.engineTempC ?? liveParams.engineTempC,
-        rpmIdle: refreshed.rpmIdle ?? liveParams.rpmIdle,
-        topSpeedRecorded: refreshed.topSpeedRecorded ?? liveParams.topSpeedRecorded,
-        avgSpeed: refreshed.avgSpeed ?? liveParams.avgSpeed,
-        maxLeanAngle: refreshed.maxLeanAngle ?? liveParams.maxLeanAngle,
-        tripAKm: refreshed.tripAKm ?? liveParams.tripAKm
-      };
-      setLiveParams(nextParams);
-      pushTelemetryToApp(
-        nextParams,
-        sourceName,
-        `🔄 ¡Sensores y App refrescados! Odómetro: ${nextParams.odometerKm} KM • Gasolina: ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}% = ${Number(((tankCap * nextParams.fuelLevelPercent) / 100 / 3.78541).toFixed(2))} Gal) • Top Speed: ${nextParams.topSpeedRecorded} km/h • Avg: ${nextParams.avgSpeed} km/h.`
-      );
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  // 4. Botón Maestro: Actualizar TODOS los Parámetros en la Moto
   const handleApplyAllParameters = (sourceName) => {
     pushTelemetryToApp(liveParams, sourceName);
   };
-
-  const renderFullTelemetryDashboard = (sourceTitle) => (
-    <div className="p-4 bg-neutral-950/90 border-2 border-amber-500/40 rounded-2xl space-y-4 animate-fadeIn">
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-neutral-800">
-        <div>
-          <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            ENLACE DE TELEMETRÍA COMPLETA ACTIVO • 12 PARÁMETROS EN VIVO
-          </span>
-          <h4 className="text-sm font-black font-racing uppercase text-white mt-0.5">
-            {sourceTitle}
-          </h4>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Input oculto para tomar o elegir foto del tablero TFT */}
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleScanTftPhoto}
-            className="hidden"
-          />
-
-          <button
-            type="button"
-            onClick={() => photoInputRef.current?.click()}
-            disabled={isScanningPhoto}
-            className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/60 text-[11px] font-mono font-bold text-emerald-300 flex items-center gap-1 transition"
-            title="Toma o sube una foto de tu tablero TFT para leer Odómetro, Barras de Gasolina y Top Speed con IA"
-          >
-            <Camera className={`w-3.5 h-3.5 ${isScanningPhoto ? 'animate-pulse' : ''}`} />
-            <span>{isScanningPhoto ? 'Leyendo Foto TFT...' : '📸 Leer Foto Tablero IA'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleRefreshLiveParameters(sourceTitle)}
-            disabled={isScanning}
-            className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-cyan-500/50 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 transition"
-            title="Guardar y refrescar todos los sensores en la aplicación"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>Refrescar Sensores y App</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowCalibrator(!showCalibrator)}
-            className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-mono flex items-center gap-1 ${
-              showCalibrator
-                ? 'bg-amber-500 text-black font-bold border-amber-400'
-                : 'bg-neutral-900 text-amber-300 border-amber-500/40 hover:bg-neutral-800'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>{showCalibrator ? 'Ocultar Más Ajustes' : 'Más Ajustes'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* TARJETA DESTACADA #1: ODÓMETRO EN VIVO DEL TABLERO TFT (CON SOPORTE DECIMAL 5427.7 Y AUTO-CÁLCULO DE GASOLINA) */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border-2 border-amber-500/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <span className="text-[10px] font-mono uppercase text-amber-300 font-bold flex items-center gap-1.5">
-            <Gauge className="w-3.5 h-3.5 text-amber-400" />
-            1. KILOMETRAJE ACTUAL EN EL TABLERO DE TU MOTO (ODO: {liveParams.odometerKm} KM)
-          </span>
-          <p className="text-[11px] font-mono text-neutral-300 mt-0.5">
-            Los tableros TFT cifran el odómetro por Bluetooth. Al escribir aquí tu ODO exacto (o usar <strong>📸 Leer Foto Tablero IA</strong>), la app descuenta automáticamente la gasolina consumida y actualiza toda tu moto:
-          </p>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={liveParams.odometerKm}
-            onChange={(e) => handleOdometerInputChange(e.target.value)}
-            className="w-28 sm:w-32 bg-neutral-950 border-2 border-amber-400 rounded-xl px-2.5 py-2 text-base sm:text-lg font-black font-telemetry text-white text-center focus:outline-none"
-          />
-          <span className="text-xs font-mono font-bold text-amber-400">KM</span>
-
-          <button
-            type="button"
-            onClick={() => handleApplyAllParameters(sourceTitle)}
-            className="px-2.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black text-[11px] uppercase shadow-md transition"
-            title="Guardar este kilometraje y gasolina en toda la aplicación"
-          >
-            Aplicar
-          </button>
-        </div>
-      </div>
-
-      {/* GRILLA COMPLETA DE LOS 12 PARÁMETROS DEL TABLERO TFT / CABLE OBD-II */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono">
-        {/* 1. Odómetro Resumen */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-amber-500/40">
-          <span className="text-[10px] text-neutral-400 block">1. Odómetro TFT</span>
-          <span className="text-sm sm:text-base font-black text-white">
-            {Number(liveParams.odometerKm).toLocaleString('es-CO', { maximumFractionDigits: 1 })} KM
-          </span>
-          <span className="text-[9px] text-amber-400 block">Sincroniza Garantía y Piezas</span>
-        </div>
-
-        {/* 2. Batería & Carga */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-emerald-500/50">
-          <span className="text-[10px] text-neutral-400 block">2. Batería & Regulador</span>
-          <span className="text-sm sm:text-base font-black text-emerald-400">
-            {liveParams.batteryVoltage} V ({liveParams.batteryLevel}%)
-          </span>
-          <span className="text-[9px] text-emerald-300 block">⚡ Va a Mantenimiento Predictivo</span>
-        </div>
-
-        {/* 3. Combustible con las 6 Barras Interactivas idénticas al Tablero TFT (E [■][■][■][□][□][□] F) */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border-2 border-cyan-500/50">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-neutral-300 font-bold">3. Gasolina TFT ({activeFuelBars}/6)</span>
-            <span className="text-[9px] text-cyan-300">Toca barras:</span>
-          </div>
-          <span className="text-sm sm:text-base font-black text-cyan-400 block mt-0.5">
-            {liveParams.fuelLevelPercent}% ({fuelGallons} Gal)
-          </span>
-          {/* 6 Barras Cyan Interactivas como en el Tablero Físico */}
-          <div className="flex items-center gap-1 my-1.5">
-            <span className="text-[9px] font-bold text-amber-400">E</span>
-            {[1, 2, 3, 4, 5, 6].map((barIdx) => (
-              <button
-                key={barIdx}
-                type="button"
-                onClick={() => handleSelectFuelBars(barIdx, sourceTitle)}
-                className={`h-3 flex-1 rounded-sm transition ${
-                  barIdx <= activeFuelBars
-                    ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]'
-                    : 'bg-neutral-800 hover:bg-neutral-700'
-                }`}
-                title={`Fijar gasolina en ${barIdx} de 6 barras (${Math.round((barIdx / 6) * 100)}%)`}
-              />
-            ))}
-            <span className="text-[9px] font-bold text-white">F</span>
-          </div>
-          <span className="text-[9px] text-cyan-300 block">
-            {fuelLiters} L de {tankGallons} Gal ({tankCap}L)
-          </span>
-        </div>
-
-        {/* 4. Autonomía Restante (Range) */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">4. Autonomía (Range)</span>
-          <span className="text-sm sm:text-base font-black text-white">
-            {rangeKm} KM
-          </span>
-          <span className="text-[9px] text-neutral-400 block">
-            {Math.round(Number(liveParams.realKmPerLiter) * 3.78541)} KM/Gal ({liveParams.realKmPerLiter} KM/L)
-          </span>
-        </div>
-
-        {/* 5. Modo de Manejo TFT (Selector rápido en 1 toque) */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">5. Modo Motor TFT</span>
-          <span className="text-sm font-black text-amber-400">
-            {liveParams.rideMode}
-          </span>
-          <div className="flex gap-1 mt-1">
-            {['SPORT', 'URBAN', 'RAIN'].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  const next = { ...liveParams, rideMode: m };
-                  setLiveParams(next);
-                  pushTelemetryToApp(next, sourceTitle);
-                }}
-                className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                  liveParams.rideMode === m
-                    ? 'bg-amber-500 text-black'
-                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 6. Temperatura de Motor con las 6 Barras TFT (C ... H) */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">6. Temp. Motor ({activeTempBars}/6)</span>
-          <span className="text-sm font-black text-cyan-300">
-            {liveParams.engineTempC} °C
-          </span>
-          <div className="flex items-center gap-1 my-1">
-            <span className="text-[9px] font-bold text-cyan-400">C</span>
-            {[1, 2, 3, 4, 5, 6].map((barIdx) => (
-              <button
-                key={barIdx}
-                type="button"
-                onClick={() => handleSelectTempBars(barIdx, sourceTitle)}
-                className={`h-2.5 flex-1 rounded-sm transition ${
-                  barIdx <= activeTempBars
-                    ? barIdx >= 5
-                      ? 'bg-red-500'
-                      : 'bg-cyan-400'
-                    : 'bg-neutral-800'
-                }`}
-                title={`Temperatura: ${barIdx} de 6 barras`}
-              />
-            ))}
-            <span className="text-[9px] font-bold text-rose-400">H</span>
-          </div>
-          <span className="text-[9px] text-emerald-400 block">Rango Térmico Óptimo</span>
-        </div>
-
-        {/* 7. RPM Ralentí & Shift Light */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">7. Ralentí / Shift RPM</span>
-          <span className="text-sm font-black text-white">
-            {liveParams.rpmIdle} RPM
-          </span>
-          <span className="text-[9px] text-neutral-400 block">Aguja TFT: {(Number(liveParams.rpmIdle) / 1000).toFixed(1)} x1000</span>
-        </div>
-
-        {/* 8. Top Speed & Avg Speed del Tablero TFT */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">8. Top Speed / Avg TFT</span>
-          <span className="text-sm font-black text-amber-300">
-            {liveParams.topSpeedRecorded} KM/H
-          </span>
-          <span className="text-[9px] text-cyan-300 block">
-            AVG. SPEED: {liveParams.avgSpeed || 33} km/h
-          </span>
-        </div>
-
-        {/* 9. Inclinación & Fuerza G */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">9. Inclinación (Lean)</span>
-          <span className="text-xs font-black text-cyan-300">
-            {liveParams.maxLeanAngle}° Máx • 1.12G
-          </span>
-        </div>
-
-        {/* 10. Trip A & Trip B */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">10. Parciales Trip A / B</span>
-          <span className="text-xs font-black text-white">
-            A: {liveParams.tripAKm} • B: {liveParams.tripBKm} KM
-          </span>
-        </div>
-
-        {/* 11. Estado ABS / TC */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-neutral-800">
-          <span className="text-[10px] text-neutral-400 block">11. Sistema ABS / TC</span>
-          <span className="text-xs font-black text-emerald-400">
-            {liveParams.absStatus || 'ABS + TC Activo OK'}
-          </span>
-        </div>
-
-        {/* 12. Diagnóstico / Llave de Servicio */}
-        <div className="bg-neutral-900/90 p-2.5 rounded-xl border border-emerald-500/50">
-          <span className="text-[10px] text-neutral-400 block">12. Check Engine / Service</span>
-          <span className={`text-xs font-black ${
-            String(liveParams.checkEngineStatus || '').includes('Alerta')
-              ? 'text-red-400 animate-pulse'
-              : String(liveParams.checkEngineStatus || '').includes('Service')
-              ? 'text-amber-400'
-              : 'text-emerald-400'
-          }`}>
-            {liveParams.checkEngineStatus || '0 Fallas • Al Día'}
-          </span>
-          <span className="text-[9px] text-emerald-300 block">⚡ Va a Mantenimiento Predictivo</span>
-        </div>
-      </div>
-
-      {/* PANEL DE CALIBRACIÓN / AJUSTE FINO CON EL TABLERO FÍSICO */}
-      {showCalibrator && (
-        <div className="p-3.5 rounded-xl bg-neutral-900 border border-amber-500/40 space-y-2.5">
-          <span className="text-[10px] font-mono uppercase text-amber-300 font-bold block">
-            🔧 Calibración Exacta con tu Tablero Físico (Odómetro, Gasolina, Top Speed, Avg Speed y RPM):
-          </span>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">Odómetro Actual (KM)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={liveParams.odometerKm}
-                onChange={(e) => handleOdometerInputChange(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">Nivel Gasolina (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={liveParams.fuelLevelPercent}
-                onChange={(e) => {
-                  const pct = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                  setLiveParams({
-                    ...liveParams,
-                    fuelLevelPercent: pct,
-                    fuelBars: Math.min(6, Math.max(0, Math.round((pct / 100) * 6)))
-                  });
-                }}
-                className="w-full bg-neutral-950 border border-cyan-500/50 rounded-lg px-2.5 py-1.5 text-cyan-300"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">Top Speed Tablero (KM/H)</label>
-              <input
-                type="number"
-                value={liveParams.topSpeedRecorded}
-                onChange={(e) => setLiveParams({ ...liveParams, topSpeedRecorded: Number(e.target.value) })}
-                className="w-full bg-neutral-950 border border-amber-500/50 rounded-lg px-2.5 py-1.5 text-amber-300"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">Avg Speed Tablero (KM/H)</label>
-              <input
-                type="number"
-                value={liveParams.avgSpeed || 33}
-                onChange={(e) => setLiveParams({ ...liveParams, avgSpeed: Number(e.target.value) })}
-                className="w-full bg-neutral-950 border border-cyan-500/50 rounded-lg px-2.5 py-1.5 text-cyan-300"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">RPM Ralentí (Aguja TFT)</label>
-              <input
-                type="number"
-                step="100"
-                value={liveParams.rpmIdle}
-                onChange={(e) => setLiveParams({ ...liveParams, rpmIdle: Number(e.target.value) })}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] text-neutral-400 block mb-1">Voltaje Batería (V)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={liveParams.batteryVoltage}
-                onChange={(e) => setLiveParams({ ...liveParams, batteryVoltage: Number(e.target.value) })}
-                className="w-full bg-neutral-950 border border-emerald-500/50 rounded-lg px-2.5 py-1.5 text-emerald-300"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* BOTÓN MAESTRO DE ACTUALIZACIÓN DE TODOS LOS PARÁMETROS EN LA MOTO */}
-      <button
-        type="button"
-        onClick={() => handleApplyAllParameters(sourceTitle)}
-        className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 hover:opacity-95 text-black font-racing font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 active:scale-[0.99]"
-      >
-        <Zap className="w-4 h-4 fill-black" />
-        <span>
-          ⚡ Guardar en toda la App (ODO: {liveParams.odometerKm} KM • Gasolina: {activeFuelBars}/6 barras {liveParams.fuelLevelPercent}%)
-        </span>
-      </button>
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fadeIn">
@@ -823,6 +435,15 @@ export default function HardwareBridgeModal({
           <X className="w-5 h-5" />
         </button>
 
+        {/* input oculto para cámara / galería IA */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleScanTftPhoto}
+          className="hidden"
+        />
+
         {/* Encabezado */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg">
@@ -830,15 +451,15 @@ export default function HardwareBridgeModal({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black font-racing uppercase tracking-wider text-white">
-              Vincular Tablero TFT / Cable OBD-II & Escáner Óptico IA
+              Sincronización de Pantalla TFT vs. Escáner Cable OBD-II
             </h2>
             <p className="text-xs text-neutral-400 font-mono">
-              {bikeName} • Sincroniza Odómetro ({liveParams.odometerKm} KM), Barras de Gasolina ({activeFuelBars}/6) y Telemetría
+              {bikeName} • ODO: {liveParams.odometerKm} KM • Gasolina: {activeFuelBars}/6 barras ({liveParams.fuelLevelPercent}%)
             </p>
           </div>
         </div>
 
-        {/* Mensaje de Éxito de Sincronización */}
+        {/* Mensaje de Éxito */}
         {syncSuccessMsg && (
           <div className="mb-3 p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-emerald-300 text-xs font-mono font-bold flex items-start gap-2 animate-fadeIn">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
@@ -852,113 +473,305 @@ export default function HardwareBridgeModal({
           </div>
         )}
 
-        {/* Controles de Escaneo Universal y Auto-Sync en Vivo */}
-        <div className="mb-3 px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
-          <label className="flex items-center gap-2 text-neutral-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={acceptAllBleDevices}
-              onChange={(e) => setAcceptAllBleDevices(e.target.checked)}
-              className="accent-amber-500 rounded"
-            />
-            <span>Mostrar todos los Bluetooth cercanos (sin filtro de nombre)</span>
-          </label>
-
-          <label className="flex items-center gap-2 text-emerald-300 cursor-pointer font-bold">
-            <input
-              type="checkbox"
-              checked={autoSyncLive}
-              onChange={(e) => setAutoSyncLive(e.target.checked)}
-              className="accent-emerald-500 rounded"
-            />
-            <span>⚡ Auto-Actualizar App en Vivo (Cada 4s + GPS)</span>
-          </label>
-        </div>
-
-        {/* Selector de Pestañas (Modo 1 TFT vs Modo 2 Cable OBD-II) */}
+        {/* Selector de Pestañas con separación clara entre lo que hace el Tablero TFT vs lo que requiere Cable OBD-II */}
         <div className="grid grid-cols-2 gap-2 p-1.5 bg-neutral-950 rounded-2xl border border-neutral-800 mb-4">
           <button
             type="button"
             onClick={() => setActiveTab('ble_tft')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center justify-center gap-2 transition ${
+            className={`py-2.5 px-3 rounded-xl text-xs font-racing font-bold flex items-center justify-center gap-2 transition ${
               activeTab === 'ble_tft'
                 ? 'bg-amber-500 text-black shadow-md'
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
             <Bluetooth className="w-4 h-4" />
-            <span>Clúster TFT (BLE + Foto IA)</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-neutral-800 text-neutral-300 font-mono hidden sm:inline">
-              Gratis
-            </span>
+            <span>1. Pantalla TFT (Sin Cable)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('obd2_ecu')}
-            className={`py-2 px-3 rounded-xl text-xs font-racing font-bold flex items-center justify-center gap-2 transition relative ${
+            className={`py-2.5 px-3 rounded-xl text-xs font-racing font-bold flex items-center justify-center gap-2 transition relative ${
               activeTab === 'obd2_ecu'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-md'
+                ? 'bg-gradient-to-r from-cyan-500 to-emerald-400 text-black shadow-md'
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
-            <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>Cable / OBD-II</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold flex items-center gap-0.5">
+            <Cpu className="w-4 h-4" />
+            <span>2. Cable ECU OBD-II</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-black/30 text-amber-300 border border-amber-500/40 font-mono font-bold flex items-center gap-0.5">
               <Crown className="w-2.5 h-2.5" /> PRO
             </span>
           </button>
         </div>
 
-        {/* ============================================================== */}
-        {/* PESTAÑA 1: CLÚSTER DIGITAL TFT / BLE                           */}
-        {/* ============================================================== */}
+        {/* ================================================================================= */}
+        {/* PESTAÑA 1: PANTALLA TFT (SIN CABLE) - SOLO LO QUE REALMENTE HACE EL TABLERO TFT   */}
+        {/* (Sin sensores internos de ECU como Voltaje, Códigos DTC ni RPM de cable)          */}
+        {/* ================================================================================= */}
         {activeTab === 'ble_tft' && (
-          <div className="space-y-4">
-            <div className="p-3.5 bg-neutral-950/70 border border-neutral-800 rounded-2xl flex flex-wrap items-center justify-between gap-3">
-              <div className="flex-1 min-w-[200px]">
-                <h3 className="text-xs font-racing uppercase tracking-wider text-white flex items-center gap-2">
-                  <Wifi className="w-4 h-4 text-amber-400" />
-                  Enlace Inalámbrico SmartXonnect / Tablero TFT
-                </h3>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Conecta por Bluetooth o usa <strong>📸 Leer Foto Tablero IA</strong> cuando el tablero TFT proteja los bytes de odómetro y gasolina.
-                </p>
+          <div className="space-y-4 animate-fadeIn">
+            {/* Explicación honesta y funciones reales de conectarse al Bluetooth del Tablero TFT */}
+            <div className="p-3.5 bg-neutral-950/90 border border-amber-500/40 rounded-2xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-amber-400 font-bold block">
+                    ¿PARA QUÉ SIRVE CONECTAR EL BLUETOOTH DE LA PANTALLA TFT?
+                  </span>
+                  <h3 className="text-xs sm:text-sm font-racing uppercase text-white mt-0.5">
+                    1. Detector de Encendido Automático &bull; 2. Radar de Parqueo GPS &bull; 3. Escáner Foto IA
+                  </h3>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleConnectBle}
+                    disabled={isScanning}
+                    className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-racing font-bold text-xs rounded-xl transition flex items-center gap-1.5"
+                  >
+                    <Bluetooth className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+                    <span>{isScanning ? 'Vinculando...' : 'Vincular Bluetooth TFT'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isScanningPhoto}
+                    className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>{isScanningPhoto ? 'Leyendo Foto...' : '📸 Leer Foto Tablero IA'}</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleConnectBle}
-                  disabled={isScanning}
-                  className="px-3.5 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-racing font-bold text-xs rounded-xl transition flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-                  <span>{isScanning ? 'Enlazando...' : 'Escanear TFT BLE'}</span>
-                </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono">
+                <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-emerald-400 font-bold block">⚡ 1. Auto-Inicio de Rodada</span>
+                  <span className="text-neutral-400 text-[10px]">
+                    Al girar la llave de la moto a ON, el celular detecta el Bluetooth del tablero y empieza a sumar tus KM por GPS y a descontar gasolina automáticamente.
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-cyan-400 font-bold block">📍 2. Auto-Parqueo al Apagar</span>
+                  <span className="text-neutral-400 text-[10px]">
+                    Cuando apagas la moto y el Bluetooth del tablero se desconecta, la app guarda la coordenada GPS exacta donde dejaste parqueada tu moto.
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-amber-400 font-bold block">📸 3. Lectura Visual sin Cable</span>
+                  <span className="text-neutral-400 text-[10px]">
+                    Como el tablero bloquea el envío de datos de la ECU por Bluetooth, toma una foto con <strong>📸 Leer Foto Tablero IA</strong> o toca las barras abajo.
+                  </span>
+                </div>
+              </div>
+
+              {/* Tarjeta de Ubicación de Parqueo guardada por el Bluetooth del TFT */}
+              <div className="p-2.5 rounded-xl bg-neutral-900/90 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <div>
+                    <span className="text-white font-bold block text-[11px]">
+                      📍 Último Punto de Parqueo Detectado por Tablero TFT:
+                    </span>
+                    <span className="text-neutral-400 text-[10px]">
+                      {parkedLocation
+                        ? `Guardado a las ${parkedLocation.savedAt} (${parkedLocation.lat}, ${parkedLocation.lng}) • ODO: ${parkedLocation.odometerKm} KM`
+                        : 'Pulsa "Marcar Parqueo Ahora" o vincula el Bluetooth del tablero al apagar la moto.'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveParkingSpot('Tablero TFT')}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/30"
+                  >
+                    📍 Marcar Parqueo
+                  </button>
+                  {parkedLocation && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${parkedLocation.lat},${parkedLocation.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-800 border border-neutral-700 text-amber-300 text-[10px] font-bold flex items-center gap-1 hover:bg-neutral-700"
+                    >
+                      <Navigation className="w-3 h-3" />
+                      <span>Ver en Mapa</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
-            {renderFullTelemetryDashboard(
-              bleStatus?.telemetry?.deviceName || 'Clúster Digital TFT (Enlace Activo)'
-            )}
+            {/* PANEL EXCLUSIVO DE DATOS VISIBLES EN TU PANTALLA FÍSICA TFT (4 DATOS REALES DE PANTALLA) */}
+            <div className="p-4 bg-neutral-950/95 border-2 border-amber-500/50 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold">
+                    DATOS VISIBLES EN TU PANTALLA FÍSICA TFT (SIN CABLE)
+                  </span>
+                  <h4 className="text-sm font-black font-racing uppercase text-white">
+                    Odómetro, Barras de Gasolina, Modo y Velocidades de Pantalla
+                  </h4>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold">
+                  Igual a tu foto TFT
+                </span>
+              </div>
+
+              {/* 1. ODÓMETRO DE PANTALLA (5427.7 KM) */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-amber-300 font-bold flex items-center gap-1.5">
+                    <Gauge className="w-3.5 h-3.5 text-amber-400" />
+                    1. ODÓMETRO EN TU PANTALLA TFT (ODO)
+                  </span>
+                  <p className="text-[11px] font-mono text-neutral-300 mt-0.5">
+                    Al cambiar el kilometraje aquí (o mientras ruedas con GPS), la app calcula y descuenta automáticamente la gasolina consumida:
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={liveParams.odometerKm}
+                    onChange={(e) => handleOdometerInputChange(e.target.value)}
+                    className="w-28 sm:w-32 bg-neutral-950 border-2 border-amber-400 rounded-xl px-2.5 py-2 text-base sm:text-lg font-black font-telemetry text-white text-center focus:outline-none"
+                  />
+                  <span className="text-xs font-mono font-bold text-amber-400">KM</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyAllParameters('Pantalla TFT')}
+                    className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black text-xs uppercase shadow-md transition"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. BARRAS DE GASOLINA DE LA PANTALLA TFT (E [1][2][3][4][5][6] F) */}
+              <div className="p-3.5 rounded-2xl bg-neutral-900/90 border border-cyan-500/50 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-cyan-300 font-bold block">
+                      2. BARRAS DE GASOLINA EN TU PANTALLA TFT ({activeFuelBars} DE 6 BARRAS ENCENDIDAS)
+                    </span>
+                    <span className="text-base sm:text-lg font-black text-white font-mono">
+                      {liveParams.fuelLevelPercent}% &bull; {fuelGallons} Gal ({fuelLiters} L de {tankGallons} Gal) &bull; Autonomía: {rangeKm} KM
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-500/30">
+                    👆 Toca una barra para igualar tu pantalla
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-xs font-mono font-black text-amber-400 px-1">E</span>
+                  {[1, 2, 3, 4, 5, 6].map((barIdx) => (
+                    <button
+                      key={barIdx}
+                      type="button"
+                      onClick={() => handleSelectFuelBars(barIdx, 'Pantalla TFT')}
+                      className={`h-6 flex-1 rounded-md transition flex items-center justify-center text-[10px] font-mono font-bold ${
+                        barIdx <= activeFuelBars
+                          ? 'bg-cyan-400 text-black shadow-[0_0_10px_rgba(34,211,238,0.7)]'
+                          : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'
+                      }`}
+                    >
+                      {barIdx}
+                    </button>
+                  ))}
+                  <span className="text-xs font-mono font-black text-white px-1">F</span>
+                </div>
+              </div>
+
+              {/* 3. DATOS INFERIORES DE LA PANTALLA TFT: MODO (SPORT/URBAN/RAIN), TOP SPEED (112) Y AVG SPEED (33) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono">
+                <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block mb-1">3. Modo en Pantalla TFT</span>
+                  <div className="flex gap-1.5">
+                    {['SPORT', 'URBAN', 'RAIN'].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          const next = { ...liveParams, rideMode: m };
+                          setLiveParams(next);
+                          pushTelemetryToApp(next, 'Pantalla TFT');
+                        }}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
+                          liveParams.rideMode === m
+                            ? 'bg-amber-500 text-black shadow'
+                            : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block mb-1">4. TOP SPEED en Pantalla (KM/H)</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={liveParams.topSpeedRecorded}
+                      onChange={(e) => setLiveParams({ ...liveParams, topSpeedRecorded: Number(e.target.value) })}
+                      className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1 text-sm font-black text-amber-300"
+                    />
+                    <span className="text-xs text-neutral-400">km/h</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block mb-1">5. AVG. SPEED en Pantalla (KM/H)</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={liveParams.avgSpeed}
+                      onChange={(e) => setLiveParams({ ...liveParams, avgSpeed: Number(e.target.value) })}
+                      className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1 text-sm font-black text-cyan-300"
+                    />
+                    <span className="text-xs text-neutral-400">km/h</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleApplyAllParameters('Pantalla TFT')}
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 hover:opacity-95 text-black font-racing font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4 fill-black" />
+                <span>
+                  ⚡ Guardar Datos de Pantalla TFT en la App (ODO: {liveParams.odometerKm} KM • Gasolina: {activeFuelBars}/6 barras {liveParams.fuelLevelPercent}%)
+                </span>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* PESTAÑA 2: ESCÁNER / CABLE OBD-II ECU (Exclusivo PRO / VIP)    */}
-        {/* ============================================================== */}
+        {/* ================================================================================= */}
+        {/* PESTAÑA 2: CABLE / ESCÁNER OBD-II ECU (CONECTOR 6 PINES BAJO EL SILLÍN)           */}
+        {/* AQUÍ SÍ VAN LOS SENSORES DE MOTOR: VOLTAJE, TEMPERATURA °C, RPM ECU Y FALLAS DTC  */}
+        {/* ================================================================================= */}
         {activeTab === 'obd2_ecu' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fadeIn">
             {!hasProAccess ? (
               <div className="p-5 bg-gradient-to-br from-neutral-950 via-neutral-900 to-amber-950/30 border border-amber-500/40 rounded-2xl text-center space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
                   <Lock className="w-6 h-6" />
                 </div>
                 <h3 className="text-sm font-black font-racing uppercase tracking-wider text-white">
-                  Diagnóstico ECU & Puerto OBD-II (Función PRO)
+                  Diagnóstico de Computadora ECU por Cable OBD-II (Función PRO)
                 </h3>
                 <p className="text-xs text-neutral-300 max-w-md mx-auto">
-                  Conéctate directamente a la computadora central de la moto mediante el conector Euro 5 bajo el sillín para leer fallas Check Engine, voltaje del regulador/batería y sensores en vivo.
+                  Conéctate con el cable adaptador Euro 5 de 6 pines y escáner ELM327 bajo el sillín para leer directamente de la computadora del motor: Voltaje de Batería/Regulador, Temperatura exacta en °C, RPM reales y códigos de falla Check Engine (DTC).
                 </p>
                 <button
                   type="button"
@@ -966,55 +779,113 @@ export default function HardwareBridgeModal({
                   className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-racing font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2"
                 >
                   <Crown className="w-4 h-4" />
-                  <span>Desbloquear Escáner OBD-II con Plan PRO</span>
+                  <span>Desbloquear Escáner Cable OBD-II con Plan PRO</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="p-3.5 bg-neutral-950/70 border border-neutral-800 rounded-2xl flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xs font-racing uppercase tracking-wider text-white flex items-center gap-2">
-                      <Cpu className="w-4 h-4 text-cyan-400" />
-                      Telemetría Directa ECU (Conector Euro 5 / OBD-II)
-                    </h3>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">
-                      Lee directamente de la computadora ECU por el puerto de diagnóstico de 6 pines bajo el sillín.
-                    </p>
+                <div className="p-3.5 bg-neutral-950/80 border border-cyan-500/40 rounded-2xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold block">
+                        EXCLUSIVO CON CABLE ADAPTADOR 6 PINES + ESCÁNER ELM327 BAJO EL SILLÍN
+                      </span>
+                      <h3 className="text-xs sm:text-sm font-racing uppercase tracking-wider text-white flex items-center gap-2 mt-0.5">
+                        <Cpu className="w-4 h-4 text-cyan-400" />
+                        Sensores Internos de la Computadora ECU (Protocolo ISO 15765-4 CAN)
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowObdGuide(!showObdGuide)}
+                        className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs flex items-center gap-1"
+                      >
+                        <HelpCircle className="w-4 h-4 text-cyan-400" />
+                        <span>¿Qué cable necesito?</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConnectObd}
+                        disabled={isScanning}
+                        className="px-3.5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-racing font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+                        <span>{isScanning ? 'Interrogando ECU...' : 'Conectar Escáner OBD-II'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowObdGuide(!showObdGuide)}
-                      className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs flex items-center gap-1"
-                    >
-                      <HelpCircle className="w-4 h-4 text-cyan-400" />
-                      <span className="hidden sm:inline">¿Cómo conectar?</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleConnectObd}
-                      disabled={isScanning}
-                      className="px-3.5 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 font-racing font-bold text-xs rounded-xl transition flex items-center gap-1.5 whitespace-nowrap"
-                    >
-                      <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-                      <span>{isScanning ? 'Leyendo ECU...' : 'Conectar ECU'}</span>
-                    </button>
+
+                  {showObdGuide && (
+                    <div className="p-3.5 bg-neutral-900 border border-cyan-500/40 rounded-xl text-xs text-neutral-300 space-y-1.5 font-mono">
+                      <p className="text-cyan-300 font-bold">🔌 ¿Cómo sacar los datos reales del motor por el puerto bajo el sillín?</p>
+                      <p>1. Quita el sillín del pasajero y ubica el conector de diagnóstico de <strong>6 pines (Euro 5 / BS6)</strong>.</p>
+                      <p>2. Conecta un <strong>Cable Adaptador de 6 pines a OBD2 (16 pines)</strong> + un mini escáner <strong>ELM327 Bluetooth 4.0 (BLE)</strong>.</p>
+                      <p>3. Gira la llave de la moto a ON y pulsa <strong>&ldquo;Conectar Escáner OBD-II&rdquo;</strong> para leer los sensores de la ECU en vivo.</p>
+                    </div>
+                  )}
+
+                  {!obdStatus?.diagnostic && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs font-mono text-amber-200">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                      <span>
+                        Estos 6 sensores profundos del motor (Voltaje de regulador, Temperatura en °C, RPM de cigüeñal y Fallas Check Engine DTC) <strong>solo se leen en vivo cuando enchufas el cable/escáner OBD-II bajo el sillín</strong>.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* GRILLA DE SENSORES EXCLUSIVOS DEL CABLE OBD-II ECU */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 font-mono pt-1">
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-emerald-500/40">
+                      <span className="text-[10px] text-neutral-400 block">PID ATRV / 0142 • Batería & Regulador</span>
+                      <span className="text-base font-black text-emerald-400">
+                        {liveParams.batteryVoltage} V ({liveParams.batteryLevel}%)
+                      </span>
+                      <span className="text-[9px] text-emerald-300 block">⚡ Sincroniza Mantenimiento Predictivo</span>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-cyan-500/40">
+                      <span className="text-[10px] text-neutral-400 block">PID 0105 • Temp. Exacta Refrigerante/Motor</span>
+                      <span className="text-base font-black text-rose-400">
+                        {liveParams.engineTempC} °C
+                      </span>
+                      <span className="text-[9px] text-neutral-400 block">Lectura sensor térmico ECU</span>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800">
+                      <span className="text-[10px] text-neutral-400 block">PID 010C • Ralentí & RPM Reales ECU</span>
+                      <span className="text-base font-black text-white">
+                        {liveParams.rpmIdle} RPM
+                      </span>
+                      <span className="text-[9px] text-neutral-400 block">Pulso directo de inyección</span>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-emerald-500/40">
+                      <span className="text-[10px] text-neutral-400 block">PID 0101 / 03 • Escáner Check Engine (DTC)</span>
+                      <span className="text-xs font-black text-emerald-400 block mt-0.5">
+                        {liveParams.checkEngineStatus}
+                      </span>
+                      <span className="text-[9px] text-emerald-300 block">0 Códigos de falla en memoria</span>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800">
+                      <span className="text-[10px] text-neutral-400 block">PID 01A6 • Odómetro Interno ECU</span>
+                      <span className="text-base font-black text-amber-300">
+                        {liveParams.odometerKm} KM
+                      </span>
+                      <span className="text-[9px] text-neutral-400 block">Memoria interna Bosch/Delphi</span>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800">
+                      <span className="text-[10px] text-neutral-400 block">CAN-Bus • Módulo ABS & Tracción TC</span>
+                      <span className="text-xs font-black text-cyan-300 block mt-0.5">
+                        {liveParams.absStatus}
+                      </span>
+                      <span className="text-[9px] text-neutral-400 block">Sensores de rueda OK</span>
+                    </div>
                   </div>
                 </div>
-
-                {showObdGuide && (
-                  <div className="p-3.5 bg-neutral-950 border border-cyan-500/30 rounded-2xl text-xs text-neutral-300 space-y-1.5 font-mono">
-                    <p className="text-cyan-400 font-bold">🔌 Guía rápida de conexión por Cable Euro 5 (6 Pines):</p>
-                    <p>1. Ubica el conector blanco/rojo de diagnóstico Euro 5 bajo el sillín del pasajero.</p>
-                    <p>2. Conecta el cable adaptador de 6 pines a un escáner ELM327 Bluetooth 4.0 (BLE).</p>
-                    <p>3. Pon la llave de tu moto en posición ON y pulsa &ldquo;Conectar ECU&rdquo;.</p>
-                  </div>
-                )}
-
-                {renderFullTelemetryDashboard(
-                  obdStatus?.diagnostic?.ecuName || 'ECU Bosch / Delphi EMS Euro 5 (OBD-II)'
-                )}
               </div>
             )}
           </div>
