@@ -29,6 +29,7 @@ import DoctorMotorModal from '../Modals/DoctorMotorModal';
 import CarPlayHudModal from '../Modals/CarPlayHudModal';
 import MotoMallModal from '../Modals/MotoMallModal';
 import FounderAdminModal from '../Modals/FounderAdminModal';
+import { loadAppGovernance } from '../../services/founderAdminService';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -73,6 +74,7 @@ export default function DynamicDashboard({
   const [isCarPlayHudOpen, setIsCarPlayHudOpen] = useState(false);
   const [isMotoMallOpen, setIsMotoMallOpen] = useState(false);
   const [isFounderAdminOpen, setIsFounderAdminOpen] = useState(false);
+  const [appGovernance, setAppGovernance] = useState(() => loadAppGovernance());
   const [motoMallCompId, setMotoMallCompId] = useState(null);
   const [motoMallInitialTab, setMotoMallInitialTab] = useState('catalog');
   const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
@@ -685,6 +687,13 @@ export default function DynamicDashboard({
         </div>
       </header>
 
+      {/* Banner Oficial del Megáfono del Fundador (cuando está activo en el Panel Fundador) */}
+      {appGovernance?.announcementActive && appGovernance?.announcementText && (
+        <div className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black px-4 py-2 text-xs font-racing font-black uppercase tracking-wide text-center shadow-md flex items-center justify-center gap-2">
+          <span>📢 {appGovernance.announcementText}</span>
+        </div>
+      )}
+
       {/* Banner de Alerta Crítica (si hay fotomulta con descuento, mantenimiento urgente o documento por vencer) */}
       <CriticalAlertBanner 
         currentOdometer={odometer}
@@ -981,6 +990,7 @@ export default function DynamicDashboard({
         isOpen={isFounderAdminOpen}
         onClose={() => setIsFounderAdminOpen(false)}
         userProfile={userProfile}
+        onGovernanceChange={(nextGov) => setAppGovernance(nextGov)}
       />
 
       {/* DOCK INFERIOR FIJO PARA CELULAR Y SOPORTE DE MANUBRIO (CON GUANTES) */}

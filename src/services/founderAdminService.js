@@ -4,7 +4,9 @@ const STORAGE_KEYS = {
   INFLUENCERS: 'motodash_founder_influencers_v1',
   GIFT_CODES: 'motodash_founder_gift_codes_v1',
   REDEMPTIONS: 'motodash_founder_redemptions_v1',
-  MANUAL_GRANTS: 'motodash_founder_manual_grants_v1'
+  COUNTRY_SUBS: 'motodash_founder_country_subs_v1',
+  API_USAGE: 'motodash_founder_api_usage_v1',
+  APP_GOVERNANCE: 'motodash_founder_governance_v1'
 };
 
 export const PLAN_PRICES_USD = {
@@ -12,6 +14,46 @@ export const PLAN_PRICES_USD = {
   pro_monthly: { name: 'Rider PRO (3 Motos + OBD-II + IA)', monthly: 4.99, annual: 39.99 },
   garage: { name: 'Garaje / Taller (15 Motos)', monthly: 9.99, annual: 79.99 },
   b2b_mall: { name: 'Tienda Oficial MotoMall B2B', monthly: 14.99, annual: 149.0 }
+};
+
+export const DEFAULT_COUNTRY_SUBSCRIPTIONS = [
+  { code: 'CO', country: 'Colombia', flag: '🇨🇴', freeUsers: 185, soloSubs: 24, proSubs: 38, garageSubs: 6, b2bStores: 4 },
+  { code: 'MX', country: 'México', flag: '🇲🇽', freeUsers: 94, soloSubs: 12, proSubs: 19, garageSubs: 3, b2bStores: 2 },
+  { code: 'ES', country: 'España', flag: '🇪🇸', freeUsers: 72, soloSubs: 9, proSubs: 16, garageSubs: 2, b2bStores: 1 },
+  { code: 'BR', country: 'Brasil', flag: '🇧🇷', freeUsers: 68, soloSubs: 8, proSubs: 14, garageSubs: 2, b2bStores: 1 },
+  { code: 'US', country: 'Estados Unidos', flag: '🇺🇸', freeUsers: 45, soloSubs: 6, proSubs: 12, garageSubs: 3, b2bStores: 1 },
+  { code: 'AR', country: 'Argentina', flag: '🇦🇷', freeUsers: 39, soloSubs: 5, proSubs: 7, garageSubs: 1, b2bStores: 1 },
+  { code: 'CL', country: 'Chile', flag: '🇨🇱', freeUsers: 34, soloSubs: 4, proSubs: 8, garageSubs: 1, b2bStores: 1 },
+  { code: 'PE', country: 'Perú', flag: '🇵🇪', freeUsers: 41, soloSubs: 6, proSubs: 9, garageSubs: 1, b2bStores: 1 },
+  { code: 'FR', country: 'Francia', flag: '🇫🇷', freeUsers: 18, soloSubs: 2, proSubs: 5, garageSubs: 1, b2bStores: 0 },
+  { code: 'IT', country: 'Italia', flag: '🇮🇹', freeUsers: 22, soloSubs: 3, proSubs: 6, garageSubs: 1, b2bStores: 0 },
+  { code: 'DE', country: 'Alemania', flag: '🇩🇪', freeUsers: 16, soloSubs: 2, proSubs: 5, garageSubs: 1, b2bStores: 0 }
+];
+
+export const DEFAULT_API_USAGE = {
+  callsToday: 28,
+  callsThisMonth: 642,
+  lawyerAiCalls: 310,
+  doctorMotorCalls: 218,
+  opticalScannerCalls: 114,
+  estimatedTokensMonth: 545700,
+  // Configuración de límites y control de gasto
+  maxDailyFreeUserCalls: 5,
+  maxDailyProUserCalls: 40,
+  monthlyBudgetLimitUsd: 15.0,
+  economyLocalOnlyMode: false, // Si es true, fuerza respuestas del motor local sin gastar tokens de Gemini
+  rateLimitPerMinuteIp: 25,
+  lastResetDate: '2026-11-01'
+};
+
+export const DEFAULT_APP_GOVERNANCE = {
+  announcementActive: false,
+  announcementText: '🔥 ¡Lanzamiento Oficial MotoDash AI V3.0! Usa el código MOTOPRO30 para activar 30 días de Plan Rider PRO Gratis.',
+  announcementType: 'promo', // 'promo' | 'warning' | 'info'
+  allowNewB2bStores: true,
+  allowMarketplaceListings: true,
+  allowFreeTrial7Days: true,
+  requirePinOnGlovebox: true
 };
 
 export const DEFAULT_INFLUENCERS = [
@@ -116,7 +158,7 @@ export const DEFAULT_GIFT_CODES = [
   {
     id: 'gift_creator_vip',
     code: 'CREADORVIP',
-    type: 'free_subscription', // 'free_subscription' | 'discount'
+    type: 'free_subscription',
     planId: 'pro_monthly',
     durationDays: 365,
     discountPercent: 100,
@@ -231,9 +273,199 @@ export function saveRedemptions(list) {
   return list;
 }
 
+export function loadCountrySubscriptions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.COUNTRY_SUBS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  localStorage.setItem(STORAGE_KEYS.COUNTRY_SUBS, JSON.stringify(DEFAULT_COUNTRY_SUBSCRIPTIONS));
+  return DEFAULT_COUNTRY_SUBSCRIPTIONS;
+}
+
+export function saveCountrySubscriptions(list) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.COUNTRY_SUBS, JSON.stringify(list));
+  } catch {}
+  return list;
+}
+
+export function loadApiUsageConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.API_USAGE);
+    if (raw) {
+      return { ...DEFAULT_API_USAGE, ...JSON.parse(raw) };
+    }
+  } catch {}
+  localStorage.setItem(STORAGE_KEYS.API_USAGE, JSON.stringify(DEFAULT_API_USAGE));
+  return DEFAULT_API_USAGE;
+}
+
+export function saveApiUsageConfig(cfg) {
+  const merged = { ...loadApiUsageConfig(), ...cfg };
+  try {
+    localStorage.setItem(STORAGE_KEYS.API_USAGE, JSON.stringify(merged));
+  } catch {}
+  return merged;
+}
+
 /**
- * Calcula las finanzas de un influencer específico y del sistema global
+ * Registra cada llamada real a la API de IA (Abogado Vial, Doctor Motor o Escáner Óptico)
+ * y verifica si el Fundador activó el Modo Ahorro ($0 tokens) o si se superó el presupuesto.
  */
+export function checkAndRecordAiApiCall(moduleType = 'lawyer', estimatedTokens = 850) {
+  const usage = loadApiUsageConfig();
+  const costUsdSoFar = Number(((usage.estimatedTokensMonth / 1000000) * 0.15).toFixed(4));
+
+  if (usage.economyLocalOnlyMode || costUsdSoFar >= Number(usage.monthlyBudgetLimitUsd || 15)) {
+    return {
+      allowed: false,
+      reason: usage.economyLocalOnlyMode
+        ? 'Modo Ahorro Local activo por el Fundador ($0 costo tokens).'
+        : 'Tope de presupuesto mensual de API alcanzado.'
+    };
+  }
+
+  const next = {
+    ...usage,
+    callsToday: (Number(usage.callsToday) || 0) + 1,
+    callsThisMonth: (Number(usage.callsThisMonth) || 0) + 1,
+    lawyerAiCalls: moduleType === 'lawyer' ? (Number(usage.lawyerAiCalls) || 0) + 1 : usage.lawyerAiCalls,
+    doctorMotorCalls: moduleType === 'doctor' ? (Number(usage.doctorMotorCalls) || 0) + 1 : usage.doctorMotorCalls,
+    opticalScannerCalls: moduleType === 'scanner' ? (Number(usage.opticalScannerCalls) || 0) + 1 : usage.opticalScannerCalls,
+    estimatedTokensMonth: (Number(usage.estimatedTokensMonth) || 0) + estimatedTokens
+  };
+  saveApiUsageConfig(next);
+  return { allowed: true, usage: next };
+}
+
+export function loadAppGovernance() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.APP_GOVERNANCE);
+    if (raw) {
+      return { ...DEFAULT_APP_GOVERNANCE, ...JSON.parse(raw) };
+    }
+  } catch {}
+  localStorage.setItem(STORAGE_KEYS.APP_GOVERNANCE, JSON.stringify(DEFAULT_APP_GOVERNANCE));
+  return DEFAULT_APP_GOVERNANCE;
+}
+
+export function saveAppGovernance(gov) {
+  const merged = { ...loadAppGovernance(), ...gov };
+  try {
+    localStorage.setItem(STORAGE_KEYS.APP_GOVERNANCE, JSON.stringify(merged));
+  } catch {}
+  return merged;
+}
+
+/**
+ * Consulta en vivo el estado real de las tablas de Supabase para el Panel de Control del Fundador
+ */
+export async function fetchLiveSupabasePlatformStats() {
+  const stats = {
+    storesCount: 0,
+    productsCount: 0,
+    listingsCount: 0,
+    clansCount: 0,
+    stores: [],
+    listings: []
+  };
+
+  try {
+    const [storesRes, prodsRes, listRes, clansRes] = await Promise.all([
+      supabase.from('mall_stores').select('*').order('created_at', { ascending: false }).limit(20),
+      supabase.from('mall_products').select('id', { count: 'exact', head: true }),
+      supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false }).limit(20),
+      supabase.from('moto_clans').select('id', { count: 'exact', head: true })
+    ]);
+
+    if (Array.isArray(storesRes.data)) {
+      stats.stores = storesRes.data;
+      stats.storesCount = storesRes.data.length;
+    }
+    if (typeof prodsRes.count === 'number') {
+      stats.productsCount = prodsRes.count;
+    }
+    if (Array.isArray(listRes.data)) {
+      stats.listings = listRes.data;
+      stats.listingsCount = listRes.data.length;
+    }
+    if (typeof clansRes.count === 'number') {
+      stats.clansCount = clansRes.count;
+    }
+  } catch {}
+
+  return stats;
+}
+
+/**
+ * Calcula las métricas de suscripciones totales y por país (11 países)
+ */
+export function computeCountrySubscriptionsReport(countriesList = []) {
+  let grandTotalFree = 0;
+  let grandTotalSolo = 0;
+  let grandTotalPro = 0;
+  let grandTotalGarage = 0;
+  let grandTotalB2b = 0;
+  let grandTotalPaidSubs = 0;
+  let grandTotalMrrUsd = 0;
+
+  const enriched = countriesList.map((c) => {
+    const free = Math.max(0, Number(c.freeUsers) || 0);
+    const solo = Math.max(0, Number(c.soloSubs) || 0);
+    const pro = Math.max(0, Number(c.proSubs) || 0);
+    const garage = Math.max(0, Number(c.garageSubs) || 0);
+    const b2b = Math.max(0, Number(c.b2bStores) || 0);
+
+    const paidSubs = solo + pro + garage + b2b;
+    const mrrUsd = Number(
+      (
+        solo * PLAN_PRICES_USD.solo.monthly +
+        pro * PLAN_PRICES_USD.pro_monthly.monthly +
+        garage * PLAN_PRICES_USD.garage.monthly +
+        b2b * PLAN_PRICES_USD.b2b_mall.monthly
+      ).toFixed(2)
+    );
+
+    grandTotalFree += free;
+    grandTotalSolo += solo;
+    grandTotalPro += pro;
+    grandTotalGarage += garage;
+    grandTotalB2b += b2b;
+    grandTotalPaidSubs += paidSubs;
+    grandTotalMrrUsd += mrrUsd;
+
+    return {
+      ...c,
+      paidSubs,
+      totalUsers: free + paidSubs,
+      mrrUsd
+    };
+  });
+
+  const withShares = enriched
+    .map((c) => ({
+      ...c,
+      sharePercent: grandTotalPaidSubs > 0 ? Math.round((c.paidSubs / grandTotalPaidSubs) * 100) : 0
+    }))
+    .sort((a, b) => b.paidSubs - a.paidSubs);
+
+  return {
+    countries: withShares,
+    grandTotalFree,
+    grandTotalSolo,
+    grandTotalPro,
+    grandTotalGarage,
+    grandTotalB2b,
+    grandTotalPaidSubs,
+    grandTotalUsers: grandTotalFree + grandTotalPaidSubs,
+    grandTotalMrrUsd: Number(grandTotalMrrUsd.toFixed(2)),
+    grandTotalMrrCop: Math.round(grandTotalMrrUsd * 4200)
+  };
+}
+
 export function computeInfluencerMetrics(inf) {
   const planInfo = PLAN_PRICES_USD[inf.avgPlanId || 'pro_monthly'] || PLAN_PRICES_USD.pro_monthly;
   const discountFactor = 1 - Math.min(90, Math.max(0, Number(inf.followerDiscountPercent) || 0)) / 100;
@@ -258,9 +490,9 @@ export function computeInfluencerMetrics(inf) {
   };
 }
 
-export function computeGlobalFounderSummary(influencers = [], giftCodes = []) {
+export function computeGlobalFounderSummary(influencers = [], giftCodes = [], countriesList = []) {
   let totalReferrals = 0;
-  let totalPaidSubs = 0;
+  let totalPaidSubsFromInfluencers = 0;
   let totalGrossUsd = 0;
   let totalInfluencerCommissionsUsd = 0;
   let totalFounderNetUsd = 0;
@@ -269,12 +501,16 @@ export function computeGlobalFounderSummary(influencers = [], giftCodes = []) {
   influencers.forEach((inf) => {
     const m = computeInfluencerMetrics(inf);
     totalReferrals += Number(inf.referralsCount) || 0;
-    totalPaidSubs += Number(inf.paidConversions) || 0;
+    totalPaidSubsFromInfluencers += Number(inf.paidConversions) || 0;
     totalGrossUsd += m.grossMonthlyUsd;
     totalInfluencerCommissionsUsd += m.influencerCutUsd;
     totalFounderNetUsd += m.founderNetUsd;
     totalPendingPayoutUsd += m.pendingPayoutUsd;
   });
+
+  const countryReport = computeCountrySubscriptionsReport(
+    countriesList.length > 0 ? countriesList : loadCountrySubscriptions()
+  );
 
   const totalGiftedSubscriptions = giftCodes.reduce((acc, g) => acc + (Number(g.usedCount) || 0), 0);
 
@@ -282,19 +518,22 @@ export function computeGlobalFounderSummary(influencers = [], giftCodes = []) {
     totalInfluencers: influencers.length,
     activeInfluencers: influencers.filter((i) => i.status === 'active').length,
     totalReferrals,
-    totalPaidSubs,
+    totalPaidSubs: countryReport.grandTotalPaidSubs,
+    totalPaidSubsFromInfluencers,
+    totalUsersGlobal: countryReport.grandTotalUsers,
     totalGiftedSubscriptions,
-    totalGrossUsd: Number(totalGrossUsd.toFixed(2)),
+    totalGrossUsd: countryReport.grandTotalMrrUsd,
     totalInfluencerCommissionsUsd: Number(totalInfluencerCommissionsUsd.toFixed(2)),
-    totalFounderNetUsd: Number(totalFounderNetUsd.toFixed(2)),
+    totalFounderNetUsd: Number(
+      Math.max(0, countryReport.grandTotalMrrUsd * 0.94 - totalInfluencerCommissionsUsd).toFixed(2)
+    ),
     totalPendingPayoutUsd: Number(totalPendingPayoutUsd.toFixed(2)),
-    totalFounderNetCop: Math.round(totalFounderNetUsd * 4200)
+    totalFounderNetCop: Math.round(
+      Math.max(0, countryReport.grandTotalMrrUsd * 0.94 - totalInfluencerCommissionsUsd) * 4200
+    )
   };
 }
 
-/**
- * Valida y canjea un código de Influencer o Código de Regalo VIP ingresado por un usuario en PaywallModal o ProfileModal
- */
 export async function redeemPromoOrGiftCode(rawCode, userProfile = null) {
   const cleanCode = String(rawCode || '').trim().toUpperCase();
   if (!cleanCode) {
@@ -306,7 +545,6 @@ export async function redeemPromoOrGiftCode(rawCode, userProfile = null) {
   const redemptions = loadRedemptions();
   const userEmail = userProfile?.email || 'piloto.invitado@motodash.ai';
 
-  // 1. Buscar primero en Códigos de Regalo Directo / Sorteos
   const giftIdx = giftCodes.findIndex((g) => String(g.code).toUpperCase() === cleanCode);
   if (giftIdx !== -1) {
     const gift = giftCodes[giftIdx];
@@ -360,7 +598,6 @@ export async function redeemPromoOrGiftCode(rawCode, userProfile = null) {
     };
   }
 
-  // 2. Buscar en Códigos de Influencers / Creadores de Contenido
   const infIdx = influencers.findIndex((i) => String(i.code).toUpperCase() === cleanCode);
   if (infIdx !== -1) {
     const inf = influencers[infIdx];
@@ -420,9 +657,6 @@ export async function redeemPromoOrGiftCode(rawCode, userProfile = null) {
   };
 }
 
-/**
- * Genera el mensaje listo para enviar por WhatsApp o Instagram DM al Influencer con su propuesta y código
- */
 export function buildInfluencerPitchMessage(inf) {
   const url = typeof window !== 'undefined' ? window.location.origin : 'https://motodash.ai';
   return `¡Hola ${inf.name}! 🏍️🔥 Soy Anderson, creador y fundador de *MotoDash AI* (la primera app todo-en-uno con Telemetría GPS/OBD-II, 17 piezas de Mantenimiento Predictivo, Guantera Modo Retén con bloqueo PIN y Abogado Vial IA anti-inmovilización).

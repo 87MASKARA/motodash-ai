@@ -1091,25 +1091,45 @@ Respond to the rider's query ("${question}") STRICTLY in ${langName} as pure JSO
   ]
 }`;
 
-  // 1. Intentar primero el Serverless AI Gateway seguro (/api/ai-gateway)
+  // 1. Verificar reglas del Panel Fundador (Modo Ahorro Local o Presupuesto Mensual API) e intentar Serverless AI Gateway (/api/ai-gateway)
+  let allowExternalAi = true;
   try {
-    const gatewayRes = await fetch('/api/ai-gateway', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: systemPrompt, temperature: 0.15 })
-    });
-    if (gatewayRes.ok) {
-      const payload = await gatewayRes.json();
-      if (payload?.data?.instantVerdict) {
-        return {
-          ...payload.data,
-          source: `Gemini 2.0 Flash • ${country}`
-        };
+    const rawApiCfg = localStorage.getItem('motodash_founder_api_usage_v1');
+    if (rawApiCfg) {
+      const cfg = JSON.parse(rawApiCfg);
+      const costSoFar = ((Number(cfg.estimatedTokensMonth) || 0) / 1000000) * 0.15;
+      if (cfg.economyLocalOnlyMode || costSoFar >= Number(cfg.monthlyBudgetLimitUsd || 15)) {
+        allowExternalAi = false;
+      } else {
+        cfg.callsToday = (Number(cfg.callsToday) || 0) + 1;
+        cfg.callsThisMonth = (Number(cfg.callsThisMonth) || 0) + 1;
+        cfg.lawyerAiCalls = (Number(cfg.lawyerAiCalls) || 0) + 1;
+        cfg.estimatedTokensMonth = (Number(cfg.estimatedTokensMonth) || 0) + 850;
+        localStorage.setItem('motodash_founder_api_usage_v1', JSON.stringify(cfg));
       }
     }
   } catch {}
 
-  if (apiKey) {
+  if (allowExternalAi) {
+    try {
+      const gatewayRes = await fetch('/api/ai-gateway', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: systemPrompt, temperature: 0.15 })
+      });
+      if (gatewayRes.ok) {
+        const payload = await gatewayRes.json();
+        if (payload?.data?.instantVerdict) {
+          return {
+            ...payload.data,
+            source: `Gemini 2.0 Flash • ${country}`
+          };
+        }
+      }
+    } catch {}
+  }
+
+  if (allowExternalAi && apiKey) {
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
