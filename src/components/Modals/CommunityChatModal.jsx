@@ -17,6 +17,7 @@ import {
   KeyRound,
   Sparkles,
   CheckCircle2,
+  Trash2,
   X
 } from 'lucide-react';
 import { supabase, getAuthenticatedUserId } from '../../services/supabaseClient';
@@ -188,15 +189,30 @@ export default function CommunityChatModal({
 
   // Modo de vista: 'clans' (Clanes con logo propio y sala privada) | 'channels' (Canales abiertos por ciudad/moto)
   const [viewMode, setViewMode] = useState('clans');
+  const [confirmDeleteSlug, setConfirmDeleteSlug] = useState(null);
+  const [deletingClan, setDeletingClan] = useState(false);
+
+  const getDeletedClanSlugs = () => {
+    try {
+      const raw = localStorage.getItem('motodash_deleted_clan_slugs');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
   const [clans, setClans] = useState(() => {
+    const deletedSlugs = getDeletedClanSlugs();
     try {
       const saved = localStorage.getItem('motodash_custom_clans');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((c) => !deletedSlugs.includes(c.slug));
+        }
       }
     } catch {}
-    return DEFAULT_CLANS;
+    return DEFAULT_CLANS.filter((c) => !deletedSlugs.includes(c.slug));
   });
 
   const [activeClanSlug, setActiveClanSlug] = useState('apache-rtr-medellin');
@@ -248,11 +264,14 @@ export default function CommunityChatModal({
         .order('created_at', { ascending: false });
 
       if (isMounted && !error && Array.isArray(data) && data.length > 0) {
-        // Garantizar siempre en UI que founder_name sea el Fundador por política
-        const normalized = data.map((c) => ({
-          ...c,
-          founder_name: OFFICIAL_FOUNDER_NAME
-        }));
+        const deletedSlugs = getDeletedClanSlugs();
+        // Garantizar siempre en UI que founder_name sea el Fundador por política y filtrar eliminados
+        const normalized = data
+          .filter((c) => !deletedSlugs.includes(c.slug))
+          .map((c) => ({
+            ...c,
+            founder_name: OFFICIAL_FOUNDER_NAME
+          }));
         setClans(normalized);
         try {
           localStorage.setItem('motodash_custom_clans', JSON.stringify(normalized));
@@ -376,14 +395,63 @@ export default function CommunityChatModal({
 
   const identity = bike?.config?.bikeIdentity || {};
   const bikeLabel = `${identity.brand || 'Moto'} ${identity.model || ''}`.trim();
-  const currentClan = clans.find((c) => c.slug === activeClanSlug) || clans[0] || DEFAULT_CLANS[0];
+  const currentClan = clans.find((c) => c.slug === activeClanSlug) || clans[0] || null;
+
+  // Verificar si el usuario actual es el creador del clan o el Fundador VIP (ambos pueden eliminar el clan)
+  const isCurrentClanCreator = Boolean(
+    currentClan &&
+    (
+      (userProfile?.id && currentClan.creator_id && String(currentClan.creator_id) === String(userProfile.id)) ||
+      (userProfile?.email && currentClan.creator_email && String(currentClan.creator_email).toLowerCase() === String(userProfile.email).toLowerCase()) ||
+      (userProfile?.fullName && currentClan.creator_name && String(currentClan.creator_name).trim().toLowerCase() === String(userProfile.fullName).trim().toLowerCase())
+    )
+  );
+  const canDeleteCurrentClan = Boolean(currentClan && (isFounderUser || isCurrentClanCreator));
 
   // El Fundador VIP o el creador o quien haya desbloqueado el clan tiene acceso directo al espacio privado
   const hasClanAccess =
     isFounderUser ||
+    isCurrentClanCreator ||
     !currentClan?.is_private ||
-    unlockedClans.includes(currentClan?.slug) ||
-    currentClan?.creator_name === userProfile?.fullName;
+    unlockedClans.includes(currentClan?.slug);
+
+  const handleDeleteClan = async (clanToDelete) => {
+    if (!clanToDelete) return;
+    setDeletingClan(true);
+    try {
+      // 1. Registrar slug eliminado localmente para que no reaparezca si era un clan semilla
+      const prevDeleted = getDeletedClanSlugs();
+      const nextDeleted = Array.from(new Set([...prevDeleted, clanToDelete.slug]));
+      localStorage.setItem('motodash_deleted_clan_slugs', JSON.stringify(nextDeleted));
+      localStorage.removeItem(`motodash_chat_clan_${clanToDelete.slug}`);
+
+      // 2. Eliminar de Supabase si hay sesión autenticada (permitido por RLS al creador o al Fundador VIP)
+      try {
+        const authUid = await getAuthenticatedUserId();
+        if (authUid) {
+          await supabase.from('moto_clans').delete().eq('slug', clanToDelete.slug);
+          if (clanToDelete.id && !String(clanToDelete.id).startsWith('clan_')) {
+            await supabase.from('moto_clans').delete().eq('id', clanToDelete.id);
+          }
+          await supabase.from('community_messages').delete().eq('channel_id', `clan_${clanToDelete.slug}`);
+        }
+      } catch {}
+
+      // 3. Actualizar lista local de clanes y seleccionar el siguiente disponible
+      const remaining = clans.filter((c) => c.slug !== clanToDelete.slug);
+      setClans(remaining);
+      localStorage.setItem('motodash_custom_clans', JSON.stringify(remaining));
+      setConfirmDeleteSlug(null);
+
+      if (remaining.length > 0) {
+        setActiveClanSlug(remaining[0].slug);
+      } else {
+        setActiveClanSlug('');
+      }
+    } finally {
+      setDeletingClan(false);
+    }
+  };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -419,6 +487,8 @@ export default function CommunityChatModal({
       accent_color: clanColor,
       is_private: clanIsPrivate,
       invite_code: cleanInvite,
+      creator_id: userProfile?.id || null,
+      creator_email: userProfile?.email || '',
       creator_name: creatorLabel,
       // POLÍTICA OBLIGATORIA: En todo clan creado se incluye siempre al usuario Fundador
       founder_name: OFFICIAL_FOUNDER_NAME,
@@ -983,6 +1053,44 @@ export default function CommunityChatModal({
                           : `🏍️ Confirmar Rodada (${currentClan.member_count || 12} motos)`}
                       </span>
                     </button>
+                  )}
+
+                  {/* BOTÓN PARA ELIMINAR CLAN: VISIBLE SOLO PARA EL FUNDADOR VIP O EL CREADOR DEL CLAN */}
+                  {canDeleteCurrentClan && (
+                    confirmDeleteSlug === currentClan.slug ? (
+                      <div className="flex items-center gap-1 bg-red-950/90 border border-red-500 rounded-xl px-2 py-1">
+                        <span className="text-red-200 font-bold">¿Eliminar clan?</span>
+                        <button
+                          type="button"
+                          disabled={deletingClan}
+                          onClick={() => handleDeleteClan(currentClan)}
+                          className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold"
+                        >
+                          {deletingClan ? 'Borrando...' : 'Sí, Eliminar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteSlug(null)}
+                          className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300"
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteSlug(currentClan.slug)}
+                        className="px-2.5 py-1 rounded-xl bg-red-950/70 hover:bg-red-900 border border-red-500/50 text-red-300 font-bold flex items-center gap-1 transition"
+                        title={
+                          isFounderUser
+                            ? 'Eliminar este clan (Permiso Fundador VIP)'
+                            : 'Eliminar tu clan creado'
+                        }
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        <span>Eliminar Clan</span>
+                      </button>
+                    )
                   )}
                 </div>
               </div>

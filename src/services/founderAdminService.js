@@ -370,15 +370,22 @@ export async function fetchLiveSupabasePlatformStats() {
     listingsCount: 0,
     clansCount: 0,
     stores: [],
-    listings: []
+    listings: [],
+    clans: []
   };
+
+  let deletedSlugs = [];
+  try {
+    const rawDel = localStorage.getItem('motodash_deleted_clan_slugs');
+    if (rawDel) deletedSlugs = JSON.parse(rawDel);
+  } catch {}
 
   try {
     const [storesRes, prodsRes, listRes, clansRes] = await Promise.all([
       supabase.from('mall_stores').select('*').order('created_at', { ascending: false }).limit(20),
       supabase.from('mall_products').select('id', { count: 'exact', head: true }),
       supabase.from('marketplace_listings').select('*').order('created_at', { ascending: false }).limit(20),
-      supabase.from('moto_clans').select('id', { count: 'exact', head: true })
+      supabase.from('moto_clans').select('*').order('created_at', { ascending: false }).limit(50)
     ]);
 
     if (Array.isArray(storesRes.data)) {
@@ -392,12 +399,60 @@ export async function fetchLiveSupabasePlatformStats() {
       stats.listings = listRes.data;
       stats.listingsCount = listRes.data.length;
     }
-    if (typeof clansRes.count === 'number') {
-      stats.clansCount = clansRes.count;
+    if (Array.isArray(clansRes.data) && clansRes.data.length > 0) {
+      stats.clans = clansRes.data.filter((c) => !deletedSlugs.includes(c.slug));
     }
   } catch {}
 
+  // Combinar también clanes locales creados en el dispositivo
+  try {
+    const rawLocalClans = localStorage.getItem('motodash_custom_clans');
+    if (rawLocalClans) {
+      const parsedLocal = JSON.parse(rawLocalClans);
+      if (Array.isArray(parsedLocal)) {
+        parsedLocal.forEach((lc) => {
+          if (!deletedSlugs.includes(lc.slug) && !stats.clans.some((rc) => rc.slug === lc.slug)) {
+            stats.clans.push(lc);
+          }
+        });
+      }
+    }
+  } catch {}
+
+  stats.clansCount = stats.clans.length;
   return stats;
+}
+
+export async function deleteClanAsFounder(clan) {
+  if (!clan?.slug) return false;
+  try {
+    const rawDel = localStorage.getItem('motodash_deleted_clan_slugs');
+    const prevDeleted = rawDel ? JSON.parse(rawDel) : [];
+    const nextDeleted = Array.from(new Set([...prevDeleted, clan.slug]));
+    localStorage.setItem('motodash_deleted_clan_slugs', JSON.stringify(nextDeleted));
+    localStorage.removeItem(`motodash_chat_clan_${clan.slug}`);
+
+    const rawLocal = localStorage.getItem('motodash_custom_clans');
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (Array.isArray(parsed)) {
+        localStorage.setItem(
+          'motodash_custom_clans',
+          JSON.stringify(parsed.filter((c) => c.slug !== clan.slug))
+        );
+      }
+    }
+  } catch {}
+
+  try {
+    await supabase.from('moto_clans').delete().eq('slug', clan.slug);
+    if (clan.id && !String(clan.id).startsWith('clan_')) {
+      await supabase.from('moto_clans').delete().eq('id', clan.id);
+    }
+    await supabase.from('community_messages').delete().eq('channel_id', `clan_${clan.slug}`);
+  } catch {}
+
+  return true;
 }
 
 /**

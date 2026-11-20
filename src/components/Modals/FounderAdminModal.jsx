@@ -38,6 +38,7 @@ import {
   loadAppGovernance,
   saveAppGovernance,
   fetchLiveSupabasePlatformStats,
+  deleteClanAsFounder,
   computeInfluencerMetrics,
   computeGlobalFounderSummary,
   buildInfluencerPitchMessage,
@@ -1480,6 +1481,47 @@ export default function FounderAdminModal({ isOpen, onClose, userProfile, onGove
                   <span className="text-lg font-black text-purple-400">{liveDbStats.clansCount} clanes</span>
                 </div>
               </div>
+
+              {/* Lista de Clanes Moteros con botón para Eliminar como Fundador VIP */}
+              {Array.isArray(liveDbStats.clans) && liveDbStats.clans.length > 0 && (
+                <div className="pt-2 border-t border-neutral-800 space-y-2">
+                  <span className="text-[10px] uppercase text-purple-300 font-bold block">
+                    🛡️ Moderación de Clanes Moteros Activos (Eliminar Clanes como Fundador VIP):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {liveDbStats.clans.map((clan) => (
+                      <div
+                        key={clan.slug}
+                        className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[10px]">
+                              [{clan.tag || 'CLAN'}]
+                            </span>
+                            <strong className="text-white">{clan.name}</strong>
+                          </div>
+                          <span className="text-[10px] text-neutral-400 block">
+                            Líder: {clan.creator_name || 'Capitán'} • {clan.city || 'Colombia'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await deleteClanAsFounder(clan);
+                            await refreshAllData();
+                            showToast(`🗑️ Clan "${clan.name}" eliminado permanentemente.`);
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-300 text-[10px] font-bold flex items-center gap-1 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          <span>Eliminar Clan</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
