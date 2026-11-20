@@ -28,6 +28,7 @@ import SosEmergencyModal from '../Modals/SosEmergencyModal';
 import DoctorMotorModal from '../Modals/DoctorMotorModal';
 import CarPlayHudModal from '../Modals/CarPlayHudModal';
 import MotoMallModal from '../Modals/MotoMallModal';
+import FounderAdminModal from '../Modals/FounderAdminModal';
 import { computeWarrantyState } from '../../services/warrantyCatalog';
 import { computeFinesRadarState } from '../../services/trafficFinesService';
 import { useShiftLightAudio } from '../../hooks/useShiftLightAudio';
@@ -71,6 +72,7 @@ export default function DynamicDashboard({
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isCarPlayHudOpen, setIsCarPlayHudOpen] = useState(false);
   const [isMotoMallOpen, setIsMotoMallOpen] = useState(false);
+  const [isFounderAdminOpen, setIsFounderAdminOpen] = useState(false);
   const [motoMallCompId, setMotoMallCompId] = useState(null);
   const [motoMallInitialTab, setMotoMallInitialTab] = useState('catalog');
   const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
@@ -651,15 +653,17 @@ export default function DynamicDashboard({
               <Settings className="w-4 h-4 text-neutral-400 hover:text-white" />
             </button>
 
-            {/* Suscripción Pro / VIP */}
+            {/* Suscripción Pro / VIP (En cuenta Fundador abre el Panel Maestro de Influencers & Suscripciones) */}
             {isVip ? (
-              <div
-                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black flex items-center gap-1.5 shadow-md shadow-amber-500/30 border border-yellow-300/40 select-none cursor-default"
-                title="Cuenta Fundador VIP Oficial • Acceso Ilimitado De Por Vida"
+              <button
+                type="button"
+                onClick={() => setIsFounderAdminOpen(true)}
+                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:opacity-95 text-black flex items-center gap-1.5 shadow-md shadow-amber-500/30 border border-yellow-300/40 cursor-pointer transition"
+                title="Abrir Panel Maestro Fundador VIP: Administrar Influencers, Códigos, Porcentajes y Suscripciones"
               >
                 <Crown className="w-3.5 h-3.5 fill-black" />
-                <span>VIP</span>
-              </div>
+                <span>👑 Panel Fundador</span>
+              </button>
             ) : isProOrGarage ? (
               <div
                 className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 select-none cursor-default"
@@ -970,6 +974,13 @@ export default function DynamicDashboard({
         userProfile={userProfile}
         initialComponentId={motoMallCompId}
         initialTab={motoMallInitialTab}
+      />
+
+      {/* PANEL MAESTRO EXCLUSIVO FUNDADOR VIP: INFLUENCERS, CÓDIGOS, PORCENTAJES Y SUSCRIPCIONES */}
+      <FounderAdminModal
+        isOpen={isFounderAdminOpen}
+        onClose={() => setIsFounderAdminOpen(false)}
+        userProfile={userProfile}
       />
 
       {/* DOCK INFERIOR FIJO PARA CELULAR Y SOPORTE DE MANUBRIO (CON GUANTES) */}

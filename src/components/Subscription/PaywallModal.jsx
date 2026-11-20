@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Crown, Check, X, Shield, ArrowRight, Globe, Smartphone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Crown, Check, X, Shield, ArrowRight, Globe, Smartphone, Gift, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { redeemPromoOrGiftCode } from '../../services/founderAdminService';
 
 const PLANS = [
   {
@@ -10,9 +11,9 @@ const PLANS = [
     annualMonthly: '1.25',
     annualTotal: '14.99',
     features: [
-      'landing.planBasicF1', 
-      'landing.planBasicF2', 
-      'landing.planBasicF3', 
+      'landing.planBasicF1',
+      'landing.planBasicF2',
+      'landing.planBasicF3',
       'landing.planBasicF4',
       'landing.planBasicF5',
       'landing.planBasicF6'
@@ -54,14 +55,57 @@ const PLANS = [
   }
 ];
 
-export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 'pro_monthly' }) {
+export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 'pro_monthly', userProfile = null }) {
   const { t } = useLanguage();
   const [selectedPlanId, setSelectedPlanId] = useState(
     ['solo', 'pro_monthly', 'garage'].includes(initialPlan) ? initialPlan : 'pro_monthly'
   );
   const [billingCycle, setBillingCycle] = useState('annual'); // 'monthly' | 'annual'
+  const [promoCode, setPromoCode] = useState('');
+  const [redeemResult, setRedeemResult] = useState(null);
+  const [redeemError, setRedeemError] = useState('');
+  const [activeDiscountPct, setActiveDiscountPct] = useState(0);
+
+  // Detectar si el usuario entró con link de referido ?ref=CODIGO
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const refCode = params.get('ref');
+      if (refCode) {
+        setPromoCode(refCode.toUpperCase());
+      }
+    } catch {}
+  }, []);
 
   const activePlan = PLANS.find((p) => p.id === selectedPlanId) || PLANS[1];
+
+  const getDiscountedPrice = (basePriceStr) => {
+    const base = Number(basePriceStr) || 0;
+    if (!activeDiscountPct) return basePriceStr;
+    return (base * (1 - activeDiscountPct / 100)).toFixed(2);
+  };
+
+  const handleRedeemCode = async (e) => {
+    e.preventDefault();
+    setRedeemError('');
+    setRedeemResult(null);
+
+    const res = await redeemPromoOrGiftCode(promoCode, userProfile);
+    if (!res.success) {
+      setRedeemError(res.error);
+      return;
+    }
+
+    setRedeemResult(res);
+    if (res.discountPercent && res.discountPercent < 100) {
+      setActiveDiscountPct(res.discountPercent);
+    }
+
+    // Si el código desbloquea días o suscripción PRO/Garaje gratis inmediatamente
+    if (res.isFullFreeUnlock && onUpgradeSuccess) {
+      onUpgradeSuccess(res.unlockedPlanId || 'pro_monthly');
+    }
+  };
 
   const handleGlobalCheckout = () => {
     const urls = {
@@ -70,13 +114,13 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
       garage: import.meta.env.VITE_LEMONSQUEEZY_GARAGE_URL
     };
     const targetUrl = urls[selectedPlanId];
+    const finalPrice = getDiscountedPrice(billingCycle === 'annual' ? activePlan.annualMonthly : activePlan.monthly);
+
     if (targetUrl) {
       window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
       alert(
-        `✅ Prueba de 7 días activada para ${t(activePlan.nameKey)} ($${
-          billingCycle === 'annual' ? activePlan.annualMonthly : activePlan.monthly
-        } USD/mes).\n\n(Configura VITE_LEMONSQUEEZY_*_URL en .env.local cuando crees tu cuenta en Lemon Squeezy).`
+        `✅ Prueba de 7 días activada para ${t(activePlan.nameKey)} ($${finalPrice} USD/mes).\n\n(Configura VITE_LEMONSQUEEZY_*_URL en .env.local cuando crees tu cuenta en Lemon Squeezy).`
       );
     }
     if (onUpgradeSuccess) onUpgradeSuccess(selectedPlanId);
@@ -104,7 +148,7 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
           <X className="w-5 h-5" />
         </button>
 
-        <div className="text-center mb-5">
+        <div className="text-center mb-4">
           <img
             src="/logo-emblem.png"
             alt="MotoDash AI"
@@ -118,6 +162,41 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
           </h2>
           <p className="text-xs text-neutral-400 mt-1">{t('paywall.subtitle')}</p>
         </div>
+
+        {/* CAJA PARA CANJEAR CÓDIGO DE INFLUENCER O REGALO VIP DEL FUNDADOR */}
+        <form
+          onSubmit={handleRedeemCode}
+          className="mb-4 p-3 rounded-2xl bg-neutral-950 border border-amber-500/40 space-y-2"
+        >
+          <label className="text-[10px] font-mono uppercase text-amber-300 font-bold flex items-center gap-1.5">
+            <Gift className="w-3.5 h-3.5 text-amber-400" />
+            🎟️ ¿Tienes un código de Creador / Influencer o Regalo VIP?
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Ej: FULLGASS o CREADORVIP"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white uppercase focus:outline-none focus:border-amber-500"
+            />
+            <button
+              type="submit"
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-racing font-black text-xs uppercase transition flex items-center gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Canjear</span>
+            </button>
+          </div>
+          {redeemError && (
+            <p className="text-[11px] font-mono text-red-400">{redeemError}</p>
+          )}
+          {redeemResult && (
+            <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-[11px] font-mono text-emerald-300 font-bold">
+              {redeemResult.message}
+            </div>
+          )}
+        </form>
 
         {/* Selector Mensual / Anual (-35%) */}
         <div className="flex bg-neutral-950 p-1 rounded-2xl mb-4 border border-neutral-800">
@@ -149,7 +228,8 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
         <div className="grid grid-cols-3 gap-2 mb-5">
           {PLANS.map((plan) => {
             const isSelected = plan.id === selectedPlanId;
-            const displayPrice = billingCycle === 'annual' ? plan.annualMonthly : plan.monthly;
+            const rawPrice = billingCycle === 'annual' ? plan.annualMonthly : plan.monthly;
+            const displayPrice = getDiscountedPrice(rawPrice);
             return (
               <button
                 key={plan.id}
@@ -173,7 +253,9 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
                   ${displayPrice}
                   <span className="text-[9px] text-neutral-400 font-normal">/mo</span>
                 </div>
-                <div className="text-[9px] font-mono text-emerald-400 mt-0.5">7d Free</div>
+                <div className="text-[9px] font-mono text-emerald-400 mt-0.5">
+                  {activeDiscountPct > 0 ? `-${activeDiscountPct}% Código` : '7d Free'}
+                </div>
               </button>
             );
           })}
@@ -187,7 +269,7 @@ export default function PaywallModal({ onClose, onUpgradeSuccess, initialPlan = 
               {t(activePlan.nameKey)}
             </span>
             <span className="text-xs font-mono text-neutral-300 font-bold">
-              ${billingCycle === 'annual' ? activePlan.annualMonthly : activePlan.monthly}{' '}
+              ${getDiscountedPrice(billingCycle === 'annual' ? activePlan.annualMonthly : activePlan.monthly)}{' '}
               {t('landing.planMonth')}
             </span>
           </div>
