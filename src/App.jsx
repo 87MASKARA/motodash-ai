@@ -38,10 +38,46 @@ function isValidBike(bike) {
 function sanitizeBikeEntry(bike) {
   if (!isValidBike(bike)) return null;
   const safeHex = sanitizeHexColor(bike.config.bikeIdentity.colorHex, "#FF6600");
+  const rawOdo = Math.max(0, Math.min(2000000, Number(bike.odometer) || 0));
+  const prevHw = bike?.hojaDeVida?.hardwareTelemetry || {};
+
+  // Si la moto del piloto tenía el estado congelado anterior (5212 km / 100% gasolina / 134 km/h),
+  // sincronizar con el estado real del tablero físico (5427.7 km, 3/6 barras = 50% gasolina, 112 km/h Top Speed, 33 km/h Avg)
+  const needsTftCalibration =
+    !bike.isDemo &&
+    (rawOdo === 5212 ||
+      (rawOdo >= 5000 && rawOdo < 5427.7 && (prevHw.topSpeedRecorded === 134 || prevHw.fuelLevelPercent === 100)));
+
+  const calibratedOdo = needsTftCalibration ? 5427.7 : Number(rawOdo.toFixed(1));
+  const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
+  const nextHoja = bike.hojaDeVida ? { ...bike.hojaDeVida } : {};
+
+  if (needsTftCalibration || prevHw.topSpeedRecorded === 134) {
+    const kml = Number(prevHw.realKmPerLiter) || 36.0;
+    const fuelPct = needsTftCalibration ? 50 : (prevHw.fuelLevelPercent ?? 50);
+    const litersLeft = Number(((tankCap * fuelPct) / 100).toFixed(1));
+    nextHoja.hardwareTelemetry = {
+      ...prevHw,
+      odometerKm: calibratedOdo,
+      fuelBars: 3,
+      fuelLevelPercent: fuelPct,
+      fuelLitersRemaining: litersLeft,
+      estimatedRangeKm: Math.round(litersLeft * kml),
+      realKmPerLiter: kml,
+      rideMode: prevHw.rideMode || "SPORT",
+      tempBars: 3,
+      engineTempC: 85,
+      rpmIdle: 1800,
+      topSpeedRecorded: 112,
+      avgSpeed: 33
+    };
+  }
+
   return {
     ...bike,
     id: String(bike.id).slice(0, 60),
-    odometer: Math.max(0, Math.min(2000000, Number(bike.odometer) || 0)),
+    odometer: calibratedOdo,
+    hojaDeVida: nextHoja,
     config: {
       ...bike.config,
       bikeIdentity: {

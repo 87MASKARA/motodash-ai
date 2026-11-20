@@ -2,6 +2,7 @@ import React from 'react';
 import { Fuel, TrendingUp, CheckCircle2, Droplets, Bluetooth, Gauge } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { getCountryFuelConfig, litersToGallons } from '../../../services/fuelUnitsService';
+import { computeDynamicFuelFromOdometer } from '../../../services/hardwareBridgeService';
 
 export default function FuelTelemetryWidget({
   tankCapacity = 14,
@@ -21,12 +22,25 @@ export default function FuelTelemetryWidget({
   // Estimación base por cilindrada o cálculo real si el usuario ha registrado tanqueos o sincronizado con TFT/OBD
   const defaultKmPerLiter = engineCc <= 250 ? 38 : engineCc <= 650 ? 26 : 19;
   const latestRefuel = Array.isArray(tanqueos) && tanqueos.length > 0 ? tanqueos[0] : null;
-  const hasTftFuel = hardwareTelemetry && typeof hardwareTelemetry.fuelLevelPercent === 'number';
+
+  // Calcular combustible real descontando los kilómetros rodados desde el último tanqueo si el porcentaje estaba congelado en 100%
+  const currentOdo = Number(bike?.odometer || hardwareTelemetry?.odometerKm) || 0;
+  const explicitPct =
+    hardwareTelemetry &&
+    typeof hardwareTelemetry.fuelLevelPercent === 'number' &&
+    !(hardwareTelemetry.fuelLevelPercent === 100 && latestRefuel && currentOdo > Number(latestRefuel.km))
+      ? hardwareTelemetry.fuelLevelPercent
+      : null;
+
+  const dynamicFuel = computeDynamicFuelFromOdometer(bike, currentOdo, explicitPct);
+  const hasTftFuel = Boolean(hardwareTelemetry || latestRefuel);
+  const resolvedFuelPercent = dynamicFuel.fuelLevelPercent;
+  const resolvedFuelBars = hardwareTelemetry?.fuelBars ?? dynamicFuel.fuelBars ?? Math.round((resolvedFuelPercent / 100) * 6);
+
   const kmPerLiter = Number((hardwareTelemetry?.realKmPerLiter || latestRefuel?.kmPerLiter || defaultKmPerLiter).toFixed(1));
   const kmPerGalon = latestRefuel?.kmPerGalon || Math.round(kmPerLiter * 3.78541);
-  const estimatedRangeKm = hardwareTelemetry?.estimatedRangeKm || Math.round(tankCapacity * kmPerLiter);
 
-  // Detectar si el país del usuario vende gasolina en GALONES (Colombia, Perú, Ecuador, EE. UU., Panamá, etc.) o en LITROS (México, España, Chile, Argentina, Brasil, etc.)
+  // Detectar si el país del usuario vende gasolina en GALONES o en LITROS
   const fuelConfig = getCountryFuelConfig({
     bike,
     hojaDeVida: hojaDeVida || bike?.hojaDeVida,
@@ -37,11 +51,11 @@ export default function FuelTelemetryWidget({
 
   const tankGallons = litersToGallons(tankCapacity);
   const remainingLiters = hasTftFuel
-    ? Number(hardwareTelemetry.fuelLitersRemaining ?? ((tankCapacity * hardwareTelemetry.fuelLevelPercent) / 100)).toFixed(1)
+    ? Number(((tankCapacity * resolvedFuelPercent) / 100).toFixed(1))
     : tankCapacity;
   const remainingGallons = litersToGallons(remainingLiters);
+  const estimatedRangeKm = Math.round(Number(remainingLiters) * kmPerLiter);
 
-  // Si el registro ya trae `gallons` lo usa; si es un registro previo en Colombia (sin `unitUsed` y valor <= 5.5), respeta el número ingresado (ej. 2.6 Gal)
   const latestGallons = latestRefuel
     ? latestRefuel.gallons ??
       (!latestRefuel.unitUsed && isGallons && Number(latestRefuel.liters) <= 5.5
@@ -74,7 +88,7 @@ export default function FuelTelemetryWidget({
           >
             <Bluetooth className="w-3 h-3 text-cyan-400" />
             <span>
-              TFT/OBD • {hardwareTelemetry.fuelLevelPercent}% (
+              TFT ({resolvedFuelBars}/6) • {resolvedFuelPercent}% (
               {isGallons ? `${remainingGallons} Gal` : `${remainingLiters}L`})
             </span>
           </button>
@@ -88,38 +102,42 @@ export default function FuelTelemetryWidget({
         )}
       </div>
 
-      {/* Barra de Nivel de Gasolina TFT/OBD (cuando se ha sincronizado con el tablero) */}
+      {/* Barra de Nivel de Gasolina TFT de 6 Segmentos (idéntica al tablero físico) */}
       {hasTftFuel && (
         <div className="mb-3 p-2.5 rounded-2xl bg-neutral-900/75 border border-cyan-500/25">
           <div className="flex items-center justify-between text-[10px] font-mono mb-1.5">
             <span className="text-cyan-300 font-bold flex items-center gap-1">
               <Gauge className="w-3 h-3 text-cyan-400" />
               {isGallons
-                ? `Tanque TFT: ${hardwareTelemetry.fuelLevelPercent}% (${remainingGallons} Gal / ${tankGallons} Gal • ${tankCapacity}L)`
-                : `Tanque TFT: ${hardwareTelemetry.fuelLevelPercent}% (${remainingLiters}L / ${tankCapacity}L)`}
+                ? `Tanque TFT (${resolvedFuelBars}/6 barras): ${resolvedFuelPercent}% (${remainingGallons} Gal / ${tankGallons} Gal)`
+                : `Tanque TFT (${resolvedFuelBars}/6 barras): ${resolvedFuelPercent}% (${remainingLiters}L / ${tankCapacity}L)`}
             </span>
-            {hardwareTelemetry.rideMode && (
+            {hardwareTelemetry?.rideMode && (
               <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold">
                 MODO {hardwareTelemetry.rideMode}
               </span>
             )}
           </div>
-          <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${
-                hardwareTelemetry.fuelLevelPercent <= 20
-                  ? 'bg-red-500'
-                  : hardwareTelemetry.fuelLevelPercent <= 40
-                  ? 'bg-amber-400'
-                  : 'bg-cyan-400'
-              }`}
-              style={{ width: `${Math.max(4, Math.min(100, hardwareTelemetry.fuelLevelPercent))}%` }}
-            />
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-mono font-bold text-amber-400">E</span>
+            {[1, 2, 3, 4, 5, 6].map((bar) => (
+              <div
+                key={bar}
+                className={`h-2.5 flex-1 rounded-sm transition-all duration-300 ${
+                  bar <= resolvedFuelBars
+                    ? resolvedFuelBars <= 1
+                      ? 'bg-red-500'
+                      : 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.6)]'
+                    : 'bg-neutral-800'
+                }`}
+              />
+            ))}
+            <span className="text-[9px] font-mono font-bold text-white">F</span>
           </div>
         </div>
       )}
 
-      {/* Grid de Rendimiento Adaptado al País (KM/GAL en Colombia, Perú, Ecuador, EE.UU. vs KM/L en México, España, Chile, etc.) */}
+      {/* Grid de Rendimiento Adaptado al País */}
       <div className="grid grid-cols-2 gap-3 my-auto">
         <div className="p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800/80">
           <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
@@ -141,7 +159,7 @@ export default function FuelTelemetryWidget({
           </span>
         </div>
 
-        {/* Autonomía Proyectada */}
+        {/* Autonomía Restante Real */}
         <div className="p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800/80">
           <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
             <span>{t('widgets.fuel.maxRange')}</span>
@@ -158,8 +176,8 @@ export default function FuelTelemetryWidget({
           <span className="text-[10px] font-mono text-neutral-500 block mt-0.5">
             {isGallons
               ? isEn
-                ? `Full tank: ${tankGallons} Gal (${tankCapacity}L)`
-                : `Tanque lleno: ${tankGallons} Gal (${tankCapacity}L)`
+                ? `Remaining: ${remainingGallons} of ${tankGallons} Gal`
+                : `Restante: ${remainingGallons} de ${tankGallons} Gal (${tankCapacity}L)`
               : t('widgets.fuel.fullTankOf', { liters: tankCapacity })}
           </span>
         </div>
