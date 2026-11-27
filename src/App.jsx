@@ -35,14 +35,30 @@ function isValidBike(bike) {
   );
 }
 
+function loadSavedCustomComponentsMap() {
+  try {
+    const raw = localStorage.getItem("motodash_custom_components_by_bike");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCustomComponentsForBike(bikeId, customComponents) {
+  if (!bikeId || !customComponents || typeof customComponents !== "object") return;
+  try {
+    const map = loadSavedCustomComponentsMap();
+    map[bikeId] = customComponents;
+    localStorage.setItem("motodash_custom_components_by_bike", JSON.stringify(map));
+  } catch {}
+}
+
 function sanitizeBikeEntry(bike) {
   if (!isValidBike(bike)) return null;
   const safeHex = sanitizeHexColor(bike.config.bikeIdentity.colorHex, "#FF6600");
   const rawOdo = Math.max(0, Math.min(2000000, Number(bike.odometer) || 0));
   const prevHw = bike?.hojaDeVida?.hardwareTelemetry || {};
 
-  // Si la moto del piloto tenía el estado congelado anterior (5212 km / 100% gasolina / 134 km/h),
-  // sincronizar con el estado real del tablero físico (5427.7 km, 3/6 barras = 50% gasolina, 112 km/h Top Speed, 33 km/h Avg)
   const needsTftCalibration =
     !bike.isDemo &&
     (rawOdo === 5212 ||
@@ -51,6 +67,12 @@ function sanitizeBikeEntry(bike) {
   const calibratedOdo = needsTftCalibration ? 5427.7 : Number(rawOdo.toFixed(1));
   const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
   const nextHoja = bike.hojaDeVida ? { ...bike.hojaDeVida } : {};
+  const savedComponentsMap = loadSavedCustomComponentsMap();
+  const bikeId = String(bike.id).slice(0, 60);
+  const mergedCustomComponents = {
+    ...(savedComponentsMap[bikeId] || {}),
+    ...(bike.customComponents && typeof bike.customComponents === "object" ? bike.customComponents : {})
+  };
 
   if (needsTftCalibration || prevHw.topSpeedRecorded === 134) {
     const kml = Number(prevHw.realKmPerLiter) || 36.0;
@@ -75,9 +97,10 @@ function sanitizeBikeEntry(bike) {
 
   return {
     ...bike,
-    id: String(bike.id).slice(0, 60),
+    id: bikeId,
     odometer: calibratedOdo,
     hojaDeVida: nextHoja,
+    customComponents: mergedCustomComponents,
     config: {
       ...bike.config,
       bikeIdentity: {
@@ -90,6 +113,55 @@ function sanitizeBikeEntry(bike) {
       }
     }
   };
+}
+
+function mergeRemoteWithLocalGarage(remoteBikes = [], localBikes = []) {
+  const localById = new Map((Array.isArray(localBikes) ? localBikes : []).map((b) => [b.id, b]));
+  const savedComponentsMap = loadSavedCustomComponentsMap();
+
+  return remoteBikes.map((remoteBike) => {
+    const localBike = localById.get(remoteBike.id);
+    const backupCustom = savedComponentsMap[remoteBike.id] || {};
+    const localCustom = localBike?.customComponents || {};
+    const remoteCustom = remoteBike?.customComponents || {};
+
+    // Combinar cada componente priorizando el que fue calibrado más recientemente (updatedAt) o el local
+    const allCompKeys = new Set([
+      ...Object.keys(backupCustom),
+      ...Object.keys(remoteCustom),
+      ...Object.keys(localCustom)
+    ]);
+    const mergedCustom = {};
+    allCompKeys.forEach((key) => {
+      const rComp = remoteCustom[key];
+      const lComp = localCustom[key] || backupCustom[key];
+      if (rComp && lComp) {
+        mergedCustom[key] = (Number(lComp.updatedAt) || 0) >= (Number(rComp.updatedAt) || 0) ? lComp : rComp;
+      } else {
+        mergedCustom[key] = lComp || rComp;
+      }
+    });
+
+    const localHw = localBike?.hojaDeVida?.hardwareTelemetry;
+    const remoteHw = remoteBike?.hojaDeVida?.hardwareTelemetry;
+    const localHwTime = localHw?.updatedAt ? new Date(localHw.updatedAt).getTime() : 0;
+    const remoteHwTime = remoteHw?.updatedAt ? new Date(remoteHw.updatedAt).getTime() : 0;
+    const preferLocalHw = localHw && localHwTime >= remoteHwTime;
+
+    const mergedOdometer = preferLocalHw && Number(localBike?.odometer) > 0
+      ? Number(localBike.odometer)
+      : Math.max(Number(remoteBike.odometer) || 0, Number(localBike?.odometer) || 0);
+
+    return sanitizeBikeEntry({
+      ...remoteBike,
+      odometer: mergedOdometer,
+      customComponents: mergedCustom,
+      hojaDeVida: {
+        ...(remoteBike.hojaDeVida || {}),
+        ...(preferLocalHw ? { hardwareTelemetry: localHw } : {})
+      }
+    });
+  }).filter(Boolean);
 }
 
 export default function App() {
@@ -122,20 +194,43 @@ export default function App() {
     return null;
   });
 
-  const createCleanDemoBikes = () =>
-    DEMO_GARAGE.map((b) => ({
-      ...b,
-      isDemo: true,
-      hojaDeVida: b.hojaDeVida ? JSON.parse(JSON.stringify(b.hojaDeVida)) : {},
-      customComponents: b.customComponents ? JSON.parse(JSON.stringify(b.customComponents)) : {}
-    }));
+  const createCleanDemoBikes = () => {
+    const savedComponentsMap = loadSavedCustomComponentsMap();
+    let savedDemoList = null;
+    try {
+      const rawDemo = localStorage.getItem("motodash_demo_garage");
+      if (rawDemo) {
+        const parsed = JSON.parse(rawDemo);
+        if (Array.isArray(parsed) && parsed.length > 0) savedDemoList = parsed;
+      }
+    } catch {}
+
+    return DEMO_GARAGE.map((b) => {
+      const savedDemoBike = savedDemoList?.find((d) => d.id === b.id);
+      const baseCustom = b.customComponents ? JSON.parse(JSON.stringify(b.customComponents)) : {};
+      const savedCustom = savedDemoBike?.customComponents || {};
+      const mapCustom = savedComponentsMap[b.id] || {};
+      return {
+        ...b,
+        ...(savedDemoBike ? { odometer: savedDemoBike.odometer ?? b.odometer } : {}),
+        isDemo: true,
+        hojaDeVida: savedDemoBike?.hojaDeVida
+          ? JSON.parse(JSON.stringify(savedDemoBike.hojaDeVida))
+          : (b.hojaDeVida ? JSON.parse(JSON.stringify(b.hojaDeVida)) : {}),
+        customComponents: {
+          ...baseCustom,
+          ...savedCustom,
+          ...mapCustom
+        }
+      };
+    });
+  };
 
   // Garaje protegido: en modo demo carga DEMO_GARAGE neutro. Si hay perfil activo, carga sus motos guardadas y sincroniza con Supabase
   const [garage, setGarage] = useState(() => {
     const saved = localStorage.getItem("motodash_garage");
-    const savedProfile = localStorage.getItem("motodash_user_profile");
 
-    if (savedProfile && saved) {
+    if (saved) {
       try {
         const parsed = JSON.parse(saved);
         const validBikes = Array.isArray(parsed)
@@ -156,7 +251,7 @@ export default function App() {
       const savedProfile = localStorage.getItem("motodash_user_profile");
       if (!savedProfile) return true;
       const parsed = JSON.parse(savedProfile);
-      if (!parsed?.id || parsed?.email === "demo@motodash.com") return true;
+      if (!parsed?.email || parsed?.email === "demo@motodash.com") return true;
       return localStorage.getItem("motodash_demo_session") === "true";
     } catch {
       return true;
@@ -209,6 +304,7 @@ export default function App() {
   const activeIsDemo = Boolean(
     isDemoSession ||
     !userProfile?.id ||
+    !userProfile?.email ||
     userProfile?.email === "demo@motodash.com"
   );
 
@@ -276,10 +372,18 @@ export default function App() {
   }, [isDemoSession]);
 
   useEffect(() => {
-    if (userProfile?.id && userProfile?.email !== "demo@motodash.com" && Array.isArray(garage) && garage.length > 0) {
+    if (Array.isArray(garage) && garage.length > 0) {
       localStorage.setItem("motodash_garage", JSON.stringify(garage));
     }
-  }, [garage, userProfile?.id, userProfile?.email]);
+  }, [garage]);
+
+  useEffect(() => {
+    if (Array.isArray(demoBikes) && demoBikes.length > 0) {
+      try {
+        localStorage.setItem("motodash_demo_garage", JSON.stringify(demoBikes));
+      } catch {}
+    }
+  }, [demoBikes]);
 
   useEffect(() => {
     if (!activeIsDemo && activeBikeId) {
@@ -331,31 +435,35 @@ export default function App() {
 
     if (!effectiveUserId) return;
 
-    // Cargar garaje remoto del usuario autenticado desde Supabase
+    // Cargar garaje remoto del usuario autenticado desde Supabase fusionando calibraciones locales
     loadPilotGarage(effectiveUserId).then((remoteData) => {
       hasLoadedRemoteRef.current = true;
       if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
-        const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
-        if (cleanBikes.length > 0) {
-          setGarage(cleanBikes);
-          if (remoteData.activeBikeId && cleanBikes.some((b) => b.id === remoteData.activeBikeId)) {
-            setActiveBikeId(remoteData.activeBikeId);
-          } else {
-            setActiveBikeId(cleanBikes[0].id);
+        setGarage((prevLocal) => {
+          const merged = mergeRemoteWithLocalGarage(remoteData.bikes, prevLocal);
+          if (merged.length > 0) {
+            try {
+              localStorage.setItem("motodash_garage", JSON.stringify(merged));
+            } catch {}
+            return merged;
           }
+          return prevLocal;
+        });
+        if (remoteData.activeBikeId && remoteData.bikes.some((b) => b.id === remoteData.activeBikeId)) {
+          setActiveBikeId(remoteData.activeBikeId);
         }
       }
     });
 
-    // Suscripción en tiempo real: cualquier cambio en PC se refleja en el celular al instante
+    // Suscripción en tiempo real: cualquier cambio en PC se refleja en el celular al instante sin borrar calibraciones locales recientes
     const unsubscribe = subscribeToGarageChanges(effectiveUserId, (remoteData) => {
       if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
-        const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
-        if (cleanBikes.length > 0) {
-          setGarage(cleanBikes);
-          if (remoteData.activeBikeId) {
-            setActiveBikeId(remoteData.activeBikeId);
-          }
+        setGarage((prevLocal) => {
+          const merged = mergeRemoteWithLocalGarage(remoteData.bikes, prevLocal);
+          return merged.length > 0 ? merged : prevLocal;
+        });
+        if (remoteData.activeBikeId) {
+          setActiveBikeId(remoteData.activeBikeId);
         }
       }
     });
@@ -449,17 +557,43 @@ export default function App() {
     setIsEditComponentModalOpen(true);
   };
 
-  // Aislamiento de escritura: en modo Demo las ediciones quedan solo en memoria y jamás tocan el garaje real ni Supabase
+  // Persistencia garantizada tanto en Garaje Real (localStorage + Supabase) como en Modo Demo
   const updateActiveGarage = (updater) => {
-    if (activeIsDemo) {
-      setDemoBikes((prev) => updater(prev));
-    } else {
-      setGarage((prev) => updater(prev));
+    setDemoBikes((prevDemo) => {
+      const nextDemo = updater(prevDemo);
+      try {
+        localStorage.setItem("motodash_demo_garage", JSON.stringify(nextDemo));
+      } catch {}
+      return nextDemo;
+    });
+
+    if (!activeIsDemo) {
+      setGarage((prev) => {
+        const baseList =
+          Array.isArray(prev) && prev.some((b) => b.id === activeBike?.id)
+            ? prev
+            : activeBike
+            ? [{ ...activeBike, isDemo: false }, ...(Array.isArray(prev) ? prev : [])]
+            : prev;
+        const nextGarage = updater(baseList);
+        try {
+          localStorage.setItem("motodash_garage", JSON.stringify(nextGarage));
+        } catch {}
+        if (userProfile?.id) {
+          hasLoadedRemoteRef.current = true;
+          savePilotGarage(userProfile.id, nextGarage, activeBikeId || activeBike?.id);
+        }
+        return nextGarage;
+      });
     }
   };
 
   const handleSaveOdometer = (payload) => {
-    const { km, recordType, date, serviceData, fuelData } = payload;
+    const { km, recordType, date, serviceData, fuelData, scannedTelemetry } = payload;
+
+    if (scannedTelemetry && telemetry?.isSimulating && typeof telemetry.stopSimulation === "function") {
+      telemetry.stopSimulation();
+    }
 
     updateActiveGarage((prev) =>
       prev.map((bike) => {
@@ -467,7 +601,20 @@ export default function App() {
 
         const prevOdometer = Number(bike.odometer) || 0;
         const updatedBike = { ...bike, odometer: km };
-        const currentHoja = bike.hojaDeVida || { documentos: {}, servicios: [], tanqueos: [] };
+        let currentHoja = bike.hojaDeVida || { documentos: {}, servicios: [], tanqueos: [] };
+
+        if (scannedTelemetry && typeof scannedTelemetry === "object") {
+          currentHoja = {
+            ...currentHoja,
+            hardwareTelemetry: {
+              ...(currentHoja.hardwareTelemetry || {}),
+              ...scannedTelemetry,
+              odometerKm: km,
+              updatedAt: new Date().toISOString()
+            }
+          };
+          updatedBike.hojaDeVida = currentHoja;
+        }
 
         if (recordType === "fuel" && fuelData) {
           const liters = Math.max(0.1, Number(fuelData.liters) || 1);
@@ -575,16 +722,33 @@ export default function App() {
   };
 
   const handleSaveComponent = (componentPayload) => {
+    const stampedPayload = {
+      ...componentPayload,
+      intervalo: Number(componentPayload.intervalo) || 4000,
+      baseIntervalo: Number(componentPayload.baseIntervalo || componentPayload.intervalo) || 4000,
+      updatedAt: Date.now()
+    };
+
+    if (activeBike?.id) {
+      const nextCustomForActive = {
+        ...(activeBike.customComponents || {}),
+        [stampedPayload.id]: stampedPayload
+      };
+      saveCustomComponentsForBike(activeBike.id, nextCustomForActive);
+    }
+
     updateActiveGarage((prev) =>
       prev.map((bike) => {
         if (bike.id !== activeBike.id) return bike;
         const currentCustom = bike.customComponents || {};
+        const nextCustom = {
+          ...currentCustom,
+          [stampedPayload.id]: stampedPayload
+        };
+        saveCustomComponentsForBike(bike.id, nextCustom);
         return {
           ...bike,
-          customComponents: {
-            ...currentCustom,
-            [componentPayload.id]: componentPayload
-          }
+          customComponents: nextCustom
         };
       })
     );
@@ -596,6 +760,7 @@ export default function App() {
         if (bike.id !== activeBike.id) return bike;
         const currentCustom = { ...(bike.customComponents || {}) };
         delete currentCustom[compId];
+        saveCustomComponentsForBike(bike.id, currentCustom);
         return {
           ...bike,
           customComponents: currentCustom
@@ -784,19 +949,35 @@ export default function App() {
                 <span>{telemetry.isSimulating ? t('nav.liveDemoBadge') : t('nav.pausedDemoBadge')}</span>
               </button>
 
-              {/* Selector Rápido de las 5 Motos Demo */}
+              {/* Selector Rápido de las 5 Motos Demo / Garaje */}
               <div className="flex gap-1.5">
                 {DEMO_GARAGE.map((b) => {
-                  const isActive = activeIsDemo && b.id === activeBike.id;
+                  const ownedMatch =
+                    userProfile?.email &&
+                    userProfile?.email !== "demo@motodash.com" &&
+                    garage.find(
+                      (g) =>
+                        g.id === b.id ||
+                        (g?.config?.bikeIdentity?.brand === b.config.bikeIdentity.brand &&
+                          g?.config?.bikeIdentity?.model === b.config.bikeIdentity.model)
+                    );
+                  const isActive = ownedMatch
+                    ? (!activeIsDemo && activeBike.id === ownedMatch.id)
+                    : (activeIsDemo && b.id === activeBike.id);
                   const shortLabel = b.config.bikeIdentity.shortModel || b.config.bikeIdentity.model.split(' ')[0];
                   return (
                     <button
                       key={b.id}
                       type="button"
                       onClick={() => {
-                        setIsDemoSession(true);
-                        setDemoBikeId(b.id);
-                        if (telemetry.startSimulation) telemetry.startSimulation();
+                        if (ownedMatch) {
+                          setIsDemoSession(false);
+                          setActiveBikeId(ownedMatch.id);
+                        } else {
+                          setIsDemoSession(true);
+                          setDemoBikeId(b.id);
+                          if (telemetry.startSimulation) telemetry.startSimulation();
+                        }
                       }}
                       className={`px-2.5 py-1 rounded-xl text-[10px] font-racing font-bold flex items-center gap-1.5 border transition whitespace-nowrap ${
                         isActive
@@ -1040,14 +1221,20 @@ export default function App() {
             loadPilotGarage(effectiveUserId).then((remoteData) => {
               hasLoadedRemoteRef.current = true;
               if (remoteData && Array.isArray(remoteData.bikes) && remoteData.bikes.length > 0) {
-                const cleanBikes = remoteData.bikes.map(sanitizeBikeEntry).filter(Boolean);
-                if (cleanBikes.length > 0) {
-                  setGarage(cleanBikes);
-                  if (remoteData.activeBikeId && cleanBikes.some((b) => b.id === remoteData.activeBikeId)) {
-                    setActiveBikeId(remoteData.activeBikeId);
-                  } else {
-                    setActiveBikeId(cleanBikes[0].id);
+                setGarage((prevLocal) => {
+                  const merged = mergeRemoteWithLocalGarage(remoteData.bikes, prevLocal);
+                  if (merged.length > 0) {
+                    try {
+                      localStorage.setItem("motodash_garage", JSON.stringify(merged));
+                    } catch {}
+                    return merged;
                   }
+                  return prevLocal;
+                });
+                if (remoteData.activeBikeId && remoteData.bikes.some((b) => b.id === remoteData.activeBikeId)) {
+                  setActiveBikeId(remoteData.activeBikeId);
+                } else {
+                  setActiveBikeId(remoteData.bikes[0].id);
                 }
               }
             });

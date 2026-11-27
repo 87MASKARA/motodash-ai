@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Check, RotateCcw, Trash2 } from 'lucide-react';
+import { X, Check, RotateCcw, Trash2 } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES } from '../../services/maintenanceCatalog';
 import { BrandLogo } from '../Common/BrandLogos';
 
@@ -12,41 +12,43 @@ export default function EditComponentModal({
   onDeleteComponent,
   bikeName
 }) {
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState('');
   const [intervalo, setIntervalo] = useState(4000);
   const [ultimoCambioKm, setUltimoCambioKm] = useState(0);
   const [alertaKm, setAlertaKm] = useState(300);
-  const [especificacion, setEspecificacion] = useState("");
-  const [categoria, setCategoria] = useState("motor");
+  const [especificacion, setEspecificacion] = useState('');
+  const [categoria, setCategoria] = useState('motor');
   const [costo, setCosto] = useState(0);
 
   useEffect(() => {
     if (component) {
-      setLabel(component.label || "");
-      setIntervalo(component.intervalo || 4000);
-      setUltimoCambioKm(component.ultimoCambioKm || 0);
+      setLabel(component.label || '');
+      setIntervalo(component.baseIntervalo || component.intervalo || 4000);
+      setUltimoCambioKm(component.ultimoCambioKm ?? 0);
       setAlertaKm(component.alertaPreventivaKm || 300);
-      setEspecificacion(component.especificacion || "");
-      setCategoria(component.categoria || "motor");
+      setEspecificacion(component.especificacion || '');
+      setCategoria(component.categoria || 'motor');
       setCosto(component.costoSugerido || 0);
     } else {
-      // Nuevo componente personalizado
-      setLabel("");
+      setLabel('');
       setIntervalo(5000);
       setUltimoCambioKm(currentOdometer || 0);
       setAlertaKm(500);
-      setEspecificacion("");
-      setCategoria("motor");
+      setEspecificacion('');
+      setCategoria('motor');
       setCosto(0);
     }
   }, [component, currentOdometer, isOpen]);
 
   if (!isOpen) return null;
 
-  // Cálculo en vivo de cómo quedará el ciclo
-  const kmDesdeUltimo = Math.max(0, currentOdometer - ultimoCambioKm);
-  const kmRestantesCalculados = Math.max(0, intervalo - kmDesdeUltimo);
-  const vidaCalculada = Math.max(0, Math.min(100, Math.round((kmRestantesCalculados / intervalo) * 100)));
+  const numericIntervalo = Math.max(1, Number(intervalo) || 1);
+  const numericUltimoCambio = Math.max(0, Number(ultimoCambioKm) || 0);
+
+  // Cálculo en vivo de cómo quedará el ciclo con el nuevo intervalo calibrado
+  const kmDesdeUltimo = Math.max(0, currentOdometer - numericUltimoCambio);
+  const kmRestantesCalculados = Math.max(0, Math.round(numericIntervalo - kmDesdeUltimo));
+  const vidaCalculada = Math.max(0, Math.min(100, Math.round((kmRestantesCalculados / numericIntervalo) * 100)));
 
   // Restaurar valores recomendados de fábrica
   const handleRestoreOEM = () => {
@@ -61,19 +63,23 @@ export default function EditComponentModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!label.trim()) return alert("El nombre del componente es obligatorio");
-    if (intervalo <= 0) return alert("El intervalo debe ser mayor a 0 km");
+    if (!label.trim()) return alert('El nombre del componente es obligatorio');
+    const cleanIntervalo = Math.round(Number(intervalo) || 0);
+    if (cleanIntervalo <= 0) return alert('El intervalo debe ser mayor a 0 km');
 
     const payload = {
       id: component?.id || `custom_${Date.now()}`,
       label: label.trim(),
-      intervalo: Number(intervalo),
-      ultimoCambioKm: Number(ultimoCambioKm),
-      alertaPreventivaKm: Number(alertaKm),
+      intervalo: cleanIntervalo,
+      baseIntervalo: cleanIntervalo,
+      ultimoCambioKm: Math.max(0, Number(ultimoCambioKm) || 0),
+      alertaPreventivaKm: Math.max(10, Number(alertaKm) || 300),
       especificacion: especificacion.trim(),
       categoria,
-      costoSugerido: Number(costo),
-      isCustom: component ? component.isCustom : true
+      costoSugerido: Math.max(0, Number(costo) || 0),
+      isCustom: component ? Boolean(component.isCustom) : true,
+      calibratedByUser: true,
+      updatedAt: Date.now()
     };
 
     onSaveComponent(payload);
@@ -83,26 +89,25 @@ export default function EditComponentModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative text-white">
-        
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-2.5">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl bg-neutral-950 border p-1.5 flex items-center justify-center shadow-lg flex-shrink-0"
-              style={{ borderColor: "var(--primary-accent)" }}
+              style={{ borderColor: 'var(--primary-accent)' }}
             >
-              <BrandLogo brand={(bikeName || "").split(" ")[0]} className="w-full h-full" />
+              <BrandLogo brand={(bikeName || '').split(' ')[0]} className="w-full h-full" />
             </div>
             <div>
               <h3 className="text-base font-bold font-racing uppercase tracking-wider text-white">
-                {component ? "Calibrar Intervalo de la Parte" : "Añadir Nueva Parte a Tu Moto"}
+                {component ? 'Calibrar Intervalo de la Parte' : 'Añadir Nueva Parte a Tu Moto'}
               </h3>
               <p className="text-[11px] text-neutral-400 font-mono">
                 {bikeName} • Personaliza los kilómetros según el manual de tu moto
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="text-neutral-400 hover:text-white p-1 rounded-lg"
           >
@@ -119,18 +124,18 @@ export default function EditComponentModal({
                 {kmRestantesCalculados.toLocaleString()} km
               </span>
               <span className="text-xs text-neutral-400 font-mono font-bold">
-                ({vidaCalculada}%)
+                ({vidaCalculada}% • Intervalo: {numericIntervalo.toLocaleString()} km)
               </span>
             </div>
           </div>
 
           <div className="text-right text-[11px] font-mono text-neutral-500">
             <span>Odómetro actual:</span>
-            <strong className="text-neutral-200 block">{currentOdometer.toLocaleString()} km</strong>
+            <strong className="text-neutral-200 block">{Number(currentOdometer || 0).toLocaleString()} km</strong>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Nombre del Componente */}
           <div>
             <label className="text-xs font-mono text-neutral-300 block mb-1">
@@ -156,9 +161,9 @@ export default function EditComponentModal({
                 type="number"
                 value={intervalo}
                 onChange={(e) => setIntervalo(e.target.value)}
-                min="100"
-                step="100"
-                placeholder="Ej: 3000, 5000, 15000"
+                min="1"
+                step="any"
+                placeholder="Ej: 3000, 7500, 15000"
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-bold"
                 required
               />
@@ -174,8 +179,8 @@ export default function EditComponentModal({
                 value={ultimoCambioKm}
                 onChange={(e) => setUltimoCambioKm(e.target.value)}
                 min="0"
-                step="100"
-                placeholder="Ej: 12000"
+                step="any"
+                placeholder="Ej: 0 o 5000"
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 font-mono font-bold"
               />
               <span className="text-[10px] text-neutral-500 block mt-1">En qué km lo pusiste nuevo</span>
@@ -192,8 +197,8 @@ export default function EditComponentModal({
                 type="number"
                 value={alertaKm}
                 onChange={(e) => setAlertaKm(e.target.value)}
-                min="50"
-                step="50"
+                min="10"
+                step="any"
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
               />
               <span className="text-[10px] text-neutral-500 block mt-1">Margen de alerta previa</span>
@@ -208,6 +213,7 @@ export default function EditComponentModal({
                 onChange={(e) => setCategoria(e.target.value)}
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-sans"
               >
+                <option value="electrico">Batería & Eléctrico</option>
                 <option value="motor">Motor & Filtros</option>
                 <option value="frenos">Frenos & Suspensión</option>
                 <option value="transmision">Transmisión & Cadena</option>
@@ -232,7 +238,6 @@ export default function EditComponentModal({
 
           {/* Botones de Acción */}
           <div className="flex items-center justify-between pt-3 border-t border-neutral-800 gap-2">
-            {/* Restaurar valores oficiales OEM si es una pieza original */}
             {component && !component.isCustom ? (
               <button
                 type="button"
@@ -247,7 +252,7 @@ export default function EditComponentModal({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("¿Deseas eliminar este componente personalizado?")) {
+                  if (confirm('¿Deseas eliminar este componente personalizado?')) {
                     onDeleteComponent(component.id);
                     onClose();
                   }
@@ -257,7 +262,9 @@ export default function EditComponentModal({
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Eliminar Pieza</span>
               </button>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
 
             <div className="flex gap-2">
               <button
@@ -281,4 +288,3 @@ export default function EditComponentModal({
     </div>
   );
 }
-

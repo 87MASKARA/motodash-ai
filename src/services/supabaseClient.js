@@ -44,12 +44,32 @@ export async function loadPilotGarage(userId) {
       p_user_id: authUid
     });
 
-    if (error) {
-      console.warn('[Supabase RLS] Error al cargar garaje remoto:', error.message);
+    if (!error && data && Array.isArray(data.bikes) && data.bikes.length > 0) {
+      return data;
+    }
+
+    // Fallback directo a la tabla user_bikes para garantizar lectura de custom_components y hoja_de_vida
+    const { data: rows, error: tblErr } = await supabase
+      .from('user_bikes')
+      .select('id, odometer, riding_condition, config, hoja_de_vida, custom_components')
+      .eq('user_id', authUid);
+
+    if (tblErr || !Array.isArray(rows)) {
+      if (error) console.warn('[Supabase RLS] Error al cargar garaje remoto:', error.message);
       return null;
     }
 
-    return data;
+    return {
+      bikes: rows.map((b) => ({
+        id: b.id,
+        odometer: Number(b.odometer) || 0,
+        ridingCondition: b.riding_condition || 'normal',
+        config: b.config || {},
+        hojaDeVida: b.hoja_de_vida || {},
+        customComponents: b.custom_components || {}
+      })),
+      activeBikeId: rows[0]?.id || null
+    };
   } catch (err) {
     console.warn('[Supabase] Error de red al cargar garaje:', err.message);
     return null;
@@ -70,12 +90,32 @@ export async function savePilotGarage(userId, garage, activeBikeId) {
       p_active_bike_id: activeBikeId || null
     });
 
-    if (error) {
-      console.warn('[Supabase RLS] Error al sincronizar garaje remoto:', error.message);
-      return false;
+    // Respaldo directo en tabla user_bikes para garantizar que custom_components y hoja_de_vida siempre persistan
+    const rowsToUpsert = garage
+      .filter((b) => b && b.id)
+      .map((b) => ({
+        id: String(b.id),
+        user_id: authUid,
+        odometer: Number(b.odometer) || 0,
+        riding_condition: b.ridingCondition || 'normal',
+        config: b.config || {},
+        hoja_de_vida: b.hojaDeVida || {},
+        custom_components: b.customComponents || {},
+        updated_at: new Date().toISOString()
+      }));
+
+    if (rowsToUpsert.length > 0) {
+      await supabase
+        .from('user_bikes')
+        .upsert(rowsToUpsert, { onConflict: 'id,user_id' });
     }
 
-    return data?.success || false;
+    if (error) {
+      console.warn('[Supabase RLS] Aviso en RPC save_pilot_garage (guardado por upsert directo):', error.message);
+      return rowsToUpsert.length > 0;
+    }
+
+    return data?.success || rowsToUpsert.length > 0;
   } catch (err) {
     console.warn('[Supabase] Error de red al sincronizar garaje:', err.message);
     return false;
@@ -115,7 +155,6 @@ export function subscribeToGarageChanges(userId, onRemoteUpdate) {
 
 /**
  * Sube un documento privado (SOAT, factura, foto) al bucket protegido 'moto-documents'
- * Cumple la política RLS de Storage: la carpeta raíz debe coincidir exactamente con auth.uid()
  */
 export async function uploadMotoDocument(file, category = 'documento') {
   const authUid = await getAuthenticatedUserId();

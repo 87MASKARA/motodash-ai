@@ -56,9 +56,14 @@ export default function MaintenanceWidget({
   const listaComponentes = Object.values(allComponentEntries).map((comp) => {
     // Aplicar personalizaciones si existen
     const custom = customComponents[comp.id] || {};
-    const baseIntervalo = custom.intervalo || comp.intervalo;
-    const effectiveIntervalo = Math.round(baseIntervalo * conditionMultiplier);
-    const ultimoCambioKm = typeof custom.ultimoCambioKm === 'number' ? custom.ultimoCambioKm : 0;
+    const hasUserCalibratedInterval = Number(custom.intervalo) > 0;
+    const baseIntervalo = hasUserCalibratedInterval ? Number(custom.intervalo) : Number(comp.intervalo) || 4000;
+    // Si el piloto calibró manualmente el intervalo (ej. Pastillas Delanteras en 7500 km), respetar su valor exacto;
+    // si es el valor por defecto del catálogo, aplicar el multiplicador según condición de manejo (Ciudad/Estándar/Carretera).
+    const effectiveIntervalo = hasUserCalibratedInterval
+      ? Math.round(baseIntervalo)
+      : Math.round(baseIntervalo * conditionMultiplier);
+    const ultimoCambioKm = typeof custom.ultimoCambioKm === 'number' ? custom.ultimoCambioKm : (Number(custom.ultimoCambioKm) || 0);
 
     // Si tiene registrado un último cambio explícito
     let kmRestantes;

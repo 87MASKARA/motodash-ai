@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Gauge, Fuel, Wrench, X, Check, Globe2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Gauge, Fuel, Wrench, X, Check, Globe2, Camera, CheckCircle2 } from 'lucide-react';
 import { COMPONENTES_DESGASTE_OFICIALES } from '../../services/maintenanceCatalog';
 import { BrandLogo } from '../Common/BrandLogos';
+import { scanTftClusterPhotoWithAi } from '../../services/hardwareBridgeService';
 import {
   COUNTRY_FUEL_UNITS,
   getCountryFuelConfig,
@@ -26,6 +27,9 @@ export default function OdometerModal({
   const [recordType, setRecordType] = useState(initialComponentKey ? 'service' : 'quick_km');
   const [selectedCountry, setSelectedCountry] = useState(defaultFuelCfg.country);
   const [fuelUnit, setFuelUnit] = useState(defaultFuelCfg.unit); // 'gal' | 'L'
+  const [isScanningPhoto, setIsScanningPhoto] = useState(false);
+  const [scannedClusterData, setScannedClusterData] = useState(null);
+  const photoInputRef = useRef(null);
 
   // Campos de Tanqueo (en Galones para Colombia/Perú/Ecuador/EE.UU./Centroamérica, o Litros para México/España/Chile/Argentina/Brasil)
   const [fuelAmount, setFuelAmount] = useState(defaultFuelCfg.defaultRefuelAmount);
@@ -88,6 +92,26 @@ export default function OdometerModal({
     }
   };
 
+  const handleScanPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsScanningPhoto(true);
+    try {
+      const scanned = await scanTftClusterPhotoWithAi(file, bike);
+      if (scanned && scanned.success) {
+        setScannedClusterData(scanned);
+        if (scanned.odometerKm !== undefined && scanned.odometerKm !== null) {
+          setKmInput(scanned.odometerKm);
+        }
+      }
+    } catch (err) {
+      console.warn('Error escaneando foto de tacómetro:', err);
+    } finally {
+      setIsScanningPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const newKm = Number(kmInput);
@@ -102,6 +126,12 @@ export default function OdometerModal({
       km: newKm,
       recordType,
       date: new Date().toISOString().slice(0, 10),
+      scannedTelemetry: scannedClusterData
+        ? {
+            ...scannedClusterData,
+            odometerKm: newKm
+          }
+        : null,
       fuelData: recordType === 'fuel'
         ? {
             liters: computedLiters,
@@ -123,6 +153,7 @@ export default function OdometerModal({
     };
 
     onSaveOdometer(payload);
+    setScannedClusterData(null);
     onClose();
   };
 
@@ -197,25 +228,66 @@ export default function OdometerModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Campo Central: Kilometraje Actual de la Moto */}
-          <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 text-center">
-            <label className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 block mb-1.5">
-              Kilometraje Exacto en el Tacómetro de tu Moto
-            </label>
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleScanPhoto}
+            className="hidden"
+          />
+
+          {/* Campo Central: Kilometraje Actual de la Moto + Escáner de Foto del Tacómetro IA */}
+          <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 text-center space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 text-left">
+                Kilometraje Exacto en el Tacómetro de tu Moto
+              </label>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={isScanningPhoto}
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-racing font-black text-[11px] flex items-center gap-1.5 shadow transition flex-shrink-0"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>{isScanningPhoto ? 'Leyendo Foto...' : '📸 Leer Foto Tacómetro IA'}</span>
+              </button>
+            </div>
+
+            {scannedClusterData && (
+              <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 flex items-center gap-2.5 text-left text-[11px] font-mono">
+                {scannedClusterData.previewDataUrl && (
+                  <img
+                    src={scannedClusterData.previewDataUrl}
+                    alt="Tacómetro"
+                    className="w-16 h-12 object-cover rounded-lg border border-emerald-400/50 flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1">
+                  <span className="text-emerald-300 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    Foto leída: ODO {scannedClusterData.odometerKm} KM • Gasolina {scannedClusterData.fuelBars}/6 ({scannedClusterData.fuelLevelPercent}%) • {scannedClusterData.rpmIdle} RPM
+                  </span>
+                  <span className="text-[10px] text-neutral-400 block">
+                    Al guardar se actualizarán también las barras de gasolina, RPM y velocidades leídas de la foto.
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-2">
               <input
                 type="number"
                 value={kmInput}
                 onChange={(e) => setKmInput(e.target.value)}
                 min="0"
-                step="1"
+                step="any"
                 className="w-44 text-3xl font-black font-telemetry text-center bg-neutral-900 border border-neutral-700 rounded-xl px-2 py-1 text-white focus:outline-none focus:border-amber-500"
                 required
               />
               <span className="text-sm font-bold text-neutral-400 font-racing">KM</span>
             </div>
-            <p className="text-[10px] text-neutral-500 mt-2">
+            <p className="text-[10px] text-neutral-500">
               Se actualizarán todas las alertas de mantenimiento oficiales con base en este valor.
             </p>
           </div>

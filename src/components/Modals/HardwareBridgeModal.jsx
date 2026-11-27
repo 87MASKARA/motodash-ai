@@ -60,35 +60,36 @@ export default function HardwareBridgeModal({
 
   const existingHw = bike?.hojaDeVida?.hardwareTelemetry || {};
   const tankCap = Number(bike?.config?.telemetrySpecs?.tankCapacityLiters) || 12;
+  const [scannedPhotoPreview, setScannedPhotoPreview] = useState(existingHw.lastPhotoPreview || '');
+  const [scannedSummary, setScannedSummary] = useState('');
 
   const resolveInitialOdo = () => {
-    const raw = Number(existingHw.odometerKm || bike?.odometer) || 5427.7;
-    return raw === 5212 || raw === 5040 ? 5427.7 : Number(raw.toFixed(1));
+    const raw = Number(bike?.odometer ?? existingHw.odometerKm) || 5427.7;
+    return Number(raw.toFixed(1));
   };
 
   const initialOdo = resolveInitialOdo();
   const initialFuel = computeDynamicFuelFromOdometer(
     bike,
     initialOdo,
-    existingHw.fuelLevelPercent && existingHw.fuelLevelPercent !== 100 ? existingHw.fuelLevelPercent : null
+    typeof existingHw.fuelLevelPercent === 'number' ? existingHw.fuelLevelPercent : null
   );
 
   const [liveParams, setLiveParams] = useState({
     odometerKm: initialOdo,
+    speedKmh: existingHw.speedKmh ?? 0,
+    gear: existingHw.gear || 'N',
     batteryVoltage: existingHw.batteryVoltage ?? 13.9,
     batteryLevel: existingHw.batteryLevel ?? 95,
     fuelBars: existingHw.fuelBars ?? initialFuel.fuelBars ?? 3,
-    fuelLevelPercent: initialFuel.fuelLevelPercent ?? 50,
+    fuelLevelPercent: existingHw.fuelLevelPercent ?? initialFuel.fuelLevelPercent ?? 50,
     realKmPerLiter: initialFuel.realKmPerLiter ?? 36.0,
     rideMode: existingHw.rideMode || 'SPORT',
     tempBars: existingHw.tempBars ?? 3,
-    engineTempC: existingHw.engineTempC && existingHw.engineTempC !== 83 ? existingHw.engineTempC : 85,
-    rpmIdle: existingHw.rpmIdle && existingHw.rpmIdle !== 1300 && existingHw.rpmIdle !== 1450 ? existingHw.rpmIdle : 1800,
-    topSpeedRecorded:
-      existingHw.topSpeedRecorded && existingHw.topSpeedRecorded !== 134 && existingHw.topSpeedRecorded !== 121
-        ? existingHw.topSpeedRecorded
-        : 112,
-    avgSpeed: existingHw.avgSpeed && existingHw.avgSpeed !== 44 ? existingHw.avgSpeed : 33,
+    engineTempC: existingHw.engineTempC ?? 85,
+    rpmIdle: existingHw.rpmIdle ?? 1800,
+    topSpeedRecorded: existingHw.topSpeedRecorded ?? 112,
+    avgSpeed: existingHw.avgSpeed ?? 33,
     zeroToSixtySec: existingHw.zeroToSixtySec ?? 4.5,
     maxLeanAngle: existingHw.maxLeanAngle ?? 32,
     tripAKm: existingHw.tripAKm ?? 215.7,
@@ -104,26 +105,25 @@ export default function HardwareBridgeModal({
       const dynamicFuel = computeDynamicFuelFromOdometer(
         bike,
         odo,
-        hw.fuelLevelPercent && hw.fuelLevelPercent !== 100 ? hw.fuelLevelPercent : null
+        typeof hw.fuelLevelPercent === 'number' ? hw.fuelLevelPercent : null
       );
 
       setLiveParams((prev) => ({
         ...prev,
         odometerKm: odo,
+        speedKmh: hw.speedKmh ?? prev.speedKmh ?? 0,
+        gear: hw.gear || prev.gear || 'N',
         batteryVoltage: hw.batteryVoltage ?? prev.batteryVoltage,
         batteryLevel: hw.batteryLevel ?? prev.batteryLevel,
         fuelBars: hw.fuelBars ?? dynamicFuel.fuelBars,
-        fuelLevelPercent: dynamicFuel.fuelLevelPercent,
+        fuelLevelPercent: hw.fuelLevelPercent ?? dynamicFuel.fuelLevelPercent,
         realKmPerLiter: dynamicFuel.realKmPerLiter,
         rideMode: hw.rideMode || prev.rideMode,
         tempBars: hw.tempBars ?? prev.tempBars,
-        engineTempC: hw.engineTempC && hw.engineTempC !== 83 ? hw.engineTempC : 85,
-        rpmIdle: hw.rpmIdle && hw.rpmIdle !== 1300 && hw.rpmIdle !== 1450 ? hw.rpmIdle : 1800,
-        topSpeedRecorded:
-          hw.topSpeedRecorded && hw.topSpeedRecorded !== 134 && hw.topSpeedRecorded !== 121
-            ? hw.topSpeedRecorded
-            : 112,
-        avgSpeed: hw.avgSpeed && hw.avgSpeed !== 44 ? hw.avgSpeed : 33,
+        engineTempC: hw.engineTempC ?? prev.engineTempC ?? 85,
+        rpmIdle: hw.rpmIdle ?? prev.rpmIdle ?? 1800,
+        topSpeedRecorded: hw.topSpeedRecorded ?? prev.topSpeedRecorded ?? 112,
+        avgSpeed: hw.avgSpeed ?? prev.avgSpeed ?? 33,
         maxLeanAngle: hw.maxLeanAngle || prev.maxLeanAngle,
         tripAKm: hw.tripAKm ?? prev.tripAKm,
         checkEngineStatus: hw.checkEngineStatus || prev.checkEngineStatus,
@@ -311,23 +311,44 @@ export default function HardwareBridgeModal({
     try {
       const scanned = await scanTftClusterPhotoWithAi(file, bike);
       if (scanned && scanned.success) {
+        if (scanned.previewDataUrl) {
+          setScannedPhotoPreview(scanned.previewDataUrl);
+        }
+        setScannedSummary(scanned.summary || '');
+
+        // Si la simulación demo estaba corriendo, detenerla para que el dashboard muestre los datos reales de la foto
+        if (telemetry?.isSimulating && typeof telemetry.stopSimulation === 'function') {
+          telemetry.stopSimulation();
+        }
+
         const nextParams = {
           ...liveParams,
           odometerKm: scanned.odometerKm ?? liveParams.odometerKm,
-          fuelBars: scanned.fuelBars ?? 3,
-          fuelLevelPercent: scanned.fuelLevelPercent ?? 50,
-          tempBars: scanned.tempBars ?? 3,
-          engineTempC: scanned.engineTempC ?? 85,
-          rideMode: scanned.rideMode || 'SPORT',
-          topSpeedRecorded: scanned.topSpeedRecorded ?? 112,
-          avgSpeed: scanned.avgSpeed ?? 33,
-          rpmIdle: scanned.rpmIdle ?? 1800
+          speedKmh: scanned.speedKmh ?? liveParams.speedKmh ?? 0,
+          gear: scanned.gear || liveParams.gear || 'N',
+          fuelBars: scanned.fuelBars ?? liveParams.fuelBars ?? 3,
+          fuelLevelPercent: scanned.fuelLevelPercent ?? liveParams.fuelLevelPercent ?? 50,
+          tempBars: scanned.tempBars ?? liveParams.tempBars ?? 3,
+          engineTempC: scanned.engineTempC ?? liveParams.engineTempC ?? 85,
+          rideMode: scanned.rideMode || liveParams.rideMode || 'SPORT',
+          topSpeedRecorded: scanned.topSpeedRecorded ?? liveParams.topSpeedRecorded ?? 112,
+          avgSpeed: scanned.avgSpeed ?? liveParams.avgSpeed ?? 33,
+          rpmIdle: scanned.rpmIdle ?? liveParams.rpmIdle ?? 1800,
+          tripAKm: scanned.tripAKm ?? liveParams.tripAKm ?? 215.7,
+          batteryVoltage: scanned.batteryVoltage ?? liveParams.batteryVoltage ?? 13.9
         };
         setLiveParams(nextParams);
+
+        if (!scanned.aiReadSuccess) {
+          setWarningMsg(
+            '📸 Foto del tacómetro cargada. Verifica o ajusta abajo el Odómetro, RPM o Barras de Gasolina si algún dígito tenía reflejo y pulsa "Guardar Datos de Pantalla TFT".'
+          );
+        }
+
         pushTelemetryToApp(
           nextParams,
           scanned.source || 'Escáner Óptico IA de Tablero TFT',
-          `📸 ¡Foto del tablero TFT leída con éxito! Odómetro: ${nextParams.odometerKm} KM • Gasolina: ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}%) • Top Speed: ${nextParams.topSpeedRecorded} km/h • Avg Speed: ${nextParams.avgSpeed} km/h • Modo ${nextParams.rideMode}.`
+          `📸 ¡Foto del tacómetro sincronizada en el Dashboard! Odómetro: ${nextParams.odometerKm} KM • RPM: ${nextParams.rpmIdle} • Gasolina: ${nextParams.fuelBars}/6 barras (${nextParams.fuelLevelPercent}%) • Top Speed: ${nextParams.topSpeedRecorded} km/h • Avg Speed: ${nextParams.avgSpeed} km/h • Modo ${nextParams.rideMode}.`
         );
       }
     } catch (err) {
@@ -613,13 +634,46 @@ export default function HardwareBridgeModal({
                     DATOS VISIBLES EN TU PANTALLA FÍSICA TFT (SIN CABLE)
                   </span>
                   <h4 className="text-sm font-black font-racing uppercase text-white">
-                    Odómetro, Barras de Gasolina, Modo y Velocidades de Pantalla
+                    Odómetro, Tacómetro (RPM), Barras de Gasolina, Modo y Velocidades
                   </h4>
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold">
                   Igual a tu foto TFT
                 </span>
               </div>
+
+              {/* PREVISUALIZACIÓN DE LA FOTO DEL TACÓMETRO SUBIDA */}
+              {scannedPhotoPreview && (
+                <div className="p-3 rounded-2xl bg-neutral-900/95 border border-emerald-500/50 flex flex-col sm:flex-row items-center gap-3 animate-fadeIn">
+                  <img
+                    src={scannedPhotoPreview}
+                    alt="Foto Tacómetro Subida"
+                    className="w-28 h-20 object-cover rounded-xl border border-emerald-400/50 flex-shrink-0"
+                  />
+                  <div className="flex-1 text-xs font-mono space-y-1">
+                    <span className="text-emerald-400 font-bold block">
+                      📸 Foto del Tacómetro Analizada y Aplicada al Dashboard
+                    </span>
+                    <p className="text-[11px] text-neutral-300">
+                      {scannedSummary || 'Lectura sincronizada con el velocímetro, tacómetro RPM, odómetro y medidor de gasolina.'}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                        ODO: {liveParams.odometerKm} KM
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
+                        RPM: {liveParams.rpmIdle}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                        Gasolina: {activeFuelBars}/6 ({liveParams.fuelLevelPercent}%)
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold">
+                        Top: {liveParams.topSpeedRecorded} km/h • Avg: {liveParams.avgSpeed} km/h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* 1. ODÓMETRO DE PANTALLA (5427.7 KM) */}
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -629,7 +683,7 @@ export default function HardwareBridgeModal({
                     1. ODÓMETRO EN TU PANTALLA TFT (ODO)
                   </span>
                   <p className="text-[11px] font-mono text-neutral-300 mt-0.5">
-                    Al cambiar el kilometraje aquí (o mientras ruedas con GPS), la app calcula y descuenta automáticamente la gasolina consumida:
+                    Al cambiar el kilometraje aquí (o al subir la foto del tacómetro), la app actualiza todos los componentes y descuenta la gasolina consumida:
                   </p>
                 </div>
 
@@ -689,11 +743,11 @@ export default function HardwareBridgeModal({
                 </div>
               </div>
 
-              {/* 3. DATOS INFERIORES DE LA PANTALLA TFT: MODO (SPORT/URBAN/RAIN), TOP SPEED (112) Y AVG SPEED (33) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono">
+              {/* 3. DATOS INFERIORES DE LA PANTALLA TFT: MODO (SPORT/URBAN/RAIN), RPM TACÓMETRO, TOP SPEED Y AVG SPEED */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 font-mono">
                 <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
                   <span className="text-[10px] text-neutral-400 block mb-1">3. Modo en Pantalla TFT</span>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1">
                     {['SPORT', 'URBAN', 'RAIN'].map((m) => (
                       <button
                         key={m}
@@ -703,7 +757,7 @@ export default function HardwareBridgeModal({
                           setLiveParams(next);
                           pushTelemetryToApp(next, 'Pantalla TFT');
                         }}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${
                           liveParams.rideMode === m
                             ? 'bg-amber-500 text-black shadow'
                             : 'bg-neutral-800 text-neutral-400 hover:text-white'
@@ -716,7 +770,21 @@ export default function HardwareBridgeModal({
                 </div>
 
                 <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
-                  <span className="text-[10px] text-neutral-400 block mb-1">4. TOP SPEED en Pantalla (KM/H)</span>
+                  <span className="text-[10px] text-neutral-400 block mb-1">4. RPM Tacómetro</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="100"
+                      value={liveParams.rpmIdle}
+                      onChange={(e) => setLiveParams({ ...liveParams, rpmIdle: Number(e.target.value) })}
+                      className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-2.5 py-1 text-sm font-black text-emerald-300"
+                    />
+                    <span className="text-xs text-neutral-400">RPM</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block mb-1">5. TOP SPEED (KM/H)</span>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="number"
@@ -729,7 +797,7 @@ export default function HardwareBridgeModal({
                 </div>
 
                 <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
-                  <span className="text-[10px] text-neutral-400 block mb-1">5. AVG. SPEED en Pantalla (KM/H)</span>
+                  <span className="text-[10px] text-neutral-400 block mb-1">6. AVG. SPEED (KM/H)</span>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="number"

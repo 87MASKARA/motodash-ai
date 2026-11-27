@@ -103,10 +103,10 @@ export function computeDynamicFuelFromOdometer(bike, targetOdometerKm, explicitF
 
   // Valor actual guardado (o 50% / 3 de 6 barras por defecto real del tablero)
   const fallbackPct =
-    existingHw.fuelLevelPercent !== undefined && existingHw.fuelLevelPercent !== 100
+    existingHw.fuelLevelPercent !== undefined && existingHw.fuelLevelPercent !== null
       ? Number(existingHw.fuelLevelPercent)
       : 50;
-  const bars = existingHw.fuelBars ?? Math.min(6, Math.max(1, Math.round((fallbackPct / 100) * 6)));
+  const bars = existingHw.fuelBars ?? Math.min(6, Math.max(0, Math.round((fallbackPct / 100) * 6)));
   const litersLeft = Number(((tankCap * fallbackPct) / 100).toFixed(1));
 
   return {
@@ -520,19 +520,38 @@ export async function scanTftClusterPhotoWithAi(file, bike = null) {
     reader.readAsDataURL(file);
   });
 
-  const prompt = `Analiza esta foto real del tablero digital TFT de una motocicleta y extrae exactamente los datos visibles en pantalla.
-Devuelve ÚNICAMENTE un objeto JSON válido con estas claves exactas:
+  const prompt = `Analiza esta foto real del tacómetro / tablero digital de una motocicleta y extrae TODOS los datos visibles en la pantalla.
+Presta especial atención a:
+- El odómetro total (ODO, total kilómetros, ej: 5427.7, 7500, 12340). Si sólo hay un kilometraje visible, úsalo como odometerKm.
+- La velocidad actual en pantalla (números grandes centrales en km/h o mph, ej: 0, 48, 85).
+- Las revoluciones por minuto (RPM en la barra o aguja del tacómetro, ej: si marca 1.8 o 2 en x1000 RPM pon 1800 o 2000; si marca 6 pon 6000; si está apagado o en 0 pon 0).
+- La marcha engranada (GEAR: "N", "1", "2", "3", "4", "5", "6").
+- Las barras de gasolina encendidas (de 0 a 6 barras entre E y F) y el porcentaje equivalente (0 a 100).
+- Las barras de temperatura del motor (de 0 a 6 barras entre C y H) y temperatura estimada en °C.
+- El modo de manejo en pantalla ("SPORT", "URBAN", "RAIN", "STREET", "TRACK").
+- TOP SPEED (velocidad máxima registrada en pantalla) y AVG. SPEED (velocidad promedio en pantalla).
+- TRIP A / TRIP 1 en km si aparece, y voltaje de batería si aparece (ej: 13.9).
+
+Devuelve ÚNICAMENTE un objeto JSON válido con estas claves exactas (usa null en los campos que NO sean visibles en la foto):
 {
-  "odometerKm": número con 1 decimal si aparece (ejemplo: 5427.7),
-  "fuelBars": número entero de barras encendidas de gasolina de 0 a 6 (ejemplo: si hay 3 barras azules/blancas de 6 entre E y F, pon 3),
-  "fuelLevelPercent": porcentaje de gasolina de 0 a 100 (ejemplo: 3 de 6 barras = 50),
-  "tempBars": número entero de barras de temperatura entre C y H de 0 a 6 (ejemplo: 3),
-  "engineTempC": temperatura estimada en °C según las barras (0 barras=40, 2 barras=75, 3 barras=85, 4 barras=95, 5 barras=105, 6 barras=115),
-  "rideMode": "SPORT" o "URBAN" o "RAIN" o "STREET",
-  "topSpeedRecorded": número en km/h donde dice TOP SPEED (ejemplo: 112),
-  "avgSpeed": número en km/h donde dice AVG. SPEED (ejemplo: 33),
-  "rpmIdle": número de RPM que marca la aguja del tacómetro x1000 (ejemplo: si está en 1.8 y la moto está en 0 km/h Neutro, pon 1800)
+  "odometerKm": number | null,
+  "speedKmh": number | null,
+  "rpmIdle": number | null,
+  "gear": "N" | "1" | "2" | "3" | "4" | "5" | "6" | null,
+  "fuelBars": number | null,
+  "fuelLevelPercent": number | null,
+  "tempBars": number | null,
+  "engineTempC": number | null,
+  "rideMode": "SPORT" | "URBAN" | "RAIN" | null,
+  "topSpeedRecorded": number | null,
+  "avgSpeed": number | null,
+  "tripAKm": number | null,
+  "batteryVoltage": number | null,
+  "summary": "Resumen corto de lo leído en la foto del tacómetro"
 }`;
+
+  const existingHw = bike?.hojaDeVida?.hardwareTelemetry || {};
+  const currentOdo = Number(bike?.odometer || existingHw.odometerKm) || 5427.7;
 
   try {
     const response = await fetch('/api/ai-gateway', {
@@ -550,40 +569,108 @@ Devuelve ÚNICAMENTE un objeto JSON válido con estas claves exactas:
       const json = await response.json();
       if (json?.success && json?.data) {
         const d = json.data;
-        const bars = typeof d.fuelBars === 'number' ? Math.min(6, Math.max(0, Math.round(d.fuelBars))) : 3;
-        const pct = typeof d.fuelLevelPercent === 'number' ? Math.min(100, Math.max(0, Math.round(d.fuelLevelPercent))) : Math.round((bars / 6) * 100);
+        const hasBars = d.fuelBars !== null && d.fuelBars !== undefined && !Number.isNaN(Number(d.fuelBars));
+        const hasPct = d.fuelLevelPercent !== null && d.fuelLevelPercent !== undefined && !Number.isNaN(Number(d.fuelLevelPercent));
+        const bars = hasBars
+          ? Math.min(6, Math.max(0, Math.round(Number(d.fuelBars))))
+          : hasPct
+          ? Math.min(6, Math.max(0, Math.round((Number(d.fuelLevelPercent) / 100) * 6)))
+          : (existingHw.fuelBars ?? 3);
+        const pct = hasPct
+          ? Math.min(100, Math.max(0, Math.round(Number(d.fuelLevelPercent))))
+          : Math.round((bars / 6) * 100);
+
+        const parsedOdo =
+          d.odometerKm !== null && d.odometerKm !== undefined && Number(d.odometerKm) >= 0
+            ? Number(Number(d.odometerKm).toFixed(1))
+            : currentOdo;
+        const parsedSpeed =
+          d.speedKmh !== null && d.speedKmh !== undefined && Number(d.speedKmh) >= 0
+            ? Math.round(Number(d.speedKmh))
+            : 0;
+        const parsedRpm =
+          d.rpmIdle !== null && d.rpmIdle !== undefined && Number(d.rpmIdle) >= 0
+            ? Math.round(Number(d.rpmIdle) <= 20 && Number(d.rpmIdle) > 0 ? Number(d.rpmIdle) * 1000 : Number(d.rpmIdle))
+            : (existingHw.rpmIdle ?? 1800);
+        const parsedTopSpeed =
+          d.topSpeedRecorded !== null && d.topSpeedRecorded !== undefined && Number(d.topSpeedRecorded) > 0
+            ? Math.round(Number(d.topSpeedRecorded))
+            : Math.max(parsedSpeed, Number(existingHw.topSpeedRecorded) || 112);
+        const parsedAvgSpeed =
+          d.avgSpeed !== null && d.avgSpeed !== undefined && Number(d.avgSpeed) > 0
+            ? Math.round(Number(d.avgSpeed))
+            : (Number(existingHw.avgSpeed) || 33);
+        const parsedTempBars =
+          d.tempBars !== null && d.tempBars !== undefined && !Number.isNaN(Number(d.tempBars))
+            ? Math.min(6, Math.max(0, Math.round(Number(d.tempBars))))
+            : (existingHw.tempBars ?? 3);
+        const parsedTempC =
+          d.engineTempC !== null && d.engineTempC !== undefined && Number(d.engineTempC) >= 20
+            ? Math.round(Number(d.engineTempC))
+            : (existingHw.engineTempC ?? 85);
+        const parsedTripA =
+          d.tripAKm !== null && d.tripAKm !== undefined && Number(d.tripAKm) >= 0
+            ? Number(Number(d.tripAKm).toFixed(1))
+            : (existingHw.tripAKm ?? 215.7);
+        const parsedVoltage =
+          d.batteryVoltage !== null && d.batteryVoltage !== undefined && Number(d.batteryVoltage) >= 10
+            ? Number(Number(d.batteryVoltage).toFixed(1))
+            : (existingHw.batteryVoltage ?? 13.9);
+
         return {
           success: true,
-          source: 'Escáner Óptico IA Vision (Tablero TFT)',
-          odometerKm: Number(d.odometerKm) > 0 ? Number(Number(d.odometerKm).toFixed(1)) : 5427.7,
+          aiReadSuccess: true,
+          previewDataUrl: base64DataUrl,
+          summary: d.summary || 'Lectura óptica IA completada desde la foto de tu tacómetro.',
+          source: `Escáner Óptico IA Vision (${json.model || 'Gemini Flash'})`,
+          odometerKm: parsedOdo,
+          speedKmh: parsedSpeed,
+          gear: d.gear || (parsedSpeed > 0 ? '3' : 'N'),
           fuelBars: bars,
           fuelLevelPercent: pct,
-          tempBars: typeof d.tempBars === 'number' ? d.tempBars : 3,
-          engineTempC: Number(d.engineTempC) > 30 ? Math.round(Number(d.engineTempC)) : 85,
-          rideMode: d.rideMode || 'SPORT',
-          topSpeedRecorded: Number(d.topSpeedRecorded) > 0 ? Math.round(Number(d.topSpeedRecorded)) : 112,
-          avgSpeed: Number(d.avgSpeed) > 0 ? Math.round(Number(d.avgSpeed)) : 33,
-          rpmIdle: Number(d.rpmIdle) >= 800 ? Math.round(Number(d.rpmIdle)) : 1800
+          tempBars: parsedTempBars,
+          engineTempC: parsedTempC,
+          rideMode: String(d.rideMode || existingHw.rideMode || 'SPORT').toUpperCase(),
+          topSpeedRecorded: parsedTopSpeed,
+          avgSpeed: parsedAvgSpeed,
+          rpmIdle: parsedRpm,
+          tripAKm: parsedTripA,
+          batteryVoltage: parsedVoltage
         };
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[ScanTftPhoto] Error llamando a /api/ai-gateway:', err);
+  }
 
-  // Fallback calibrado con la lectura real del tablero TFT del piloto
-  const currentOdo = Number(bike?.odometer) || 5212;
-  const syncedOdo = currentOdo <= 5427.7 ? 5427.7 : currentOdo;
+  // Fallback local si el servidor IA no está disponible:
+  // Extraer posible número del nombre del archivo si existe (ej. "7500.jpg" o "odo_6120.png")
+  const fileNameMatch = String(file?.name || '').match(/([0-9]{3,6}(?:\.[0-9])?)/);
+  const fileHintKm =
+    fileNameMatch && Number(fileNameMatch[1]) >= 100 && Number(fileNameMatch[1]) <= 300000 && !String(file.name).startsWith('IMG_20')
+      ? Number(Number(fileNameMatch[1]).toFixed(1))
+      : null;
+
   return {
     success: true,
+    aiReadSuccess: false,
+    previewDataUrl: base64DataUrl,
+    summary:
+      'Foto cargada en el lector de tacómetro. Si algún dígito tenía reflejo, puedes verificar o escribir el valor en los cuadros de abajo y pulsar Guardar.',
     source: 'Lectura Óptica de Tablero TFT',
-    odometerKm: syncedOdo,
-    fuelBars: 3,
-    fuelLevelPercent: 50,
-    tempBars: 3,
-    engineTempC: 85,
-    rideMode: 'SPORT',
-    topSpeedRecorded: 112,
-    avgSpeed: 33,
-    rpmIdle: 1800
+    odometerKm: fileHintKm ?? currentOdo,
+    speedKmh: existingHw.speedKmh ?? 0,
+    gear: existingHw.gear || 'N',
+    fuelBars: existingHw.fuelBars ?? 3,
+    fuelLevelPercent: existingHw.fuelLevelPercent ?? 50,
+    tempBars: existingHw.tempBars ?? 3,
+    engineTempC: existingHw.engineTempC ?? 85,
+    rideMode: existingHw.rideMode || 'SPORT',
+    topSpeedRecorded: existingHw.topSpeedRecorded ?? 112,
+    avgSpeed: existingHw.avgSpeed ?? 33,
+    rpmIdle: existingHw.rpmIdle ?? 1800,
+    tripAKm: existingHw.tripAKm ?? 215.7,
+    batteryVoltage: existingHw.batteryVoltage ?? 13.9
   };
 }
 

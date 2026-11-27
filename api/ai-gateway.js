@@ -1,12 +1,12 @@
 /**
  * MotoDash AI — Serverless AI Gateway Protegido (/api/ai-gateway)
  * - Mantiene GEMINI_API_KEY 100% oculta en el servidor de Vercel.
+ * - Soporta fallback automático entre gemini-2.5-flash, gemini-2.0-flash y gemini-1.5-flash para Visión (Fotos de Tacómetro/TFT) y Texto.
  * - Incluye Rate Limiting por IP (máx. 25 solicitudes/minuto por IP) contra abuso de bots.
- * - Valida Origin/Referer y limita el tamaño de prompt e imagen.
  */
 
 const rateLimitMap = new Map();
-const WINDOW_MS = 60 * 1000; // 1 minuto
+const WINDOW_MS = 60 * 1000;
 const MAX_REQ_PER_WINDOW = 25;
 
 function checkRateLimit(ip) {
@@ -28,7 +28,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // 1. Validación básica de Origin / Referer para bloquear consumo desde dominios externos
   const origin = String(req.headers?.origin || req.headers?.referer || '').toLowerCase();
   const host = String(req.headers?.host || '').toLowerCase();
   if (
@@ -43,7 +42,6 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Origen no autorizado' });
   }
 
-  // 2. Rate Limiting por IP
   const clientIp =
     (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
     req.socket?.remoteAddress ||
@@ -76,7 +74,6 @@ export default async function handler(req, res) {
 
     const parts = [{ text: prompt.slice(0, 5500) }];
     if (base64Image && typeof base64Image === 'string') {
-      // Limitar tamaño máximo de imagen en base64 (~2.5 MB)
       if (base64Image.length > 3500000) {
         return res.status(413).json({ error: 'Imagen demasiado grande', fallback: true });
       }
@@ -89,33 +86,54 @@ export default async function handler(req, res) {
       });
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: Math.min(1, Math.max(0, Number(temperature) || 0.15)),
-            responseMimeType: 'application/json'
-          }
-        })
-      }
-    );
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastStatus = 500;
+    let lastErrorText = '';
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Error desde Gemini API', fallback: true });
+    for (const modelName of modelsToTry) {
+      const generationConfig = {
+        temperature: Math.min(1, Math.max(0, Number(temperature) || 0.15)),
+        maxOutputTokens: 1024,
+        responseMimeType: 'application/json'
+      };
+      if (modelName.startsWith('gemini-2.5')) {
+        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig
+          })
+        }
+      );
+
+      if (!response.ok) {
+        lastStatus = response.status;
+        lastErrorText = await response.text().catch(() => '');
+        continue;
+      }
+
+      const result = await response.json();
+      const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const cleaned = rawText.replace(/```json|```/g, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+
+      return res.status(200).json({
+        success: true,
+        model: modelName,
+        data: parsed
+      });
     }
 
-    const result = await response.json();
-    const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const cleaned = rawText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    return res.status(200).json({
-      success: true,
-      data: parsed
+    return res.status(lastStatus).json({
+      error: `Error desde Gemini API (${lastStatus}): ${lastErrorText.slice(0, 180)}`,
+      fallback: true
     });
   } catch (err) {
     return res.status(500).json({

@@ -23,12 +23,10 @@ export default function FuelTelemetryWidget({
   const defaultKmPerLiter = engineCc <= 250 ? 38 : engineCc <= 650 ? 26 : 19;
   const latestRefuel = Array.isArray(tanqueos) && tanqueos.length > 0 ? tanqueos[0] : null;
 
-  // Calcular combustible real descontando los kilómetros rodados desde el último tanqueo si el porcentaje estaba congelado en 100%
+  // Calcular combustible real respetando el porcentaje explícito del tablero TFT o foto escaneada
   const currentOdo = Number(bike?.odometer || hardwareTelemetry?.odometerKm) || 0;
   const explicitPct =
-    hardwareTelemetry &&
-    typeof hardwareTelemetry.fuelLevelPercent === 'number' &&
-    !(hardwareTelemetry.fuelLevelPercent === 100 && latestRefuel && currentOdo > Number(latestRefuel.km))
+    hardwareTelemetry && typeof hardwareTelemetry.fuelLevelPercent === 'number'
       ? hardwareTelemetry.fuelLevelPercent
       : null;
 

@@ -334,8 +334,28 @@ export default function DynamicDashboard({
   };
 
   const isImperial = globalSettings.unitSystem === 'imperial';
-  const displaySpeed = isImperial ? Math.round((telemetry.speed || 0) * 0.621371) : (telemetry.speed || 0);
-  const displayMaxSpeed = isImperial ? Math.round((telemetry.maxSpeed || 0) * 0.621371) : (telemetry.maxSpeed || 0);
+  const hwTelemetry = hojaDeVida?.hardwareTelemetry || {};
+  const rawSpeedKmh = telemetry.isSimulating || telemetry.isGpsActive
+    ? (telemetry.speed || 0)
+    : (Number(hwTelemetry.speedKmh) || telemetry.speed || 0);
+  const rawMaxSpeedKmh = telemetry.isSimulating
+    ? (telemetry.maxSpeed || 0)
+    : Math.max(Number(telemetry.maxSpeed) || 0, Number(hwTelemetry.topSpeedRecorded) || 0);
+  const effectiveRpm = telemetry.isSimulating || (telemetry.isGpsActive && telemetry.rpm > 0)
+    ? (telemetry.rpm || 1300)
+    : (Number(hwTelemetry.rpmIdle) || telemetry.rpm || 1300);
+  const effectiveGear = telemetry.isSimulating || (telemetry.isGpsActive && telemetry.speed > 0)
+    ? (telemetry.gear || 'N')
+    : (hwTelemetry.gear || telemetry.gear || 'N');
+  const effectiveTripKm = telemetry.isSimulating || (telemetry.tripDistanceKm > 0)
+    ? telemetry.tripDistanceKm
+    : (Number(hwTelemetry.tripAKm) || 0);
+  const effectiveAvgSpeed = telemetry.isSimulating || (telemetry.avgSpeed > 0)
+    ? telemetry.avgSpeed
+    : (Number(hwTelemetry.avgSpeed) || 0);
+
+  const displaySpeed = isImperial ? Math.round(rawSpeedKmh * 0.621371) : rawSpeedKmh;
+  const displayMaxSpeed = isImperial ? Math.round(rawMaxSpeedKmh * 0.621371) : rawMaxSpeedKmh;
   const displayUnit = isImperial ? 'mph' : (telemetrySpecs.speedUnit || 'km/h');
 
   const themeColors = {
@@ -734,30 +754,30 @@ export default function DynamicDashboard({
           <SpeedometerWidget 
             speed={displaySpeed}
             maxSpeed={displayMaxSpeed}
-            gear={telemetry.gear || 'N'}
+            gear={effectiveGear}
             unit={displayUnit}
             isGpsActive={telemetry.isGpsActive}
             isSimulating={telemetry.isSimulating}
           />
 
           <RpmWidget 
-            currentRpm={telemetry.rpm || 1300}
+            currentRpm={effectiveRpm}
             maxRpm={telemetrySpecs.maxRpm}
             redlineRpm={telemetrySpecs.redlineRpm}
           />
 
           {/* Fila 2: Cronómetro 0-100 & Radar de Ruta */}
           <SprintTimerWidget 
-            speed={telemetry.speed || 0}
+            speed={rawSpeedKmh}
           />
 
           <RouteWidget 
-            speed={telemetry.speed || 0}
+            speed={rawSpeedKmh}
             heading={telemetry.heading || 0}
             isSimulating={telemetry.isSimulating}
-            tripDistanceKm={telemetry.tripDistanceKm}
+            tripDistanceKm={effectiveTripKm}
             tripSeconds={telemetry.tripSeconds}
-            avgSpeed={telemetry.avgSpeed}
+            avgSpeed={effectiveAvgSpeed}
           />
 
           {/* Fila 3: Telemetría de Chasis & Odómetro Clickeable */}
