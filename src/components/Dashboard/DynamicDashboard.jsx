@@ -390,22 +390,6 @@ export default function DynamicDashboard({
       style={dashboardStyle}
       className="min-h-screen bg-neutral-950 text-white flex flex-col transition-colors duration-700 pb-16 sm:pb-0"
     >
-      {/* Pestaña Lateral Flotante en el Borde Izquierdo para Abrir el Menú en Cualquier Momento */}
-      {!isLeftMenuOpen && (
-        <button
-          type="button"
-          onClick={() => setIsLeftMenuOpen(true)}
-          className="fixed left-0 top-24 z-40 py-3 px-2 rounded-r-2xl bg-neutral-900/95 hover:bg-neutral-800 border border-l-0 border-amber-500/50 text-amber-400 shadow-[4px_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center gap-1.5 transition hover:pl-3 group"
-          title="Desplegar Menú Lateral Izquierdo de Herramientas"
-        >
-          <Menu className="w-4 h-4 text-amber-400" />
-          <span className="text-[9px] font-racing font-black uppercase tracking-wider [writing-mode:vertical-rl] rotate-180 text-neutral-200 group-hover:text-amber-300">
-            {isEn ? 'MENU' : 'MENÚ'}
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-        </button>
-      )}
-
       {/* Menú Lateral Desplegable al Lado Izquierdo (Slide-Out Drawer con Todos los Módulos) */}
       {isLeftMenuOpen && (
         <div className="fixed inset-0 z-50 flex">
@@ -824,28 +808,29 @@ export default function DynamicDashboard({
         </div>
       )}
 
-      {/* Barra Superior Cockpit (Limpia y con Botón Desplegable a la Izquierda) */}
-      <header className="border-b border-neutral-800/80 bg-neutral-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Botón Desplegable Izquierdo + Identidad de la Moto */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setIsLeftMenuOpen(true)}
-              className="px-3 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border-2 border-amber-500/60 hover:border-amber-400 text-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/10 transition active:scale-95 cursor-pointer"
-              title="Abrir Menú Lateral Izquierdo con Todos los Botones"
-            >
-              <Menu className="w-5 h-5 text-amber-400" />
-              <span className="text-xs font-racing font-black uppercase tracking-wider text-white hidden sm:inline">
-                {isEn ? 'Menu' : 'Menú'}
-              </span>
-            </button>
+      {/* Barra Superior Cockpit (100% Limpia: Solo Botón Menú Izquierdo + Identidad Grande de la Moto) */}
+      <header className="border-b border-neutral-800/80 bg-neutral-900/75 backdrop-blur-xl px-3 sm:px-8 py-3.5 sm:py-4 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-start gap-3 sm:gap-4">
+          {/* Botón Desplegable Izquierdo */}
+          <button
+            type="button"
+            onClick={() => setIsLeftMenuOpen(true)}
+            className="px-3.5 py-3 sm:px-4 sm:py-3.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border-2 border-amber-500/70 hover:border-amber-400 text-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/15 transition active:scale-95 cursor-pointer flex-shrink-0"
+            title="Abrir Menú Lateral Izquierdo con Todos los Botones"
+          >
+            <Menu className="w-6 h-6 text-amber-400" />
+            <span className="text-xs sm:text-sm font-racing font-black uppercase tracking-wider text-white">
+              {isEn ? 'Menu' : 'Menú'}
+            </span>
+          </button>
 
+          {/* Identidad de la Moto Ampliada para Lectura Perfecta en Celular y Desktop */}
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             <div 
-              className="w-11 h-11 rounded-2xl bg-neutral-900/95 flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0 p-1.5 border"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-neutral-900/95 flex items-center justify-center shadow-xl cursor-pointer hover:scale-105 transition flex-shrink-0 p-2 border-2"
               style={{
                 borderColor: "var(--primary-accent)",
-                boxShadow: "0 0 18px var(--accent-glow)"
+                boxShadow: "0 0 22px var(--accent-glow)"
               }}
               onClick={onOpenGarage}
               title={`${bikeIdentity.brand} • Abrir Mi Garaje`}
@@ -856,86 +841,37 @@ export default function DynamicDashboard({
                 className="w-full h-full drop-shadow"
               />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-xl font-black font-racing uppercase tracking-wider text-white">
-                  {bikeIdentity.brand} <span style={{ color: "var(--primary-accent)" }}>{bikeIdentity.model}</span>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-black font-racing uppercase tracking-wide text-white leading-tight">
+                  {bikeIdentity.brand}{' '}
+                  <span style={{ color: "var(--primary-accent)" }}>{bikeIdentity.model}</span>
                 </h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700">
+                <span className="text-xs sm:text-sm font-mono font-bold px-2.5 py-0.5 rounded-full bg-neutral-800 text-neutral-200 border border-neutral-600">
                   {bikeIdentity.year}
                 </span>
                 {isWakeLocked && (
-                  <span className="hidden sm:flex items-center gap-1 text-[9px] font-mono bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-full">
-                    <Eye className="w-2.5 h-2.5" />
+                  <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-mono font-bold bg-emerald-950/75 text-emerald-400 border border-emerald-700/50 px-2.5 py-0.5 rounded-full">
+                    <Eye className="w-3 h-3" />
                     {t('dashboard.wakeLockActive')}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-neutral-400 font-mono">
-                {telemetrySpecs.engineCc}cc • {(bikeIdentity.category || 'sport').toUpperCase()} •{' '}
+
+              <div className="text-xs sm:text-base text-neutral-200 font-mono font-semibold mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span>{telemetrySpecs.engineCc}cc</span>
+                <span className="text-neutral-500">•</span>
+                <span className="uppercase text-neutral-300">{(bikeIdentity.category || 'sport').toUpperCase()}</span>
+                <span className="text-neutral-500">•</span>
                 <span
                   onClick={() => onOpenOdometerModal && onOpenOdometerModal()}
-                  className="text-amber-400 cursor-pointer hover:underline font-bold"
+                  className="text-amber-400 bg-amber-500/15 border border-amber-500/40 px-2.5 py-0.5 rounded-lg cursor-pointer hover:bg-amber-500/25 font-black text-xs sm:text-base transition"
                 >
                   {Number(odometer).toLocaleString()} km
                 </span>
-              </p>
-            </div>
-          </div>
-
-          {/* Controles Rápidos Esenciales en el Header (Todo lo demás está en el Menú Izquierdo Desplegable) */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Simulación Aceleración Demo */}
-            <button
-              onClick={telemetry.toggleSimulation}
-              className={`px-3 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 border transition ${
-                telemetry.isSimulating 
-                  ? "bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-sm shadow-amber-500/10" 
-                  : "bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:text-white"
-              }`}
-            >
-              {telemetry.isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{telemetry.isSimulating ? t('dashboard.pauseDemo') : t('dashboard.simulate')}</span>
-            </button>
-
-            {/* Pill SOS Emergencia Rápida */}
-            <button
-              type="button"
-              onClick={() => setIsSosModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-red-950/90 hover:bg-red-900 border-red-500/60 text-red-200"
-              title="SOS Emergencia: Ficha Médica para Paramédicos, Grúa 24/7 y Alerta GPS al Clan"
-            >
-              <HeartPulse className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-              <span>SOS</span>
-            </button>
-
-            {/* Suscripción Pro / VIP */}
-            {isVip ? (
-              <button
-                type="button"
-                onClick={() => setIsFounderAdminOpen(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:opacity-95 text-black flex items-center gap-1.5 shadow-md shadow-amber-500/30 border border-yellow-300/40 cursor-pointer transition"
-                title="Abrir Panel Maestro Fundador VIP"
-              >
-                <Crown className="w-3.5 h-3.5 fill-black" />
-                <span className="hidden sm:inline">👑 Panel Fundador</span>
-              </button>
-            ) : isProOrGarage ? (
-              <div
-                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 select-none cursor-default"
-              >
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>{userProfile?.plan === 'garage' ? 'Garaje' : 'Pro'}</span>
               </div>
-            ) : (
-              <button
-                onClick={onOpenPaywall}
-                className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:opacity-90 flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition"
-              >
-                <Crown className="w-3.5 h-3.5" />
-                <span>Pro</span>
-              </button>
-            )}
+            </div>
           </div>
         </div>
       </header>
