@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Play, Pause, Crown, Volume2, VolumeX, Maximize2, Minimize2,
   Warehouse, Eye, FileText, Gauge, Settings, Shield, Radar, Bluetooth,
-  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon, Monitor, Store
+  ShieldCheck, Users, Award, Bell, Scale, HeartPulse, Wrench, Flame, Moon, Monitor, Store,
+  Menu, ChevronRight, ChevronLeft, X
 } from 'lucide-react';
 import { BrandLogo } from '../Common/BrandLogos';
 import SpeedometerWidget from './Widgets/SpeedometerWidget';
@@ -78,6 +79,7 @@ export default function DynamicDashboard({
   const [motoMallCompId, setMotoMallCompId] = useState(null);
   const [motoMallInitialTab, setMotoMallInitialTab] = useState('catalog');
   const [tftTheme, setTftTheme] = useState('street'); // 'street' | 'track' | 'stealth'
+  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const isVip = Boolean(
     userProfile?.plan === 'founder_vip' ||
     userProfile?.isLifetimeVip ||
@@ -388,11 +390,457 @@ export default function DynamicDashboard({
       style={dashboardStyle}
       className="min-h-screen bg-neutral-950 text-white flex flex-col transition-colors duration-700 pb-16 sm:pb-0"
     >
-      {/* Barra Superior Cockpit */}
+      {/* Pestaña Lateral Flotante en el Borde Izquierdo para Abrir el Menú en Cualquier Momento */}
+      {!isLeftMenuOpen && (
+        <button
+          type="button"
+          onClick={() => setIsLeftMenuOpen(true)}
+          className="fixed left-0 top-24 z-40 py-3 px-2 rounded-r-2xl bg-neutral-900/95 hover:bg-neutral-800 border border-l-0 border-amber-500/50 text-amber-400 shadow-[4px_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center gap-1.5 transition hover:pl-3 group"
+          title="Desplegar Menú Lateral Izquierdo de Herramientas"
+        >
+          <Menu className="w-4 h-4 text-amber-400" />
+          <span className="text-[9px] font-racing font-black uppercase tracking-wider [writing-mode:vertical-rl] rotate-180 text-neutral-200 group-hover:text-amber-300">
+            {isEn ? 'MENU' : 'MENÚ'}
+          </span>
+          <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+        </button>
+      )}
+
+      {/* Menú Lateral Desplegable al Lado Izquierdo (Slide-Out Drawer con Todos los Módulos) */}
+      {isLeftMenuOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop Oscuro para Cerrar al Tocar Fuera */}
+          <div
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsLeftMenuOpen(false)}
+          />
+
+          {/* Panel Lateral Izquierdo */}
+          <aside className="relative z-10 w-72 sm:w-80 max-w-[86vw] h-full bg-neutral-950/98 border-r-2 border-amber-500/40 shadow-[12px_0_45px_rgba(0,0,0,0.9)] flex flex-col justify-between overflow-y-auto p-4">
+            <div>
+              {/* Cabecera del Menú Izquierdo */}
+              <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-neutral-800">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center p-1.5 border flex-shrink-0"
+                    style={{ borderColor: "var(--primary-accent)" }}
+                  >
+                    <BrandLogo
+                      brand={bikeIdentity.brand}
+                      accentColor={bikeIdentity.colorHex}
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-amber-400 block font-bold">
+                      MENÚ DEL COCKPIT
+                    </span>
+                    <h3 className="text-xs font-black font-racing uppercase text-white truncate">
+                      {bikeIdentity.brand} {bikeIdentity.model}
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsLeftMenuOpen(false)}
+                  className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 transition flex items-center gap-1 text-xs font-mono"
+                  title="Ocultar menú izquierdo"
+                >
+                  <ChevronLeft className="w-4 h-4 text-amber-400" />
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* SECCIÓN 1: TELEMETRÍA, TABLERO & GARAJE */}
+              <div className="mb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block mb-2 px-1">
+                  1. Tablero & Telemetría
+                </span>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      if (onOpenHojaDeVida) onOpenHojaDeVida();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 flex items-center justify-between transition"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-amber-400" />
+                      <span>{t('dashboard.logbook')}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      if (onOpenOdometerModal) onOpenOdometerModal();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 flex items-center justify-between transition"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Gauge className="w-4 h-4 text-cyan-400" />
+                      <span>{t('dashboard.adjustKm')}</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-400 font-bold">
+                      {Number(odometer).toLocaleString()} km
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (telemetry.toggleSimulation) telemetry.toggleSimulation();
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between border transition ${
+                      telemetry.isSimulating
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : 'bg-neutral-900 text-neutral-200 border-neutral-800 hover:bg-neutral-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      {telemetry.isSimulating ? <Pause className="w-4 h-4 text-amber-400" /> : <Play className="w-4 h-4 text-amber-400" />}
+                      <span>{telemetry.isSimulating ? t('dashboard.pauseDemo') : t('dashboard.simulate')}</span>
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                      {telemetry.isSimulating ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      if (onOpenGarage) onOpenGarage();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 flex items-center justify-between transition"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Warehouse className="w-4 h-4 text-neutral-400" />
+                      <span>{t('dashboard.garage')}</span>
+                    </span>
+                    <span className="text-[10px] bg-neutral-800 text-amber-400 px-2 py-0.5 rounded-full font-mono font-bold border border-neutral-700">
+                      {garageCount}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsHardwareBridgeOpen(true);
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border ${
+                      hojaDeVida.hardwareTelemetry
+                        ? 'bg-emerald-950/75 hover:bg-emerald-900/75 border-emerald-500/50 text-emerald-300'
+                        : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-200'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Bluetooth className={`w-4 h-4 ${hojaDeVida.hardwareTelemetry ? 'text-emerald-400' : 'text-amber-400'}`} />
+                      <span>{hojaDeVida.hardwareTelemetry ? (isEn ? 'TFT Synced' : 'TFT Activo') : (isEn ? 'Connect TFT/OBD' : 'Vincular TFT / OBD')}</span>
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      {hojaDeVida.hardwareTelemetry?.batteryVoltage ? `${hojaDeVida.hardwareTelemetry.batteryVoltage}V` : 'TFT/OBD'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsCarPlayHudOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/60 text-amber-200"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Monitor className="w-4 h-4 text-amber-400" />
+                      <span>CarPlay HUD</span>
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500 text-black font-mono font-black">
+                      3.6″•5″•7″
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTftTheme((prev) =>
+                        prev === 'street' ? 'track' : prev === 'track' ? 'stealth' : 'street'
+                      )
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-200"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      {tftTheme === 'track' ? (
+                        <Flame className="w-4 h-4 text-rose-500" />
+                      ) : tftTheme === 'stealth' ? (
+                        <Moon className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Gauge className="w-4 h-4 text-amber-400" />
+                      )}
+                      <span>Carátula Tablero</span>
+                    </span>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-neutral-800 text-amber-300">
+                      TFT: {tftTheme}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECCIÓN 2: LEGAL, DOCUMENTOS & GARANTÍA */}
+              <div className="mb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block mb-2 px-1">
+                  2. Documentos, Retenes & Garantía
+                </span>
+                <div className="space-y-1.5">
+                  {warrantyState.isEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLeftMenuOpen(false);
+                        handleOpenWarrantyRules(warrantyState.nextRev?.numero);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-blue-300 flex items-center justify-between transition"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Shield className="w-4 h-4 text-cyan-400" />
+                        <span>{isEn ? 'Factory Warranty' : 'Garantía Oficial'}</span>
+                      </span>
+                      <span className="text-xs font-mono font-bold text-cyan-300">
+                        {warrantyState.nextRev ? `${warrantyState.nextRev.numero}ª Rev.` : '100%'}
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      handleOpenFinesModal('multas');
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border ${
+                      finesRadarState.tieneMultas
+                        ? 'bg-red-950/80 hover:bg-red-900 border-red-500/60 text-red-300 animate-pulse'
+                        : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-200'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Radar className={`w-4 h-4 ${finesRadarState.tieneMultas ? 'text-red-400' : 'text-emerald-400'}`} />
+                      <span>{finesRadarState.portal.entidadCorta}</span>
+                    </span>
+                    <span className={`text-[10px] font-mono font-bold ${finesRadarState.tieneMultas ? 'text-red-300' : 'text-emerald-400'}`}>
+                      {finesRadarState.tieneMultas
+                        ? `${finesRadarState.totalMultas} ${isEn ? 'Ticket' : 'Multa'}`
+                        : (isEn ? 'Clear' : 'Al Día')}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsGloveboxOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-emerald-950/70 hover:bg-emerald-900/70 border-emerald-500/50 text-emerald-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>{isEn ? 'My Documents' : 'Mis Documentos'}</span>
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                      PIN 2 LADOS
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsLawyerModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-indigo-950/80 hover:bg-indigo-900/80 border-indigo-500/50 text-indigo-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Scale className="w-4 h-4 text-amber-400" />
+                      <span>{isEn ? 'AI Traffic Lawyer' : 'Abogado IA'}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* SECCIÓN 3: MECÁNICA IA, COMUNIDAD & COMERCIO */}
+              <div className="mb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block mb-2 px-1">
+                  3. Mecánica IA, Comunidad & Mall
+                </span>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsDoctorModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-teal-950/80 hover:bg-teal-900/80 border-teal-500/50 text-teal-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Wrench className="w-4 h-4 text-cyan-400" />
+                      <span>{isEn ? 'Doctor AI' : 'Doctor IA'}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-teal-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsSosModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-red-950/90 hover:bg-red-900 border-red-500/60 text-red-200"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <HeartPulse className="w-4 h-4 text-red-400 animate-pulse" />
+                      <span>SOS Emergencia & Grúa 24/7</span>
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-500/30 text-white font-bold">
+                      GPS
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsAlertsModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-rose-950/70 hover:bg-rose-900/70 border-rose-500/50 text-rose-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Bell className="w-4 h-4 text-rose-400" />
+                      <span>{isEn ? 'Alerts Center' : 'Alertas'}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-rose-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsCommunityOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Users className="w-4 h-4 text-amber-400" />
+                      <span>{isEn ? 'Community & Clans' : 'Comunidad & Clanes'}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setMotoMallCompId(null);
+                      setMotoMallInitialTab('home');
+                      setIsMotoMallOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Store className="w-4 h-4 text-amber-400" />
+                      <span>MotoMall Oficial</span>
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                      B2B2C
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setIsMarketplaceOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold flex items-center justify-between transition border bg-cyan-950/60 hover:bg-cyan-900/60 border-cyan-500/40 text-cyan-300"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 text-cyan-400" />
+                      <span>{isEn ? 'Sell Bike' : 'Poner en Venta'}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* PIE DEL MENÚ LATERAL: AJUSTES & PANEL FUNDADOR / PRO */}
+            <div className="pt-3 border-t border-neutral-800 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLeftMenuOpen(false);
+                  if (onOpenSettings) onOpenSettings();
+                }}
+                className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 flex items-center justify-between transition"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-neutral-400" />
+                  <span>{isEn ? 'Global Settings' : 'Ajustes Globales'}</span>
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+              </button>
+
+              {isVip ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLeftMenuOpen(false);
+                    setIsFounderAdminOpen(true);
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:opacity-95 text-black flex items-center justify-center gap-2 shadow-md shadow-amber-500/30 border border-yellow-300/40 cursor-pointer transition"
+                >
+                  <Crown className="w-4 h-4 fill-black" />
+                  <span>👑 Panel Fundador</span>
+                </button>
+              ) : !isProOrGarage ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLeftMenuOpen(false);
+                    if (onOpenPaywall) onOpenPaywall();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:opacity-90 flex items-center justify-center gap-2 shadow-md transition"
+                >
+                  <Crown className="w-4 h-4" />
+                  <span>Activar Plan Pro</span>
+                </button>
+              ) : null}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Barra Superior Cockpit (Limpia y con Botón Desplegable a la Izquierda) */}
       <header className="border-b border-neutral-800/80 bg-neutral-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Identidad de la Moto con el Logo Oficial de su Marca */}
-          <div className="flex items-center gap-3">
+          {/* Botón Desplegable Izquierdo + Identidad de la Moto */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsLeftMenuOpen(true)}
+              className="px-3 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border-2 border-amber-500/60 hover:border-amber-400 text-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/10 transition active:scale-95 cursor-pointer"
+              title="Abrir Menú Lateral Izquierdo con Todos los Botones"
+            >
+              <Menu className="w-5 h-5 text-amber-400" />
+              <span className="text-xs font-racing font-black uppercase tracking-wider text-white hidden sm:inline">
+                {isEn ? 'Menu' : 'Menú'}
+              </span>
+            </button>
+
             <div 
               className="w-11 h-11 rounded-2xl bg-neutral-900/95 flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0 p-1.5 border"
               style={{
@@ -435,26 +883,8 @@ export default function DynamicDashboard({
             </div>
           </div>
 
-          {/* Botonera de Control */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            {/* Hoja de Vida de la Moto */}
-            <button
-              onClick={onOpenHojaDeVida}
-              className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 flex items-center gap-1.5 transition"
-            >
-              <FileText className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">{t('dashboard.logbook')}</span>
-            </button>
-
-            {/* Calibrar Odómetro Manual */}
-            <button
-              onClick={() => onOpenOdometerModal && onOpenOdometerModal()}
-              className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 flex items-center gap-1.5 transition"
-            >
-              <Gauge className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden md:inline">{t('dashboard.adjustKm')}</span>
-            </button>
-
+          {/* Controles Rápidos Esenciales en el Header (Todo lo demás está en el Menú Izquierdo Desplegable) */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Simulación Aceleración Demo */}
             <button
               onClick={telemetry.toggleSimulation}
@@ -465,231 +895,34 @@ export default function DynamicDashboard({
               }`}
             >
               {telemetry.isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{telemetry.isSimulating ? t('dashboard.pauseDemo') : t('dashboard.simulate')}</span>
+              <span className="hidden sm:inline">{telemetry.isSimulating ? t('dashboard.pauseDemo') : t('dashboard.simulate')}</span>
             </button>
 
-            {/* Mi Garaje */}
-            <button
-              onClick={onOpenGarage}
-              className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 flex items-center gap-1.5 transition"
-            >
-              <Warehouse className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="hidden sm:inline">{t('dashboard.garage')}</span>
-              <span className="text-[10px] bg-neutral-700 text-neutral-300 px-1.5 rounded-full font-mono">
-                {garageCount}
-              </span>
-            </button>
-
-            {/* Pill de Garantía Oficial en el Header */}
-            {warrantyState.isEnabled && (
-              <button
-                type="button"
-                onClick={() => handleOpenWarrantyRules(warrantyState.nextRev?.numero)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-blue-300 flex items-center gap-1.5 transition shadow-sm"
-                title={`Guardián de Garantía ${warrantyState.distribuidorCorto}`}
-              >
-                <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline">{isEn ? 'Warranty' : 'Garantía'}</span>
-                <span className="text-cyan-300">{warrantyState.nextRev ? `${warrantyState.nextRev.numero}ª` : '100%'}</span>
-              </button>
-            )}
-
-            {/* Pill Radar de Fotomultas en el Header */}
-            <button
-              type="button"
-              onClick={() => handleOpenFinesModal('multas')}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border ${
-                finesRadarState.tieneMultas
-                  ? "bg-red-950/80 hover:bg-red-900 border-red-500/60 text-red-300 animate-pulse shadow-md shadow-red-500/20"
-                  : "bg-neutral-900/80 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
-              }`}
-              title={`Radar de Tránsito ${finesRadarState.portal.entidadCorta}`}
-            >
-              <Radar className={`w-3.5 h-3.5 ${finesRadarState.tieneMultas ? "text-red-400" : "text-emerald-400"}`} />
-              <span className="hidden sm:inline">{finesRadarState.portal.entidadCorta}</span>
-              <span className={finesRadarState.tieneMultas ? "text-red-300 font-bold" : "text-emerald-400"}>
-                {finesRadarState.tieneMultas
-                  ? `${finesRadarState.totalMultas} ${isEn ? 'Ticket' : 'Multa'}`
-                  : (isEn ? 'Clear' : 'Al Día')}
-              </span>
-            </button>
-
-            {/* Pill Conectar Tablero TFT (BLE) o Cable OBD-II */}
-            <button
-              type="button"
-              onClick={() => setIsHardwareBridgeOpen(true)}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border ${
-                hojaDeVida.hardwareTelemetry
-                  ? 'bg-emerald-950/75 hover:bg-emerald-900/75 border-emerald-500/50 text-emerald-300'
-                  : 'bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300'
-              }`}
-              title="Vincular Tablero TFT SmartXonnect (Gratis) o Escáner OBD-II (PRO)"
-            >
-              <Bluetooth className={`w-3.5 h-3.5 ${hojaDeVida.hardwareTelemetry ? 'text-emerald-400' : 'text-amber-400'}`} />
-              <span className="hidden sm:inline">{hojaDeVida.hardwareTelemetry ? (isEn ? 'TFT Synced' : 'TFT Activo') : (isEn ? 'Connect' : 'Vincular')}</span>
-              <span className="sm:hidden">TFT</span>
-              <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold border ${
-                hojaDeVida.hardwareTelemetry
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-              }`}>
-                {hojaDeVida.hardwareTelemetry?.batteryVoltage ? `${hojaDeVida.hardwareTelemetry.batteryVoltage}V` : 'TFT/OBD'}
-              </span>
-            </button>
-
-            {/* Pill Mis Documentos (Guantera Digital para Retenes + Escáner IA) */}
-            <button
-              type="button"
-              onClick={() => setIsGloveboxOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-emerald-950/70 hover:bg-emerald-900/70 border-emerald-500/50 text-emerald-300"
-              title="Guantera Digital para Retenes (Pase 2 Lados, Tarjeta 2 Lados, SOAT y Tecno + Escáner IA)"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isEn ? 'My Documents' : 'Mis Documentos'}</span>
-            </button>
-
-            {/* Pill Asesor Jurídico Vial IA (Abogado de Bolsillo para Retenes, Comparendos y Grúa) */}
-            <button
-              type="button"
-              onClick={() => setIsLawyerModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-indigo-950/80 hover:bg-indigo-900/80 border-indigo-500/50 text-indigo-300"
-              title="Asesor Jurídico Vial IA: Consulta si un comparendo o inmovilización en grúa es legal según el Código de Tránsito de tu país"
-            >
-              <Scale className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isEn ? 'AI Lawyer' : 'Abogado IA'}</span>
-            </button>
-
-            {/* Pill Doctor Motor IA (Diagnóstico Mecánico por Ruido / Síntoma + Precio Justo) */}
-            <button
-              type="button"
-              onClick={() => setIsDoctorModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-teal-950/80 hover:bg-teal-900/80 border-teal-500/50 text-teal-300"
-              title="Doctor Motor IA: Diagnóstico mecánico por sonido o síntoma y precio justo de reparación"
-            >
-              <Wrench className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isEn ? 'Doctor AI' : 'Doctor IA'}</span>
-            </button>
-
-            {/* Pill SOS Emergencia Médica & Grúa 24/7 + GPS en Vivo */}
+            {/* Pill SOS Emergencia Rápida */}
             <button
               type="button"
               onClick={() => setIsSosModalOpen(true)}
               className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-red-950/90 hover:bg-red-900 border-red-500/60 text-red-200"
-              title="SOS Emergencia: Ficha Médica para Paramédicos (Factor RH), Grúa 24/7 y Alerta GPS al Clan"
+              title="SOS Emergencia: Ficha Médica para Paramédicos, Grúa 24/7 y Alerta GPS al Clan"
             >
               <HeartPulse className="w-3.5 h-3.5 text-red-400 animate-pulse" />
               <span>SOS</span>
             </button>
 
-            {/* Pill Modo CarPlay / Android Auto Multi-Tamaño (3.6", 5.0", 7.0" + Alto Contraste Solar) */}
-            <button
-              type="button"
-              onClick={() => setIsCarPlayHudOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/60 text-amber-200"
-              title="Modo CarPlay / Android Auto Multi-Tamaño (3.6″ Portátil, 5.0″ Estándar, 7.0″ Touring + Alto Contraste Solar)"
-            >
-              <Monitor className="w-3.5 h-3.5 text-amber-400" />
-              <span>CarPlay HUD</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono font-black">
-                3.6″•5″•7″
-              </span>
-            </button>
-
-            {/* Selector Rápido de Carátula TFT (Street / Track Race / Night Stealth) */}
-            <button
-              type="button"
-              onClick={() =>
-                setTftTheme((prev) =>
-                  prev === 'street' ? 'track' : prev === 'track' ? 'stealth' : 'street'
-                )
-              }
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition border bg-neutral-900/90 hover:bg-neutral-800 border-neutral-700 text-neutral-300"
-              title="Cambiar Carátula del Tacómetro TFT (Street / Track MotoGP / Night Stealth)"
-            >
-              {tftTheme === 'track' ? (
-                <Flame className="w-3.5 h-3.5 text-rose-500" />
-              ) : tftTheme === 'stealth' ? (
-                <Moon className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Gauge className="w-3.5 h-3.5 text-amber-400" />
-              )}
-              <span className="hidden md:inline uppercase">
-                TFT: {tftTheme}
-              </span>
-            </button>
-
-            {/* Pill Centro de Alertas (Separado de Comunidad: Push/WhatsApp 30-15-5d + Radar Retenes) */}
-            <button
-              type="button"
-              onClick={() => setIsAlertsModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-rose-950/70 hover:bg-rose-900/70 border-rose-500/50 text-rose-300"
-              title="Centro de Alertas (Push/WhatsApp 30, 15 y 5 días + Radar de Retenes)"
-            >
-              <Bell className="w-3.5 h-3.5 text-rose-400" />
-              <span>{isEn ? 'Alerts' : 'Alertas'}</span>
-            </button>
-
-            {/* Pill Comunidad & Rodadas en Tiempo Real */}
-            <button
-              type="button"
-              onClick={() => setIsCommunityOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300"
-              title="Comunidad Motera & Rodadas en Tiempo Real (Supabase Realtime)"
-            >
-              <Users className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isEn ? 'Community' : 'Comunidad'}</span>
-            </button>
-
-            {/* Pill MotoMall Oficial B2B2C (Tiendas de Repuestos & Concesionarios) */}
-            <button
-              type="button"
-              onClick={() => {
-                setMotoMallCompId(null);
-                setMotoMallInitialTab('home');
-                setIsMotoMallOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300"
-              title="MotoMall Oficial: Inicio, Planes B2B, Almacenes de Repuestos y Concesionarios"
-            >
-              <Store className="w-3.5 h-3.5 text-amber-400" />
-              <span>MotoMall</span>
-            </button>
-
-            {/* Pill Poner en Venta (Historial Certificado) */}
-            <button
-              type="button"
-              onClick={() => setIsMarketplaceOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-racing font-bold flex items-center gap-1.5 transition shadow-sm border bg-cyan-950/60 hover:bg-cyan-900/60 border-cyan-500/40 text-cyan-300"
-              title="Poner en Venta con Sello de Mantenimiento Verificado"
-            >
-              <Award className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isEn ? 'Sell Bike' : 'Poner en Venta'}</span>
-            </button>
-
-            {/* Ajustes Globales */}
-            <button
-              onClick={onOpenSettings}
-              className="p-2 rounded-xl text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 transition"
-              title="Configuración de Unidades, Moneda y Respaldo"
-            >
-              <Settings className="w-4 h-4 text-neutral-400 hover:text-white" />
-            </button>
-
-            {/* Suscripción Pro / VIP (En cuenta Fundador abre el Panel Maestro de Influencers & Suscripciones) */}
+            {/* Suscripción Pro / VIP */}
             {isVip ? (
               <button
                 type="button"
                 onClick={() => setIsFounderAdminOpen(true)}
                 className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:opacity-95 text-black flex items-center gap-1.5 shadow-md shadow-amber-500/30 border border-yellow-300/40 cursor-pointer transition"
-                title="Abrir Panel Maestro Fundador VIP: Administrar Influencers, Códigos, Porcentajes y Suscripciones"
+                title="Abrir Panel Maestro Fundador VIP"
               >
                 <Crown className="w-3.5 h-3.5 fill-black" />
-                <span>👑 Panel Fundador</span>
+                <span className="hidden sm:inline">👑 Panel Fundador</span>
               </button>
             ) : isProOrGarage ? (
               <div
                 className="px-3 py-1.5 rounded-xl text-xs font-racing font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 select-none cursor-default"
-                title={userProfile?.plan === 'garage' ? 'Plan Garaje Activo (hasta 15 motos)' : 'Plan Pro Activo (hasta 3 motos)'}
               >
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
                 <span>{userProfile?.plan === 'garage' ? 'Garaje' : 'Pro'}</span>
