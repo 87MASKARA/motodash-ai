@@ -266,19 +266,19 @@ export default function LandingPage({ onStartOnboarding, onEnterDemo, onOpenLogi
         </div>
       </section>
 
-      {/* 3. Franja de Marcas Mundiales con Logos Vectoriales */}
+      {/* 3. Franja de las 19 Marcas Mundiales Más Vendidas con Logos Vectoriales */}
       <section className="py-8 border-y border-neutral-900 bg-neutral-950/80 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4">
           <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 text-center block mb-5">
-            {t('landing.brandsBanner')}
+            {t('landing.brandsBanner')} • 19 MARCAS OFICIALES CALIBRADAS
           </span>
-          <div className="grid grid-cols-3 sm:grid-cols-9 gap-4 items-center justify-center opacity-80 hover:opacity-100 transition">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 gap-3.5 items-center justify-center opacity-85 hover:opacity-100 transition">
             {Object.keys(MOTO_CATALOG).map((brand) => {
               const LogoComp = BRAND_LOGOS[brand];
               return (
-                <div key={brand} className="flex flex-col items-center gap-1">
+                <div key={brand} className="flex flex-col items-center gap-1 p-1.5 rounded-xl hover:bg-neutral-900/60 transition">
                   {LogoComp && <LogoComp className="w-8 h-8 filter grayscale hover:grayscale-0 transition" />}
-                  <span className="text-[10px] font-racing font-bold text-neutral-400">{brand}</span>
+                  <span className="text-[10px] font-racing font-bold text-neutral-300 text-center leading-tight">{brand}</span>
                 </div>
               );
             })}

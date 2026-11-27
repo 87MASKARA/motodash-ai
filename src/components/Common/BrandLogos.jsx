@@ -1,12 +1,11 @@
 import React from 'react';
 
 /**
- * Emblemas vectoriales SVG de alta precisión para las marcas oficiales de motocicletas.
- * Todos usan viewBox cuadrado (0 0 100 100) para escalar con nitidez en cualquier tamaño.
+ * Emblemas vectoriales SVG de alta precisión para las 19 marcas oficiales de motocicletas
+ * más vendidas en Colombia, México, Brasil, Argentina, Chile, Perú, EE. UU., España, Francia, Italia y Alemania.
  */
 
 export function YamahaLogo({ className = "w-8 h-8" }) {
-  // Tres diapasones entrelazados con simetría rotacional exacta de 120°
   const fork = (
     <g>
       <line x1="50" y1="9.5" x2="50" y2="30.5" stroke="#F8FAFC" strokeWidth="4.2" strokeLinecap="round" />
@@ -55,11 +54,9 @@ export function KtmLogo({ className = "w-8 h-8" }) {
 }
 
 export function KawasakiLogo({ className = "w-8 h-8" }) {
-  // Emblema oficial Kawasaki River Mark (川) + acento verde lima KRT
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <circle cx="50" cy="50" r="46" fill="#0A0F0A" stroke="#52C41A" strokeWidth="4.5" />
-      {/* River Mark estilizado / K de competición */}
       <path
         d="M27 22 V78 M50 26 V74 M73 22 V78"
         stroke="#52C41A"
@@ -77,7 +74,6 @@ export function KawasakiLogo({ className = "w-8 h-8" }) {
 }
 
 export function DucatiLogo({ className = "w-8 h-8" }) {
-  // Escudo triangular curvo Ducati Rosso Corsa con franja blanca característica
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <path
@@ -86,7 +82,6 @@ export function DucatiLogo({ className = "w-8 h-8" }) {
         stroke="#E5E7EB"
         strokeWidth="4"
       />
-      {/* Curva blanca interior oficial del escudo Ducati */}
       <path
         d="M78 35 C63 43 49 58 46 84 C43 62 54 44 74 30 Z"
         fill="#FFFFFF"
@@ -108,11 +103,9 @@ export function DucatiLogo({ className = "w-8 h-8" }) {
 }
 
 export function HondaLogo({ className = "w-8 h-8" }) {
-  // Ala Honda Racing sobre escudo oscuro con borde rojo
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <rect x="5" y="10" width="90" height="80" rx="20" fill="#111113" stroke="#EF4444" strokeWidth="3.5" />
-      {/* Plumas del Ala Honda */}
       <path d="M18 54 C35 48 60 34 83 19 C78 29 63 42 40 52 Z" fill="#EF4444" />
       <path d="M21 60 C38 55 59 44 79 31 C74 40 59 50 38 58 Z" fill="#EF4444" />
       <path d="M25 66 C40 62 57 54 73 44 C68 51 55 59 37 65 Z" fill="#FFFFFF" />
@@ -133,7 +126,6 @@ export function HondaLogo({ className = "w-8 h-8" }) {
 }
 
 export function BmwLogo({ className = "w-8 h-8" }) {
-  // Roundel oficial BMW con cuadrantes bávaros azul y blanco
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <circle cx="50" cy="50" r="46" fill="#0A0A0A" stroke="#E5E7EB" strokeWidth="4" />
@@ -150,7 +142,6 @@ export function BmwLogo({ className = "w-8 h-8" }) {
 }
 
 export function SuzukiLogo({ className = "w-8 h-8" }) {
-  // "S" geométrica oficial de Suzuki con simetría puntual exacta
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <polygon
@@ -165,7 +156,6 @@ export function SuzukiLogo({ className = "w-8 h-8" }) {
 }
 
 export function BajajLogo({ className = "w-8 h-8" }) {
-  // Emblema geométrico "Flying B" de Bajaj Auto
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <polygon
@@ -185,7 +175,6 @@ export function TvsLogo({ className = "w-8 h-8" }) {
   return (
     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <rect x="5" y="12" width="90" height="76" rx="18" fill="#0F172A" stroke="#E11D48" strokeWidth="3.5" />
-      {/* Silueta dinámica aerodinámica TVS Racing */}
       <path
         d="M24 42 C38 30 58 26 78 30 C66 36 56 41 44 45 L66 46 C54 52 38 54 24 42 Z"
         fill="#E11D48"
@@ -207,37 +196,185 @@ export function TvsLogo({ className = "w-8 h-8" }) {
   );
 }
 
+export function AktLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="5" y="14" width="90" height="72" rx="18" fill="#0B132B" stroke="#3B82F6" strokeWidth="3.5" />
+      <path d="M18 68 H82" stroke="#EF4444" strokeWidth="4.5" strokeLinecap="round" />
+      <text
+        x="50"
+        y="58"
+        fill="#FFFFFF"
+        fontSize="28"
+        fontWeight="900"
+        fontFamily="Arial Black, sans-serif"
+        fontStyle="italic"
+        textAnchor="middle"
+        letterSpacing="1"
+      >
+        AKT
+      </text>
+    </svg>
+  );
+}
+
+export function ItalikaLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="50" cy="50" r="45" fill="#0A192F" stroke="#38BDF8" strokeWidth="4" />
+      <path d="M22 56 C38 34 62 30 82 36 C64 44 46 52 22 56 Z" fill="#38BDF8" />
+      <circle cx="56" cy="27" r="5" fill="#FACC15" />
+      <text
+        x="50"
+        y="76"
+        fill="#FFFFFF"
+        fontSize="15"
+        fontWeight="900"
+        fontFamily="Arial Black, sans-serif"
+        fontStyle="italic"
+        textAnchor="middle"
+      >
+        ITALIKA
+      </text>
+    </svg>
+  );
+}
+
+export function HeroLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="5" y="12" width="90" height="76" rx="20" fill="#111113" stroke="#E11D48" strokeWidth="3.5" />
+      <polygon points="32,24 46,34 46,62 32,52" fill="#E11D48" />
+      <polygon points="68,24 54,34 54,62 68,52" fill="#FFFFFF" />
+      <text x="50" y="80" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="Arial Black, sans-serif" textAnchor="middle" letterSpacing="1.5">
+        HERO
+      </text>
+    </svg>
+  );
+}
+
+export function VictoryLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <polygon points="50,8 90,26 78,88 50,94 22,88 10,26" fill="#111827" stroke="#06B6D4" strokeWidth="3.5" />
+      <path d="M26 32 L50 74 L74 32 L62 32 L50 56 L38 32 Z" fill="#06B6D4" />
+    </svg>
+  );
+}
+
+export function RoyalEnfieldLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="50" cy="50" r="45" fill="#18120B" stroke="#F59E0B" strokeWidth="4" />
+      <path d="M16 50 H84" stroke="#EF4444" strokeWidth="4" />
+      <text x="50" y="46" fill="#FDE68A" fontSize="24" fontWeight="900" fontFamily="Georgia, serif" textAnchor="middle">
+        RE
+      </text>
+      <text x="50" y="72" fill="#F59E0B" fontSize="9.5" fontWeight="800" fontFamily="Arial, sans-serif" textAnchor="middle" letterSpacing="1.5">
+        SINCE 1901
+      </text>
+    </svg>
+  );
+}
+
+export function CfmotoLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="5" y="14" width="90" height="72" rx="18" fill="#081420" stroke="#00D4FF" strokeWidth="3.5" />
+      <text x="50" y="54" fill="#00D4FF" fontSize="26" fontWeight="900" fontFamily="Arial Black, sans-serif" fontStyle="italic" textAnchor="middle">
+        CF
+      </text>
+      <text x="50" y="74" fill="#FFFFFF" fontSize="12" fontWeight="900" fontFamily="Arial Black, sans-serif" textAnchor="middle" letterSpacing="2">
+        MOTO
+      </text>
+    </svg>
+  );
+}
+
+export function TriumphLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <polygon points="12,18 88,18 50,88" fill="#111827" stroke="#E2E8F0" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M26 32 H74 M50 32 V70" stroke="#F8FAFC" strokeWidth="6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HarleyLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <polygon points="50,10 86,28 86,72 50,90 14,72 14,28" fill="#171717" stroke="#F97316" strokeWidth="4" />
+      <rect x="8" y="37" width="84" height="26" rx="4" fill="#F97316" stroke="#FFFFFF" strokeWidth="2.5" />
+      <text x="50" y="55" fill="#0A0A0A" fontSize="15" fontWeight="900" fontFamily="Arial Black, sans-serif" textAnchor="middle" letterSpacing="1">
+        H-D
+      </text>
+    </svg>
+  );
+}
+
+export function ApriliaLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect x="6" y="16" width="88" height="68" rx="16" fill="#DC2626" stroke="#FFFFFF" strokeWidth="3" />
+      <text x="50" y="61" fill="#FFFFFF" fontSize="22" fontWeight="900" fontFamily="Arial Black, sans-serif" textAnchor="middle" letterSpacing="-0.5">
+        aprilia
+      </text>
+    </svg>
+  );
+}
+
+export function BenelliLogo({ className = "w-8 h-8" }) {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="50" cy="50" r="45" fill="#0B130E" stroke="#16A34A" strokeWidth="4" />
+      <text x="50" y="58" fill="#FFFFFF" fontSize="17" fontWeight="900" fontFamily="Georgia, serif" textAnchor="middle">
+        Benelli
+      </text>
+      <path d="M28 70 H72" stroke="#EF4444" strokeWidth="3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export const BRAND_LOGOS = {
   Yamaha: YamahaLogo,
-  KTM: KtmLogo,
-  Kawasaki: KawasakiLogo,
-  Ducati: DucatiLogo,
   Honda: HondaLogo,
-  BMW: BmwLogo,
   Suzuki: SuzukiLogo,
   Bajaj: BajajLogo,
-  TVS: TvsLogo
+  AKT: AktLogo,
+  TVS: TvsLogo,
+  KTM: KtmLogo,
+  Kawasaki: KawasakiLogo,
+  Hero: HeroLogo,
+  Victory: VictoryLogo,
+  Italika: ItalikaLogo,
+  "Royal Enfield": RoyalEnfieldLogo,
+  CFMOTO: CfmotoLogo,
+  BMW: BmwLogo,
+  Ducati: DucatiLogo,
+  Triumph: TriumphLogo,
+  "Harley-Davidson": HarleyLogo,
+  Aprilia: ApriliaLogo,
+  Benelli: BenelliLogo
 };
 
 const NORMALIZED_BRAND_LOGOS = Object.entries(BRAND_LOGOS).reduce((acc, [key, Comp]) => {
   acc[key.toLowerCase()] = Comp;
   return acc;
-}, {});
+}, {
+  harley: HarleyLogo,
+  royal: RoyalEnfieldLogo,
+  cf: CfmotoLogo,
+  auteco: VictoryLogo
+});
 
 export function getBrandLogoComponent(brandName = "") {
   if (!brandName || typeof brandName !== "string") return null;
   const clean = brandName.trim().toLowerCase();
   if (NORMALIZED_BRAND_LOGOS[clean]) return NORMALIZED_BRAND_LOGOS[clean];
-  // Búsqueda parcial (ej. "Yamaha Motor" -> YamahaLogo)
   const foundKey = Object.keys(NORMALIZED_BRAND_LOGOS).find((k) => clean.includes(k));
   return foundKey ? NORMALIZED_BRAND_LOGOS[foundKey] : null;
 }
 
-/**
- * Componente universal de Emblema de Marca:
- * Renderiza el logo oficial de la marca (sin importar mayúsculas/minúsculas)
- * o un escudo monograma deportivo si es una marca personalizada.
- */
 export function BrandLogo({ brand = "", className = "w-8 h-8", accentColor = "#F59E0B" }) {
   const LogoComp = getBrandLogoComponent(brand);
   if (LogoComp) {

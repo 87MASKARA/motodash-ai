@@ -1,44 +1,16 @@
 import React, { useState } from 'react';
 import { Sparkles, Bike, Palette, Check, Key, ShieldCheck } from 'lucide-react';
 import { generateDashboardSpecs } from '../../services/aiGenerator';
+import { MOTO_CATALOG } from '../../services/motoCatalog';
 
-const BRANDS = [
-  { name: "Yamaha", defaultModel: "MT-09", colors: [
-    { name: "Icon Blue", hex: "#0040C1" },
-    { name: "Cyan Storm", hex: "#00D2D3" },
-    { name: "Tech Black", hex: "#18181B" }
-  ]},
-  { name: "KTM", defaultModel: "Duke 390", colors: [
-    { name: "Ready to Race Orange", hex: "#FF6600" },
-    { name: "Factory White", hex: "#F4F4F5" },
-    { name: "Dark Shadow", hex: "#1C1917" }
-  ]},
-  { name: "Kawasaki", defaultModel: "Ninja ZX-6R", colors: [
-    { name: "Lime Green", hex: "#52C41A" },
-    { name: "Metallic Diablo Black", hex: "#121212" },
-    { name: "Pearl Robotic White", hex: "#E5E7EB" }
-  ]},
-  { name: "Ducati", defaultModel: "Panigale V4", colors: [
-    { name: "Rosso Corsa", hex: "#DC2626" },
-    { name: "Dark Stealth", hex: "#171717" },
-    { name: "Aviator Grey", hex: "#6B7280" }
-  ]},
-  { name: "Honda", defaultModel: "CBR650R", colors: [
-    { name: "Grand Prix Red", hex: "#EF4444" },
-    { name: "Matte Jeans Blue", hex: "#1E3A8A" },
-    { name: "Ballistic Black", hex: "#18181B" }
-  ]},
-  { name: "BMW", defaultModel: "S1000RR", colors: [
-    { name: "M Motorsport Tricolor", hex: "#2563EB" },
-    { name: "Racing Red", hex: "#DC2626" },
-    { name: "Black Storm Metallic", hex: "#111827" }
-  ]},
-  { name: "Bajaj", defaultModel: "Pulsar NS200", colors: [
-    { name: "Burnt Red", hex: "#B91C1C" },
-    { name: "Plasma Blue", hex: "#1D4ED8" },
-    { name: "Satin Grey", hex: "#4B5563" }
-  ]}
-];
+const BRANDS = Object.entries(MOTO_CATALOG).map(([name, data]) => {
+  const firstGroup = Object.values(data.cilindradas).find((arr) => Array.isArray(arr) && arr.length > 0) || [];
+  return {
+    name,
+    defaultModel: firstGroup[0]?.model || "200 FI",
+    colors: data.colors || [{ name: "Factory Orange", hex: "#FF6600" }]
+  };
+});
 
 export default function BikeSelector({ onDashboardGenerated, currentConfig, onClose }) {
   const [selectedBrand, setSelectedBrand] = useState(currentConfig?.bikeIdentity?.brand || "Yamaha");

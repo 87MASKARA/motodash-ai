@@ -573,7 +573,328 @@ export const OFFICIAL_WARRANTY_POLICIES = {
         cambiosObligatorios: ["Bujías", "Filtro Aire", "Líquido Frenos", "Aceite"]
       }
     ]
+  },
+
+  // AKT MOTOS (Corbeta / Colombiana de Comercio)
+  AKT: {
+    distribuidor: "AKT MOTOS / CORBETA",
+    distribuidorCorto: "AKT Motos",
+    mesesGarantia: 20,
+    kmGarantia: 20000,
+    toleranciaKm: 150,
+    toleranciaDias: 15,
+    descripcionReglas: "Garantía oficial AKT de 20 meses o 20.000 km. Revisiones obligatorias a los 500 km, 2.500 km, 5.000 km, 8.000 km, 11.000 km, 14.000 km, 17.000 km y 20.000 km con aceite Castrol / AKT.",
+    reglasDeOro: [
+      {
+        id: "tolerancia_akt",
+        titulo: "Respetar Ventana de Revisión (+/- 150 KM)",
+        nivel: "critico",
+        detalle: "Ingresar al Centro de Servicio Técnico Autorizado AKT dentro de los +/- 150 km de cada revisión (500, 2.500, 5.000, 8.000, 11.000, 14.000, 17.000 y 20.000 km)."
+      },
+      {
+        id: "aceite_castrol_akt",
+        titulo: "Uso de Lubricante Oficial Castrol / AKT 4T",
+        nivel: "critico",
+        detalle: "Utilizar aceite certificado por AKT Motos según viscosidad de manual (20W-50 en NKD/TTR o 10W-40 Sintético en CR4 200 / Voge)."
+      }
+    ],
+    revisiones: [
+      {
+        numero: 1,
+        km: 500,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "1ª Revisión (500 KM) • Despegue Inicial NKD / TTR / CR4",
+        descripcionManoObra: "Mano de obra GRATIS (usuario paga aceite Castrol/AKT)",
+        chequeos: ["Cambio de aceite de motor", "Calibración de holgura de válvulas (0.05/0.08 mm)", "Tensión y lubricación de cadena", "Ajuste de embrague y carburación/FI"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      },
+      {
+        numero: 2,
+        km: 2500,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "2ª Revisión (2.500 KM) • Asentamiento de Motor",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio de aceite de motor", "Limpieza de filtro de aire y bujía", "Tensión de cadena y revisión de frenos"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      },
+      {
+        numero: 3,
+        km: 5000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "3ª Revisión (5.000 KM) • Mantenimiento Preventivo",
+        descripcionManoObra: "Revisión pagada en taller autorizado AKT",
+        chequeos: ["Cambio de aceite", "Calibración de válvulas", "Inspección de pastillas/bandas de freno", "Lubricación de guayas"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      },
+      {
+        numero: 4,
+        km: 8000,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "4ª Revisión (8.000 KM) • Mano de Obra Gratis por Fidelidad",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio de aceite", "Reemplazo de bujía y filtro de aire", "Revisión de kit de arrastre y cauchos de campana"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T", "Bujía", "Filtro de Aire"]
+      },
+      {
+        numero: 5,
+        km: 11000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "5ª Revisión (11.000 KM) • Afinación y Frenos",
+        descripcionManoObra: "Revisión pagada",
+        chequeos: ["Cambio de aceite", "Calibración de válvulas", "Engrase de cunas de dirección y eje basculante"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      },
+      {
+        numero: 6,
+        km: 14000,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "6ª Revisión (14.000 KM) • Mano de Obra Gratis",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio de aceite", "Revisión sistema eléctrico y batería", "Tensión de cadena"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      },
+      {
+        numero: 7,
+        km: 17000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "7ª Revisión (17.000 KM) • Servicio Mayor",
+        descripcionManoObra: "Revisión pagada",
+        chequeos: ["Cambio de aceite", "Bujía y filtro de aire", "Líquido de frenos DOT 4"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T", "Bujía", "Líquido Frenos"]
+      },
+      {
+        numero: 8,
+        km: 20000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "8ª Revisión (20.000 KM) • Cierre Garantía 20m / 20k KM",
+        descripcionManoObra: "Cierre de ciclo de garantía oficial AKT",
+        chequeos: ["Cambio de aceite", "Inspección general de motor, compresión y chasis"],
+        cambiosObligatorios: ["Aceite Castrol / AKT 4T"]
+      }
+    ]
+  },
+
+  // ITALIKA (CESIT México & LATAM)
+  ITALIKA: {
+    distribuidor: "ITALIKA / CENTROS DE SERVICIO CESIT",
+    distribuidorCorto: "CESIT Italika",
+    mesesGarantia: 24,
+    kmGarantia: 20000,
+    toleranciaKm: 100,
+    toleranciaDias: 15,
+    descripcionReglas: "Garantía Italika de 24 meses o 20.000 km en Centros de Servicio Italika (CESIT). Primer servicio a los 500 km o 1 mes.",
+    reglasDeOro: [
+      {
+        id: "cesit_oficial",
+        titulo: "Acudir Exclusivamente a Centros CESIT Autorizados",
+        nivel: "critico",
+        detalle: "Cada servicio debe registrarse electrónicamente en el portal CESIT con número de serie (VIN) dentro de +/- 100 km."
+      }
+    ],
+    revisiones: [
+      {
+        numero: 1,
+        km: 500,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 1.5,
+        descripcion: "1ª Revisión (500 KM / 1 Mes) • Asentamiento CESIT",
+        descripcionManoObra: "Servicio oficial en CESIT",
+        chequeos: ["Cambio aceite Italika 4T", "Ajuste de punterías/válvulas", "Tensión de cadena y carburación"],
+        cambiosObligatorios: ["Aceite Italika 4T", "Bujía (inspección)"]
+      },
+      {
+        numero: 2,
+        km: 2000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 1.5,
+        descripcion: "2ª Revisión (2.000 KM / 3 Meses) • Servicio Preventivo",
+        descripcionManoObra: "Servicio oficial en CESIT",
+        chequeos: ["Cambio aceite Italika 4T", "Limpieza filtro de aire", "Ajuste de frenos y embrague"],
+        cambiosObligatorios: ["Aceite Italika 4T"]
+      },
+      {
+        numero: 3,
+        km: 4000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "3ª Revisión (4.000 KM / 6 Meses) • Afinación Completa",
+        descripcionManoObra: "Servicio oficial en CESIT",
+        chequeos: ["Cambio aceite Italika 4T", "Cambio de bujía y filtro de aire", "Calibración de válvulas"],
+        cambiosObligatorios: ["Aceite Italika 4T", "Bujía", "Filtro de Aire"]
+      },
+      {
+        numero: 4,
+        km: 6000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "4ª Revisión (6.000 KM) • Mantenimiento Tren Motriz",
+        descripcionManoObra: "Servicio oficial en CESIT",
+        chequeos: ["Cambio aceite", "Inspección de kit de tracción", "Revisión sistema eléctrico"],
+        cambiosObligatorios: ["Aceite Italika 4T"]
+      },
+      {
+        numero: 5,
+        km: 9000,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "5ª Revisión (9.000 KM) • Servicio Mayor CESIT",
+        descripcionManoObra: "Servicio oficial en CESIT",
+        chequeos: ["Cambio aceite, bujía y filtro de gasolina", "Lubricación de dirección y basculante"],
+        cambiosObligatorios: ["Aceite Italika 4T", "Bujía", "Filtro Aire"]
+      }
+    ]
+  },
+
+  // HERO MOTOCORP (4 Años o 40.000 KM)
+  HERO: {
+    distribuidor: "HERO MOTOCORP OFICIAL",
+    distribuidorCorto: "Hero Service",
+    mesesGarantia: 48,
+    kmGarantia: 40000,
+    toleranciaKm: 150,
+    toleranciaDias: 15,
+    descripcionReglas: "Súper Garantía Hero de 4 años o 40.000 km. Primera revisión a los 500–750 km y luego cada 3.500–4.000 km.",
+    reglasDeOro: [
+      {
+        id: "garantia_4anos_hero",
+        titulo: "Garantía Extendida de 4 Años / 40.000 KM",
+        nivel: "critico",
+        detalle: "Conservar todas las revisiones selladas cada 3.500 - 4.000 km en talleres autorizados Hero."
+      }
+    ],
+    revisiones: [
+      {
+        numero: 1,
+        km: 500,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "1ª Revisión (500 - 750 KM) • Despegue Hero XPulse / Hunk",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio aceite Hero 10W-30", "Filtro de aceite", "Calibración de válvulas y cadena"],
+        cambiosObligatorios: ["Aceite Hero 10W-30", "Filtro de Aceite"]
+      },
+      {
+        numero: 2,
+        km: 3500,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "2ª Revisión (3.500 KM) • Consolidación Motor 4V/2V",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio aceite Hero", "Inspección de bujía e inyección XSens FI", "Frenos ABS"],
+        cambiosObligatorios: ["Aceite Hero 10W-30"]
+      },
+      {
+        numero: 3,
+        km: 6500,
+        manoDeObra: "GRATIS",
+        tiempoEstHoras: 1.5,
+        descripcion: "3ª Revisión (6.500 KM) • Preventivo Oficial",
+        descripcionManoObra: "Mano de obra GRATIS",
+        chequeos: ["Cambio aceite y filtro", "Calibración de válvulas", "Limpieza filtro de aire"],
+        cambiosObligatorios: ["Aceite Hero 10W-30", "Filtro de Aceite"]
+      },
+      {
+        numero: 4,
+        km: 9500,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "4ª Revisión (9.500 KM) • Afinación Mayor",
+        descripcionManoObra: "Revisión pagada",
+        chequeos: ["Cambio aceite", "Reemplazo de bujía y filtro de aire", "Inspección kit de arrastre"],
+        cambiosObligatorios: ["Bujía", "Filtro de Aire", "Aceite Hero"]
+      },
+      {
+        numero: 5,
+        km: 12500,
+        manoDeObra: "PAGADA",
+        tiempoEstHoras: 2.0,
+        descripcion: "5ª Revisión (12.500 KM) • Control Chasis & Suspensión",
+        descripcionManoObra: "Revisión pagada",
+        chequeos: ["Cambio aceite", "Líquido de frenos DOT 4", "Engrase de cunas de dirección"],
+        cambiosObligatorios: ["Aceite Hero", "Líquido Frenos"]
+      }
+    ]
   }
+};
+
+// Políticas homologadas para las demás marcas líderes del catálogo
+OFFICIAL_WARRANTY_POLICIES.VICTORY = {
+  ...OFFICIAL_WARRANTY_POLICIES.TVS,
+  distribuidor: "AUTECO MOBILITY / VICTORY",
+  distribuidorCorto: "Auteco Victory",
+  mesesGarantia: 24,
+  kmGarantia: 24000,
+  descripcionReglas: "Garantía Auteco Mobility de 24 meses o 24.000 km con revisiones a los 500 km, 4.000 km, 8.000 km, 12.000 km, 16.000 km y 20.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES.SUZUKI = {
+  ...OFFICIAL_WARRANTY_POLICIES.YAMAHA,
+  distribuidor: "SUZUKI MOTOR OFICIAL",
+  distribuidorCorto: "Suzuki Oficial",
+  descripcionReglas: "Garantía oficial Suzuki con lubricante ECSTAR 10W-40 y revisiones en red autorizada."
+};
+OFFICIAL_WARRANTY_POLICIES.KAWASAKI = {
+  ...OFFICIAL_WARRANTY_POLICIES.KTM,
+  distribuidor: "AUTECO / KAWASAKI OFICIAL",
+  distribuidorCorto: "Kawasaki Service",
+  descripcionReglas: "Garantía oficial Kawasaki con revisiones a los 1.000 km, 6.000 km, 12.000 km y 18.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES["ROYAL ENFIELD"] = {
+  ...OFFICIAL_WARRANTY_POLICIES.KTM,
+  distribuidor: "ROYAL ENFIELD OFICIAL",
+  distribuidorCorto: "Royal Enfield",
+  mesesGarantia: 36,
+  kmGarantia: 30000,
+  descripcionReglas: "Garantía Royal Enfield de 36 meses o 30.000 km. Primera revisión a los 500 km y luego cada 5.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES.CFMOTO = {
+  ...OFFICIAL_WARRANTY_POLICIES.KTM,
+  distribuidor: "CFMOTO CONCESIONARIO OFICIAL",
+  distribuidorCorto: "CFMOTO Service",
+  mesesGarantia: 24,
+  kmGarantia: 24000,
+  descripcionReglas: "Garantía oficial CFMOTO de 24 meses o 24.000 km. Primera revisión a los 1.000 km y luego cada 5.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES.DUCATI = {
+  ...OFFICIAL_WARRANTY_POLICIES.BMW,
+  distribuidor: "DUCATI OFFICIAL SERVICE",
+  distribuidorCorto: "Ducati Service",
+  mesesGarantia: 24,
+  descripcionReglas: "Garantía Ducati Ever Red de 24 meses sin límite de km. Rodaje a los 1.000 km y Oil Service cada 12.000 / 15.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES.TRIUMPH = {
+  ...OFFICIAL_WARRANTY_POLICIES.BMW,
+  distribuidor: "TRIUMPH OFFICIAL DEALER",
+  distribuidorCorto: "Triumph Service",
+  mesesGarantia: 24,
+  descripcionReglas: "Garantía Triumph de 24 meses sin límite de kilometraje. Primera revisión a los 1.000 km y luego cada 10.000 / 16.000 km."
+};
+OFFICIAL_WARRANTY_POLICIES["HARLEY-DAVIDSON"] = {
+  ...OFFICIAL_WARRANTY_POLICIES.BMW,
+  distribuidor: "HARLEY-DAVIDSON AUTHORIZED DEALER",
+  distribuidorCorto: "Harley-Davidson",
+  mesesGarantia: 24,
+  descripcionReglas: "Garantía Harley-Davidson de 24 meses sin límite de millas/km. Primer servicio a los 1.600 km (1.000 mi) y luego cada 8.000 km (5.000 mi)."
+};
+OFFICIAL_WARRANTY_POLICIES.APRILIA = {
+  ...OFFICIAL_WARRANTY_POLICIES.BMW,
+  distribuidor: "APRILIA / GRUPO PIAGGIO OFICIAL",
+  distribuidorCorto: "Aprilia Service",
+  mesesGarantia: 24
+};
+OFFICIAL_WARRANTY_POLICIES.BENELLI = {
+  ...OFFICIAL_WARRANTY_POLICIES.KTM,
+  distribuidor: "BENELLI SERVICE OFICIAL",
+  distribuidorCorto: "Benelli Service",
+  mesesGarantia: 24,
+  kmGarantia: 24000
 };
 
 /**
